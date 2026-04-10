@@ -2,15 +2,12 @@ import { useState } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
   ArrowRight,
-  Building2,
   Database,
   Eye,
   EyeOff,
-  Globe2,
   KeyRound,
   Loader2,
   RefreshCw,
-  Shield,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
@@ -26,9 +23,9 @@ const defaultFormData = {
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ssoProviders = [
-  { id: 'microsoft-entra', label: 'Microsoft Entra', icon: Building2 },
-  { id: 'okta', label: 'Okta', icon: Shield },
-  { id: 'google', label: 'Google Workspace', icon: Globe2 },
+  { id: 'microsoft-entra', label: 'Microsoft Entra', logoSrc: '/sso/microsoft.svg' },
+  { id: 'okta', label: 'Okta', logoSrc: '/sso/okta.svg' },
+  { id: 'google', label: 'Google Workspace', logoSrc: '/sso/google.svg' },
 ];
 
 const designPillars = [
@@ -449,7 +446,6 @@ export default function AuthPage({ onAuthSuccess }) {
                     </div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       {ssoProviders.map((provider) => {
-                        const ProviderIcon = provider.icon;
                         return (
                           <button
                             key={provider.id}
@@ -458,7 +454,7 @@ export default function AuthPage({ onAuthSuccess }) {
                             disabled={isSubmitting}
                             className="flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-black/[0.02] px-3 py-2.5 text-xs font-medium text-foreground/90 transition-colors hover:bg-black/5 disabled:opacity-60 dark:bg-white/[0.02] dark:hover:bg-white/[0.08]"
                           >
-                            <ProviderIcon className="h-4 w-4" />
+                            <img src={provider.logoSrc} alt="" aria-hidden="true" className="h-4 w-4 shrink-0 object-contain" />
                             {provider.label}
                           </button>
                         );

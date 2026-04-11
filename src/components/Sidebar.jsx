@@ -16,36 +16,50 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { mockChatHistory } from "../services/mockData";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard" },
-  { icon: MessageSquare, label: "AI Chat", id: "chat" },
-  { icon: Database, label: "Connections", id: "connections" },
-  { icon: BarChart3, label: "Reports", id: "reports" },
-  { icon: Bookmark, label: "Saved Views", id: "saved" },
+  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", path: "/dashboard" },
+  { icon: MessageSquare, label: "AI Chat", id: "chat", path: "/chat" },
+  { icon: Database, label: "Connections", id: "connections", path: "/connections" },
+  { icon: BarChart3, label: "Reports", id: "reports", path: "/report" },
+  { icon: Bookmark, label: "Saved Views", id: "saved", path: "/saved" },
 ];
 
 export default function Sidebar({
-  activeView,
-  setActiveView,
-  onNewChat,
   isOpen,
   setIsOpen
 }) {
   const [showHistory, setShowHistory] = useState(true);
   const [chatHistory] = useState(mockChatHistory);
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const currentPath = location.pathname;
 
   return (
-    <motion.aside 
-      initial={{ width: 280, x: 0 }}
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsOpen(false)}
+            className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[55]"
+          />
+        )}
+      </AnimatePresence>
+      <motion.aside 
+        initial={{ width: 280, x: 0 }}
       animate={{ 
         width: isOpen ? 300 : 0,
         x: isOpen ? 0 : -300,
         opacity: isOpen ? 1 : 0
       }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="h-full bg-background border-r border-border/50 flex flex-col justify-between overflow-hidden relative z-50 shrink-0"
+      className="h-full bg-background border-r border-border/50 flex flex-col justify-between overflow-hidden absolute md:relative z-[60] shrink-0"
     >
       <div className="p-5 flex flex-col h-full min-w-[300px]">
         {/* Header */}
@@ -75,7 +89,7 @@ export default function Sidebar({
 
         {/* New Chat Button */}
         <button 
-          onClick={() => onNewChat ? onNewChat() : setActiveView('chat')}
+          onClick={() => navigate('/chat', { state: { createNew: true } })}
           className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
         >
            <span className="flex items-center gap-2.5 text-sm">
@@ -90,12 +104,12 @@ export default function Sidebar({
         {/* Navigation */}
         <nav className="space-y-1">
           {navItems.map((item) => {
-            const isActive = activeView === item.id;
+            const isActive = currentPath.includes(item.path);
             const Icon = item.icon;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveView(item.id)}
+                onClick={() => navigate(item.path)}
                 className={clsx(
                   "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
                   isActive ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
@@ -145,7 +159,7 @@ export default function Sidebar({
                 className="overflow-y-auto flex-1 space-y-1 pr-1 custom-scrollbar"
               >
                 {chatHistory.map((chat, i) => (
-                  <motion.button
+                  <motion.div
                     key={chat.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -158,11 +172,15 @@ export default function Sidebar({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-muted-foreground">{chat.date}</span>
-                      <button className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all">
+                      <button
+                        type="button"
+                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
+                        aria-label={`Delete ${chat.title}`}
+                      >
                         <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
                       </button>
                     </div>
-                  </motion.button>
+                  </motion.div>
                 ))}
               </motion.div>
             )}
@@ -176,10 +194,10 @@ export default function Sidebar({
             <span className="font-medium text-sm">Profile</span>
           </button>
           <button 
-            onClick={() => setActiveView('settings')}
+            onClick={() => navigate('/settings')}
             className={clsx(
               "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all",
-              activeView === 'settings' ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+              currentPath.includes('/settings') ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
             )}
           >
             <Settings className="w-5 h-5" strokeWidth={2} />
@@ -188,5 +206,6 @@ export default function Sidebar({
         </div>
       </div>
     </motion.aside>
+    </>
   );
 }

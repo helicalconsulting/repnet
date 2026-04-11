@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   DndContext, 
   closestCenter, 
@@ -214,7 +215,8 @@ function SortableReportCard({ report, onUnpin, onOpen }) {
   );
 }
 
-export default function Dashboard({ onOpenReport }) {
+export default function Dashboard() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState(mockReports.filter(r => r.isPinned));
   const [allReports, setAllReports] = useState(mockReports);
   const [searchQuery, setSearchQuery] = useState("");
@@ -408,7 +410,7 @@ export default function Dashboard({ onOpenReport }) {
                       key={report.id} 
                       report={report} 
                       onUnpin={handleUnpin}
-                      onOpen={onOpenReport}
+                      onOpen={(report) => navigate('/report', { state: { query: report.query || report.title, data: report } })}
                     />
                   ) : null
                 ))}

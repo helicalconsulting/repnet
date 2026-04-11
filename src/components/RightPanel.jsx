@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 import { 
   Lightbulb, 
   Plus, 
@@ -13,7 +13,8 @@ import {
   MessageSquare,
   Zap,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  X
 } from "lucide-react";
 import { useState } from "react";
 
@@ -61,21 +62,30 @@ const followUpQuestions = [
   "Export this report to PDF"
 ];
 
-export default function RightPanel({ isOpen }) {
+export default function RightPanel({ isOpen, onClose }) {
   const [activeTab, setActiveTab] = useState("insights");
   const [expandedInsight, setExpandedInsight] = useState(null);
 
   if (!isOpen) return null;
 
   return (
-    <motion.aside
-      initial={{ width: 0, opacity: 0 }}
-      animate={{ width: 340, opacity: 1 }}
-      exit={{ width: 0, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="h-full bg-card/80 backdrop-blur-xl border-l border-border/50 flex flex-col z-20 shrink-0"
-    >
-      <div className="p-5 flex flex-col h-full overflow-hidden">
+    <>
+      {/* Mobile Backdrop */}
+      <Motion.div
+         className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[90] md:hidden cursor-pointer"
+         initial={{ opacity: 0 }}
+         animate={{ opacity: 1 }}
+         exit={{ opacity: 0 }}
+         onClick={onClose}
+      />
+      <Motion.aside
+        initial={{ width: 0, opacity: 0 }}
+        animate={{ width: "100%", opacity: 1 }}
+        exit={{ width: 0, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="fixed inset-y-0 right-0 md:relative md:h-full w-full max-w-[92vw] sm:max-w-[420px] md:max-w-[340px] bg-card/80 backdrop-blur-xl border-l border-border/50 flex flex-col z-[100] md:z-20 shrink-0 shadow-2xl md:shadow-none"
+      >
+      <div className="p-4 sm:p-5 flex flex-col h-full overflow-hidden">
         {/* Header with Tabs */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -84,6 +94,9 @@ export default function RightPanel({ isOpen }) {
             </div>
             AI Insights
           </h2>
+          <button onClick={onClose} className="md:hidden p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-foreground">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Tab Buttons */}
@@ -105,7 +118,7 @@ export default function RightPanel({ isOpen }) {
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {tab.label}
+                <span className="truncate">{tab.label}</span>
               </button>
             );
           })}
@@ -115,7 +128,7 @@ export default function RightPanel({ isOpen }) {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <AnimatePresence mode="wait">
             {activeTab === "insights" && (
-              <motion.div
+              <Motion.div
                 key="insights"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -125,7 +138,7 @@ export default function RightPanel({ isOpen }) {
                 {insights.map((insight, idx) => {
                   const Icon = insight.icon;
                   return (
-                    <motion.div
+                    <Motion.div
                       key={insight.id}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -160,7 +173,7 @@ export default function RightPanel({ isOpen }) {
                           
                           <AnimatePresence>
                             {expandedInsight === insight.id && (
-                              <motion.div
+                              <Motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
@@ -170,19 +183,19 @@ export default function RightPanel({ isOpen }) {
                                   View detailed analysis
                                   <ExternalLink className="w-3 h-3" />
                                 </button>
-                              </motion.div>
+                              </Motion.div>
                             )}
                           </AnimatePresence>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   );
                 })}
-              </motion.div>
+              </Motion.div>
             )}
 
             {activeTab === "actions" && (
-              <motion.div
+              <Motion.div
                 key="actions"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -190,7 +203,7 @@ export default function RightPanel({ isOpen }) {
                 className="space-y-3"
               >
                 {suggestedTasks.map((task, idx) => (
-                  <motion.div
+                  <Motion.div
                     key={task.id}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -230,7 +243,7 @@ export default function RightPanel({ isOpen }) {
                         Dismiss
                       </button>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 ))}
                 
                 {/* Add Task Button */}
@@ -238,11 +251,11 @@ export default function RightPanel({ isOpen }) {
                   <Plus className="w-4 h-4" />
                   Add Custom Task
                 </button>
-              </motion.div>
+              </Motion.div>
             )}
 
             {activeTab === "follow" && (
-              <motion.div
+              <Motion.div
                 key="follow"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -253,7 +266,7 @@ export default function RightPanel({ isOpen }) {
                   Suggested follow-up questions based on your current report:
                 </p>
                 {followUpQuestions.map((question, idx) => (
-                  <motion.button
+                  <Motion.button
                     key={idx}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -265,7 +278,7 @@ export default function RightPanel({ isOpen }) {
                       {question}
                     </span>
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                  </motion.button>
+                  </Motion.button>
                 ))}
                 
                 <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-primary/10 to-blue-500/10 border border-primary/20">
@@ -277,7 +290,7 @@ export default function RightPanel({ isOpen }) {
                     You can ask follow-up questions in natural language. The AI will remember the context of your current report.
                   </p>
                 </div>
-              </motion.div>
+              </Motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -290,6 +303,7 @@ export default function RightPanel({ isOpen }) {
           </button>
         </div>
       </div>
-    </motion.aside>
+    </Motion.aside>
+    </>
   );
 }

@@ -155,13 +155,10 @@ function SortableRow({ rowId, row, columns }) {
 export default function ReportBuilder({ query, onClose, reportData, onToggleInsights }) {
   const { togglePinReport, saveReport, addNotification } = useApp();
   
-  const [activeTab, setActiveTab] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth < 1024 ? "chart" : "split"
-  );
+  const [activeTab, setActiveTab] = useState("chart");
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768
   );
-  const [isGenerating, setIsGenerating] = useState(true);
   const [chartType, setChartType] = useState("bar");
   const [selectedColors, setSelectedColors] = useState(chartColors[0]);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -222,11 +219,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       }
     }
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsGenerating(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -360,30 +352,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
   };
 
-  if (isGenerating) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 h-full w-full">
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }} 
-          transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-          className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-blue-500 blur-xl opacity-50 mb-8"
-        />
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex space-x-1">
-            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0s" }} />
-            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.2s" }} />
-            <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.4s" }} />
-          </div>
-          <p className="text-muted-foreground animate-pulse mt-4 text-sm font-medium">Assembling data models for "{query}"...</p>
-          <div className="flex gap-2 mt-4 text-xs text-muted-foreground/60">
-            <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded">Querying database...</span>
-            <span className="px-2 py-1 bg-black/5 dark:bg-white/5 rounded">Analyzing patterns...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
       <motion.div 
       initial={{ opacity: 0, scale: 0.98 }}
@@ -435,9 +403,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           
           <button 
             onClick={onToggleInsights}
-            className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-lg text-sm text-foreground transition-all"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-lg text-sm text-foreground transition-all"
+            title="Toggle Insights Panel"
           >
             <Sparkles className="w-4 h-4" />
+            <span className="hidden lg:inline">Insights</span>
           </button>
           
           <button 

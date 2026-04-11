@@ -67,6 +67,7 @@ function App() {
             <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/report" element={<ReportPage />} />
+            <Route path="/reports" element={<Navigate to="/report" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
             {/* Fallback for other sidebar items like /saved */}

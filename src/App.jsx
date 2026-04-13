@@ -9,6 +9,7 @@ import ChatPage from './pages/ChatPage';
 import ReportPage from './pages/ReportPage';
 import DashboardPage from './pages/DashboardPage';
 import ConnectionsPage from './pages/ConnectionsPage';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   const [sessionUser, setSessionUser] = useState(null);
@@ -63,12 +64,12 @@ function App() {
     <AppProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route element={<MainLayout user={sessionUser} onSignOut={handleSignOut} />}>
-            <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/report" element={<ReportPage />} />
             <Route path="/reports" element={<Navigate to="/report" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
             {/* Fallback for other sidebar items like /saved */}
             <Route path="*" element={

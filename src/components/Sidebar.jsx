@@ -64,15 +64,18 @@ export default function Sidebar({
       <div className="p-5 flex flex-col h-full min-w-[300px]">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border">
+          <div 
+            onClick={() => navigate('/')} 
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className="flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border group-hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] transition-shadow">
               <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
             </div>
             <div>
               <motion.h1 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
-                className="text-lg font-bold tracking-tight text-foreground"
+                className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors"
               >
                 RepNet
               </motion.h1>

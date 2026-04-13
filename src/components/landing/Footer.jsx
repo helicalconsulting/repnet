@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Code, MessageCircle, Globe, Mail, Zap } from "lucide-react";
+import { Code, MessageCircle, Globe, Mail } from "lucide-react";
 
 const footerLinks = [
   {
@@ -46,8 +46,8 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2">
             <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0055FF] to-[#3B82F6] flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <Zap size={14} className="text-white" fill="white" />
+              <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-lg shadow-blue-500/10">
+                <img src="/270970406.jpeg" alt="RepNet logo" className="h-full w-full object-contain rounded-md" />
               </div>
               <span className="text-lg font-bold text-slate-900 font-['Outfit'] tracking-tight">
                 RepNet

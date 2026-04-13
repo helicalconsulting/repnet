@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const HERO_BG = "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/2e505fba189137fd9c570f2ce59e906eb741c9704edbc47a95a8902ce38dc051.png";
 
@@ -79,6 +80,7 @@ function AnimatedCounter({ value, suffix = "", prefix = "" }) {
 }
 
 export default function HeroSection() {
+  const navigate = useNavigate();
   const typedText = useTypingAnimation(typingQueries, 35, 2200);
   const sectionRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
@@ -168,10 +170,7 @@ export default function HeroSection() {
           >
             <motion.button
               data-testid="hero-waitlist-btn"
-              onClick={() => {
-                const navigate = (import('react-router-dom')).then(m => m.useNavigate()('/dashboard')).catch(() => window.location.href='/dashboard');
-                window.location.href = '/dashboard';
-              }}
+              onClick={() => navigate('/login')}
               whileHover={{ scale: 1.04, boxShadow: "0 12px 40px rgba(0,85,255,0.3)" }}
               whileTap={{ scale: 0.97 }}
               className="group bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white px-8 py-4 rounded-xl font-semibold transition-all flex items-center gap-2.5 text-sm shadow-xl shadow-blue-500/25"

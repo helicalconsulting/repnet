@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Zap } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 
 const navLinks = [
@@ -60,13 +60,9 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
           <div className="flex items-center justify-between h-16">
             <Link to="/" data-testid="header-logo" className="flex items-center gap-2.5 group">
-              <motion.div
-                whileHover={{ rotate: [0, -10, 10, 0], scale: 1.05 }}
-                transition={{ duration: 0.5 }}
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0055FF] to-[#3B82F6] flex items-center justify-center shadow-lg shadow-blue-500/20"
-              >
-                <Zap size={14} className="text-white" fill="white" />
-              </motion.div>
+              <div className="flex-shrink-0 w-8 h-8 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border">
+                <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
+              </div>
               <span className="text-lg font-semibold text-slate-900 font-['Outfit'] tracking-tight">
                 RepNet
               </span>
@@ -101,7 +97,7 @@ export default function Header() {
             <div className="hidden md:flex items-center gap-3">
               <motion.button
                 data-testid="nav-dashboard-btn"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/login')}
                 whileHover={{ scale: 1.03, boxShadow: "0 8px 30px rgba(0,85,255,0.25)" }}
                 whileTap={{ scale: 0.97 }}
                 className="bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white px-5 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-500/20"
@@ -148,7 +144,7 @@ export default function Header() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/login')}
                   className="w-full bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white px-5 py-2.5 rounded-lg text-sm font-medium mt-3"
                 >
                   Go to Dashboard

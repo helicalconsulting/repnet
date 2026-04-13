@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -56,6 +56,10 @@ export default function AuthPage({ onAuthSuccess }) {
   const [mfaCode, setMfaCode] = useState('');
   const isSignIn = mode === 'signin';
   const isMfaStep = Boolean(mfaChallenge);
+
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   const updateField = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));

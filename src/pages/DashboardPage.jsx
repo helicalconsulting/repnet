@@ -1,9 +1,9 @@
-import LandingDashboard from '../components/LandingDashboard';
+import Dashboard from '../components/Dashboard';
 
 export default function DashboardPage() {
   return (
-    <div className="h-screen w-full overflow-y-auto custom-scrollbar">
-      <LandingDashboard />
+    <div className="flex-1 flex w-full h-full overflow-hidden">
+      <Dashboard />
     </div>
   );
 }

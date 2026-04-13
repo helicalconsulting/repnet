@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import AuthPage from './components/AuthPage';
 import { AppProvider } from './context/AppContext';
 import { authApi } from './services/mockApi';
@@ -10,6 +10,37 @@ import ReportPage from './pages/ReportPage';
 import DashboardPage from './pages/DashboardPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import LandingPage from './pages/LandingPage';
+
+function LoginRoute({ sessionUser, onAuthSuccess }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const redirectPath = location.state?.from?.pathname || '/dashboard';
+
+  if (sessionUser) {
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  const handleSuccess = (authenticatedUser) => {
+    onAuthSuccess(authenticatedUser);
+    navigate(redirectPath, { replace: true });
+  };
+
+  return <AuthPage onAuthSuccess={handleSuccess} />;
+}
+
+function ProtectedLayout({ sessionUser, onSignOut }) {
+  const location = useLocation();
+
+  if (!sessionUser) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return (
+    <AppProvider>
+      <MainLayout user={sessionUser} onSignOut={onSignOut} />
+    </AppProvider>
+  );
+}
 
 function App() {
   const [sessionUser, setSessionUser] = useState(null);
@@ -56,35 +87,38 @@ function App() {
     );
   }
 
-  if (!sessionUser) {
-    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
-  }
-
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route element={<MainLayout user={sessionUser} onSignOut={handleSignOut} />}>
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/report" element={<ReportPage />} />
-            <Route path="/reports" element={<Navigate to="/report" replace />} />
-            <Route path="/connections" element={<ConnectionsPage />} />
-            {/* Fallback for other sidebar items like /saved */}
-            <Route path="*" element={
-              <div className="flex h-full items-center justify-center text-foreground font-semibold flex-col gap-2">
-                 <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                   <span className="text-4xl">🚀</span>
-                 </div>
-                 <span className="text-xl capitalize">Coming Soon</span>
-                 <span className="text-sm text-muted-foreground font-normal">This module is under construction</span>
-              </div>
-            } />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AppProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/login"
+          element={
+            <LoginRoute
+              sessionUser={sessionUser}
+              onAuthSuccess={handleAuthSuccess}
+            />
+          }
+        />
+        <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
+          <Route path="/dashboard" element={<ReportPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/report" element={<ReportPage />} />
+          <Route path="/reports" element={<Navigate to="/report" replace />} />
+          <Route path="/connections" element={<ConnectionsPage />} />
+          {/* Fallback for other sidebar items like /saved */}
+          <Route path="*" element={
+            <div className="flex h-full items-center justify-center text-foreground font-semibold flex-col gap-2">
+               <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                 <span className="text-4xl">🚀</span>
+               </div>
+               <span className="text-xl capitalize">Coming Soon</span>
+               <span className="text-sm text-muted-foreground font-normal">This module is under construction</span>
+            </div>
+          } />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 

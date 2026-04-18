@@ -101,7 +101,7 @@ function App() {
           }
         />
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
-          <Route path="/dashboard" element={<ReportPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />

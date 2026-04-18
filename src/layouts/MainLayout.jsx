@@ -6,9 +6,27 @@ import { useApp } from '../context/AppContext';
 import { authApi } from '../services/mockApi';
 import Sidebar from '../components/Sidebar';
 
+const THEME_STORAGE_KEY = 'repnet-theme';
+
+const getInitialDarkMode = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === 'dark') return true;
+    if (storedTheme === 'light') return false;
+  } catch {
+    // Ignore storage read failures and use safe fallback.
+  }
+
+  return false;
+};
+
 export default function MainLayout({ user, onSignOut }) {
   const { notifications } = useApp();
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
@@ -41,10 +59,11 @@ export default function MainLayout({ user, onSignOut }) {
   }, []);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    document.documentElement.classList.toggle('dark', darkMode);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, darkMode ? 'dark' : 'light');
+    } catch {
+      // Ignore storage write failures; theme still applies for this session.
     }
   }, [darkMode]);
 

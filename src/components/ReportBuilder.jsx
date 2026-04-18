@@ -159,8 +159,18 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768
   );
-  const [chartType, setChartType] = useState("bar");
-  const [selectedColors, setSelectedColors] = useState(chartColors[0]);
+  const [chartType, setChartType] = useState(reportData?.chartType || "bar");
+  const [selectedColors, setSelectedColors] = useState(() => {
+    const reportColors = reportData?.chartConfig?.colors;
+    if (Array.isArray(reportColors) && reportColors.length > 0) {
+      const matchedPalette = chartColors.find(palette => (
+        palette.colors.length === reportColors.length &&
+        palette.colors.every((color, idx) => color === reportColors[idx])
+      ));
+      return matchedPalette || { name: "Custom", colors: reportColors };
+    }
+    return chartColors[0];
+  });
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChartPicker, setShowChartPicker] = useState(false);
   const [showSQLModal, setShowSQLModal] = useState(false);
@@ -196,6 +206,23 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       }
     }
   }, [columns]);
+
+  useEffect(() => {
+    if (!reportData) return;
+
+    setChartType(reportData.chartType || "bar");
+
+    const reportColors = reportData.chartConfig?.colors;
+    if (Array.isArray(reportColors) && reportColors.length > 0) {
+      const matchedPalette = chartColors.find(palette => (
+        palette.colors.length === reportColors.length &&
+        palette.colors.every((color, idx) => color === reportColors[idx])
+      ));
+      setSelectedColors(matchedPalette || { name: "Custom", colors: reportColors });
+    } else {
+      setSelectedColors(chartColors[0]);
+    }
+  }, [reportData]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -481,8 +508,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         </div>
 
         {/* Chart Customization Bar */}
-        <div className="overflow-x-auto pb-1 custom-scrollbar">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-max">
+        <div className="pb-1">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {/* Chart Type Selector */}
             <div className="relative">
               <button
@@ -510,7 +537,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                     {chartTypes.map(ct => (
                       <button
                         key={ct.id}
-                        onClick={() => { setChartType(ct.id); setShowChartPicker(false); }}
+                        onClick={() => {
+                          setChartType(ct.id);
+                          setActiveTab(ct.id === 'table' ? 'table' : 'chart');
+                          setShowChartPicker(false);
+                        }}
                         className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-muted transition-colors ${chartType === ct.id ? 'bg-primary/10 text-primary' : ''}`}
                       >
                         {ct.id === 'bar' && <BarChart2 className="w-4 h-4" />}
@@ -581,13 +612,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               {availableKeys.map(key => (
                 <button
                   key={key}
-                  onClick={() => {
-                    setSelectedDataKeys(prev => 
-                      prev.includes(key) 
-                        ? prev.filter(k => k !== key)
-                        : [...prev, key]
-                    );
-                  }}
+                    onClick={() => {
+                      setSelectedDataKeys(prev => {
+                        if (prev.includes(key)) {
+                          return prev.length > 1 ? prev.filter(k => k !== key) : prev;
+                        }
+                        return [...prev, key];
+                      });
+                    }}
                   className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
                     selectedDataKeys.includes(key) 
                       ? 'bg-primary/20 text-primary' 

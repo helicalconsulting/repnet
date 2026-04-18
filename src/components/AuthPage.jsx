@@ -22,6 +22,7 @@ const defaultFormData = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const THEME_STORAGE_KEY = 'repnet-theme';
 const ssoProviders = [
   { id: 'microsoft-entra', label: 'Microsoft Entra', logoSrc: '/sso/microsoft.svg' },
   { id: 'okta', label: 'Okta', logoSrc: '/sso/okta.svg' },
@@ -58,7 +59,15 @@ export default function AuthPage({ onAuthSuccess }) {
   const isMfaStep = Boolean(mfaChallenge);
 
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
+    let isDark = false;
+
+    try {
+      isDark = window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark';
+    } catch {
+      isDark = false;
+    }
+
+    document.documentElement.classList.toggle('dark', isDark);
   }, []);
 
   const updateField = (key, value) => {

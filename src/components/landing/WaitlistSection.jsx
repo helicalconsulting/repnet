@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, CheckCircle2, Loader2, Users, Sparkles } from "lucide-react";
+import { CheckCircle2, Loader2, Users, Sparkles } from "lucide-react";
 import axios from "axios";
 
 const API = `${import.meta.env.VITE_BACKEND_URL || ''}/api`;
+const subscribeReasons = [
+  "Replace Crystal Reports and Power BI back-and-forth with natural language analytics.",
+  "Get launch updates, demos, and product education before public release.",
+  "Get priority onboarding support for your ERP stack.",
+];
 
 export default function WaitlistSection() {
   const [form, setForm] = useState({ email: "", company: "", erp_system: "" });
@@ -50,10 +55,10 @@ export default function WaitlistSection() {
               Early Access
             </span>
             <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
-              Get early access
+              Subscribe to learn more
             </h2>
             <p className="text-lg text-slate-500 mt-4">
-              Be the first to transform how your team generates ERP reports.
+              Join the Repnex early list and see why teams are switching to conversational reporting.
             </p>
 
             {/* Social proof */}
@@ -69,6 +74,15 @@ export default function WaitlistSection() {
                 </span>
               </motion.div>
             )}
+
+            <div className="mt-6 space-y-3 text-left">
+              {subscribeReasons.map((reason) => (
+                <div key={reason} className="flex items-start gap-2.5 rounded-lg bg-white/70 border border-slate-200/70 px-4 py-3">
+                  <CheckCircle2 size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-slate-600">{reason}</p>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
           <motion.div
@@ -91,10 +105,10 @@ export default function WaitlistSection() {
                   <CheckCircle2 size={56} className="text-emerald-500 mx-auto mb-4" />
                 </motion.div>
                 <h3 className="text-2xl font-bold text-slate-900 font-['Outfit']">You're on the list!</h3>
-                <p className="text-sm text-slate-500 mt-2">We'll reach out when early access opens.</p>
+                <p className="text-sm text-slate-500 mt-2">Thanks for subscribing. We'll share updates shortly.</p>
               </motion.div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/80 p-8 shadow-xl shadow-slate-200/30" data-testid="waitlist-form">
+              <form onSubmit={handleSubmit} className="space-y-4 bg-white/80 backdrop-blur-sm rounded-2xl border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]" data-testid="waitlist-form">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 mb-2 block">Work Email *</label>
                   <input
@@ -104,7 +118,7 @@ export default function WaitlistSection() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="you@company.com"
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all bg-white/80"
+                    className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 placeholder:text-slate-500 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all bg-white/80 font-bold"
                   />
                 </div>
                 <div>
@@ -115,7 +129,7 @@ export default function WaitlistSection() {
                     value={form.company}
                     onChange={(e) => setForm({ ...form, company: e.target.value })}
                     placeholder="Acme Corp"
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all bg-white/80"
+                    className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 placeholder:text-slate-500 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all bg-white/80 font-bold"
                   />
                 </div>
                 <div>
@@ -124,7 +138,7 @@ export default function WaitlistSection() {
                     data-testid="waitlist-erp-select"
                     value={form.erp_system}
                     onChange={(e) => setForm({ ...form, erp_system: e.target.value })}
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all bg-white"
+                    className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all bg-white font-bold"
                   >
                     <option value="">Select your ERP</option>
                     <option value="SYSPRO">SYSPRO</option>
@@ -143,19 +157,19 @@ export default function WaitlistSection() {
                   type="submit"
                   data-testid="waitlist-submit-btn"
                   disabled={status === "loading"}
-                  whileHover={{ scale: 1.02, boxShadow: "0 12px 40px rgba(0,85,255,0.25)" }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white py-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-blue-500/20"
+                  whileHover={{ x: 2, y: 2, boxShadow: "4px 4px 0px 0px rgba(0,0,0,1)" }}
+                  whileTap={{ x: 4, y: 4, boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)" }}
+                  className="w-full bg-[#0055FF] text-white py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-60 border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
                 >
-                  {status === "loading" ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles size={14} />
-                      Join Waitlist
-                    </>
-                  )}
-                </motion.button>
+                    {status === "loading" ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles size={14} />
+                        Subscribe Now
+                      </>
+                    )}
+                  </motion.button>
 
                 <p className="text-[11px] text-slate-400 text-center mt-3">
                   No spam. We'll only email you about early access.

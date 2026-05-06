@@ -70,7 +70,7 @@ export default function ContactSection() {
                 <p className="text-sm text-slate-500 mt-2">We'll be in touch shortly.</p>
               </motion.div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/80 p-8 shadow-xl shadow-slate-200/30" data-testid="contact-form">
+              <form onSubmit={handleSubmit} className="space-y-4 bg-white/80 backdrop-blur-sm rounded-2xl border-[3px] border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]" data-testid="contact-form">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-700 mb-2 block">Name *</label>
@@ -81,7 +81,7 @@ export default function ContactSection() {
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       placeholder="John Doe"
-                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all bg-white/80"
+                      className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 placeholder:text-slate-500 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all bg-white/80 font-bold"
                     />
                   </div>
                   <div>
@@ -93,7 +93,7 @@ export default function ContactSection() {
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       placeholder="john@company.com"
-                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all bg-white/80"
+                      className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 placeholder:text-slate-500 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all bg-white/80 font-bold"
                     />
                   </div>
                 </div>
@@ -105,7 +105,7 @@ export default function ContactSection() {
                     value={form.company}
                     onChange={(e) => setForm({ ...form, company: e.target.value })}
                     placeholder="Acme Corp"
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all bg-white/80"
+                    className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 placeholder:text-slate-500 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all bg-white/80 font-bold"
                   />
                 </div>
                 <div>
@@ -117,7 +117,7 @@ export default function ContactSection() {
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
                     placeholder="Tell us about your ERP reporting needs..."
-                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40 focus:border-blue-300 outline-none transition-all resize-none bg-white/80"
+                    className="w-full px-4 py-3.5 rounded-xl border-[2px] border-black text-sm text-slate-900 placeholder:text-slate-500 focus:ring-0 focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none transition-all resize-none bg-white/80 font-bold"
                   />
                 </div>
 
@@ -129,9 +129,9 @@ export default function ContactSection() {
                   type="submit"
                   data-testid="contact-submit-btn"
                   disabled={status === "loading"}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white py-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-lg shadow-blue-500/20"
+                  whileHover={{ x: 2, y: 2, boxShadow: "4px 4px 0px 0px rgba(0,0,0,1)" }}
+                  whileTap={{ x: 4, y: 4, boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)" }}
+                  className="w-full bg-[#0055FF] text-white py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-60 border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
                 >
                   {status === "loading" ? (
                     <Loader2 size={16} className="animate-spin" />

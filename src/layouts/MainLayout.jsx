@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { authApi } from '../services/mockApi';
 import Sidebar from '../components/Sidebar';
 
-const THEME_STORAGE_KEY = 'repnet-theme';
+const THEME_STORAGE_KEY = 'repnex-theme';
 
 const getInitialDarkMode = () => {
   if (typeof window === 'undefined') {

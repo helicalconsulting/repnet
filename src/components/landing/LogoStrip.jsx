@@ -9,7 +9,7 @@ const logos = [
 
 export default function LogoStrip() {
   return (
-    <section data-testid="logo-strip" className="py-20 border-y border-slate-100/80 relative overflow-hidden bg-white">
+    <section data-testid="logo-strip" className="py-28 border-y border-slate-100/80 relative overflow-hidden bg-white">
       {/* Subtle bg */}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-50/50 via-white to-slate-50/50" />
       
@@ -18,7 +18,7 @@ export default function LogoStrip() {
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mb-12"
+          className="text-center text-sm font-bold uppercase tracking-[0.4em] text-slate-500 mb-16"
         >
           Trusted by teams using leading ERP systems
         </motion.p>
@@ -30,11 +30,11 @@ export default function LogoStrip() {
               <motion.div
                 key={`${logo.name}-${i}`}
                 whileHover={{ scale: 1.15 }}
-                className="flex-shrink-0 flex items-center gap-4 transition-all duration-300 cursor-pointer px-6 py-3 rounded-xl hover:bg-blue-50/50"
+                className="flex-shrink-0 flex items-center gap-6 transition-all duration-300 cursor-pointer px-8 py-4 rounded-2xl hover:bg-blue-50/50"
                 data-testid={`logo-${logo.name.toLowerCase()}-${i}`}
               >
-                <img src={logo.url} alt={logo.name} className="h-11 w-auto object-contain" />
-                <span className="text-lg font-bold text-slate-800 font-['Outfit'] whitespace-nowrap tracking-tight">{logo.name}</span>
+                <img src={logo.url} alt={logo.name} className="h-14 w-auto object-contain" />
+                <span className="text-2xl font-black text-slate-900 font-['Outfit'] whitespace-nowrap tracking-tighter">{logo.name}</span>
               </motion.div>
             ))}
           </div>

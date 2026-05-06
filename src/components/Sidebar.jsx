@@ -77,7 +77,7 @@ export default function Sidebar({
                 animate={{ opacity: 1 }} 
                 className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors"
               >
-                RepNet
+                Repnex
               </motion.h1>
               <p className="text-[10px] text-muted-foreground">AI-Powered ERP Reports</p>
             </div>

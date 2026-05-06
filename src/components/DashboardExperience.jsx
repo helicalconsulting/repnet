@@ -71,7 +71,7 @@ const docsTopics = [
     icon: FileText,
     label: 'Executive Summary',
     title: 'AI Copilot for SYSPRO ERP',
-    body: `RepNet enables non-technical ERP users to generate report-ready SQL from natural language.
+    body: `Repnex enables non-technical ERP users to generate report-ready SQL from natural language.
 
 It connects to SQL Server and Oracle sources used by SYSPRO, Acumatica, Sage, and Epicor. Output is auto-visualized as interactive charts and can be pinned to dashboards.`,
   },
@@ -158,7 +158,7 @@ export default function DashboardExperience() {
         />
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
           <Motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-semibold tracking-tight text-slate-900 max-w-4xl">
-            Integrated RepNet dashboard experience from <span className="text-[#0055FF]">ui-repnet</span>
+            Integrated Repnex dashboard experience from <span className="text-[#0055FF]">ui-repnex</span>
           </Motion.h1>
           <p className="mt-6 text-slate-600 max-w-2xl">
             Your workspace now includes the full product-style dashboard sections: capabilities, architecture, docs, roadmap, and pricing.

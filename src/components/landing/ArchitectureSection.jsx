@@ -78,7 +78,7 @@ export default function ArchitectureSection() {
               data-testid={`arch-step-${i}`}
               className="group relative"
             >
-              <div className={`relative bg-white rounded-2xl border ${step.borderColor} p-7 h-full transition-all duration-500 hover:-translate-y-2 hover:shadow-xl hover:shadow-blue-500/[0.06]`}>
+              <div className={`relative bg-white rounded-2xl border-[3px] border-black p-7 h-full transition-all duration-300 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}>
                 {/* Step number background */}
                 <div className="absolute top-5 right-5 text-6xl font-black text-slate-100/70 font-['Outfit'] leading-none select-none group-hover:text-blue-50 transition-colors duration-500">
                   {step.num}
@@ -122,9 +122,9 @@ export default function ArchitectureSection() {
         >
           <motion.button
             onClick={() => document.querySelector("#waitlist")?.scrollIntoView({ behavior: "smooth" })}
-            whileHover={{ scale: 1.03, boxShadow: "0 12px 40px rgba(0,85,255,0.25)" }}
-            whileTap={{ scale: 0.97 }}
-            className="bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white px-8 py-4 rounded-xl font-semibold text-sm shadow-xl shadow-blue-500/20 inline-flex items-center gap-2"
+            whileHover={{ x: 2, y: 2, boxShadow: "4px 4px 0px 0px rgba(0,0,0,1)" }}
+            whileTap={{ x: 4, y: 4, boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)" }}
+            className="bg-[#0055FF] text-white px-8 py-4 rounded-xl font-bold text-sm border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] inline-flex items-center gap-2 cursor-pointer transition-all"
             data-testid="architecture-cta"
           >
             Start generating reports today

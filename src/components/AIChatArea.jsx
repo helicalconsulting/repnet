@@ -170,7 +170,7 @@ export default function AIChatArea({ onSearch }) {
               {/* Model Selector */}
               <button type="button" className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/70 hover:text-foreground transition-colors px-3 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10">
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
-                RepNet AI Pro
+                Repnex AI Pro
                 <ChevronDown className="w-3 h-3 ml-1 text-muted-foreground" />
               </button>
 
@@ -193,7 +193,7 @@ export default function AIChatArea({ onSearch }) {
           
           {/* Footer */}
           <div className="flex justify-between items-center text-[11px] text-muted-foreground mt-4 px-2">
-            <p>RepNet AI generates SQL queries from natural language</p>
+            <p>Repnex AI generates SQL queries from natural language</p>
             <p>
               <span className="bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded text-[10px]">shift</span>
               {" + "}

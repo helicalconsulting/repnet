@@ -62,7 +62,7 @@ export default function ProductShowcase() {
             </span>
           </h2>
           <p className="text-lg text-slate-500 mt-4">
-            From natural language queries to interactive dashboards — see what RepNet delivers.
+            From natural language queries to interactive dashboards — see what Repnex delivers.
           </p>
         </motion.div>
 
@@ -139,7 +139,7 @@ export default function ProductShowcase() {
                           </div>
                           <div className="flex-1 flex justify-center">
                             <div className="bg-white/80 rounded-md border border-slate-200/60 px-4 py-1 text-[10px] text-slate-400 font-mono">
-                              app.repnet.ai
+                              app.repnex.ai
                             </div>
                           </div>
                         </div>

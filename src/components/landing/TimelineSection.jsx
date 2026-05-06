@@ -58,9 +58,9 @@ const benefits = [
   },
 ];
 
-export default function WhyRepNetSection() {
+export default function WhyRepnexSection() {
   return (
-    <section id="why-repnet" data-testid="timeline-section" className="py-28 md:py-36 relative overflow-hidden">
+    <section id="why-repnex" data-testid="timeline-section" className="py-28 md:py-36 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50/50 to-white" />
       <div className="absolute inset-0 dot-grid opacity-[0.2]" />
 
@@ -72,7 +72,7 @@ export default function WhyRepNetSection() {
           className="text-center mb-20 max-w-2xl mx-auto"
         >
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
-            Why RepNet
+            Why Repnex
           </span>
           <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
             Built for teams who are{" "}
@@ -97,7 +97,7 @@ export default function WhyRepNetSection() {
               data-testid={`timeline-phase-${i}`}
               className="group"
             >
-              <div className={`bg-white rounded-2xl border ${b.border} p-7 h-full transition-all duration-500 hover:-translate-y-2 hover:shadow-xl hover:shadow-blue-500/[0.05]`}>
+              <div className={`bg-white rounded-2xl border-[3px] border-black p-7 h-full transition-all duration-300 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}>
                 <div className="flex items-start justify-between mb-5">
                   <div className={`w-12 h-12 rounded-xl ${b.bg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                     <b.icon size={22} className={b.color} />

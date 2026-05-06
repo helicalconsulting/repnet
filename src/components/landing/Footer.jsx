@@ -47,10 +47,10 @@ export default function Footer() {
           <div className="col-span-2">
             <div className="flex items-center gap-2.5 mb-5">
               <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-lg shadow-blue-500/10">
-                <img src="/270970406.jpeg" alt="RepNet logo" className="h-full w-full object-contain rounded-md" />
+                <img src="/270970406.jpeg" alt="Repnex logo" className="h-full w-full object-contain rounded-md" />
               </div>
               <span className="text-lg font-bold text-slate-900 font-['Outfit'] tracking-tight">
-                RepNet
+                Repnex
               </span>
             </div>
             <p className="text-sm text-slate-500 leading-relaxed max-w-xs">
@@ -103,7 +103,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-16 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-slate-400">
-            &copy; {new Date().getFullYear()} RepNet. All rights reserved.
+            &copy; {new Date().getFullYear()} Repnex. All rights reserved.
           </p>
           <p className="text-xs text-slate-400">
             Built for SYSPRO, Acumatica, Sage & Epicor

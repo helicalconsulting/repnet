@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
+import EarlyBirdBanner from "./EarlyBirdBanner";
 
 const plans = [
   {
@@ -113,6 +114,15 @@ export default function PricingSection() {
           </div>
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-14 flex justify-center"
+        >
+          <EarlyBirdBanner />
+        </motion.div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
           {plans.map((plan, i) => (
             <motion.div
@@ -129,10 +139,10 @@ export default function PricingSection() {
                 <div className="absolute -inset-[2px] rounded-[18px] bg-gradient-to-r from-[#0055FF] via-[#6366F1] to-[#0055FF] bg-[length:200%_100%] animate-[shimmer_3s_linear_infinite] opacity-80" style={{backgroundSize: '200% 100%', animation: 'shimmer 3s linear infinite'}} />
               )}
 
-              <div className={`relative rounded-2xl p-7 transition-all duration-500 h-full ${
+              <div className={`relative rounded-2xl p-7 transition-all duration-300 h-full border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
                 plan.highlight
-                  ? "bg-white shadow-2xl shadow-blue-500/10 z-10"
-                  : "bg-white border border-slate-200/80 hover:border-slate-300 hover:shadow-lg hover:-translate-y-1"
+                  ? "bg-white z-10"
+                  : "bg-white"
               }`}>
                 {plan.highlight && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#0055FF] to-[#6366F1] text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg shadow-blue-500/30">
@@ -161,12 +171,12 @@ export default function PricingSection() {
                 <motion.button
                   data-testid={`pricing-cta-${plan.name.toLowerCase()}`}
                   onClick={() => scrollTo("#waitlist")}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`w-full py-3.5 rounded-xl text-sm font-semibold transition-all ${
+                  whileHover={{ x: 2, y: 2, boxShadow: "4px 4px 0px 0px rgba(0,0,0,1)" }}
+                  whileTap={{ x: 4, y: 4, boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)" }}
+                  className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] cursor-pointer ${
                     plan.highlight
-                      ? "bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30"
-                      : "bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 hover:border-slate-300"
+                      ? "bg-[#0055FF] text-white"
+                      : "bg-white text-slate-900"
                   }`}
                 >
                   {plan.cta}

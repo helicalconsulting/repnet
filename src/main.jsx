@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-const THEME_STORAGE_KEY = 'repnet-theme';
+const THEME_STORAGE_KEY = 'repnex-theme';
 
 if (typeof window !== 'undefined') {
   try {

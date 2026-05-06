@@ -1,10 +1,18 @@
 import { motion } from "framer-motion";
 
 const logos = [
-  { name: "SYSPRO", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/b16d6877fe2259ae1d4af680ca188324ad844820c6ea81cfc164ca44c0b35135.png" },
-  { name: "Acumatica", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/c90756a8c1d8fa29735ab682462ed4bbf6c2e74d516f345882229d52e4a00977.png" },
-  { name: "Sage", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/33b51baf0cc935a455b244bba0ab023f847b9c0c046a8f83742865cc8526e56a.png" },
-  { name: "Epicor", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/c0c22824ff18de96d590750ea816b69f88f1d2db0b652e1af24fa1500570f614.png" },
+  { name: "Acumatica", url: "/logos/Acumatica.png" },
+  { name: "Aptean", url: "/logos/Aptean.png" },
+  { name: "C1", url: "/logos/C1.png" },
+  { name: "Docusign", url: "/logos/Docusign.png" },
+  { name: "Epicor", url: "/logos/Epicor_Logo_Teal_RGB_(1).png" },
+  { name: "SYSPRO", url: "/logos/SYSPRO.png" },
+  { name: "Sage", url: "/logos/Sage_logo.png" },
+  { name: "Solutech", url: "/logos/Solutech.svg" },
+  { name: "UiPath", url: "/logos/UiPath.png" },
+  { name: "ZAP", url: "/logos/ZAP.png" },
+  { name: "Kissflow", url: "/logos/kissflow_logo_600.png" },
+  { name: "Zoho", url: "/logos/zoho_logo.png" },
 ];
 
 export default function LogoStrip() {

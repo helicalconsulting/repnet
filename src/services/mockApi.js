@@ -11,9 +11,9 @@ import {
 // Simulate network delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const AUTH_USERS_KEY = 'repnet-auth-users';
-const AUTH_SESSION_KEY = 'repnet-auth-session';
-const AUTH_MFA_CHALLENGES_KEY = 'repnet-auth-mfa-challenges';
+const AUTH_USERS_KEY = 'repnex-auth-users';
+const AUTH_SESSION_KEY = 'repnex-auth-session';
+const AUTH_MFA_CHALLENGES_KEY = 'repnex-auth-mfa-challenges';
 const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 const ssoProviders = {
@@ -26,8 +26,8 @@ const defaultAuthUsers = [
   {
     id: 'user-demo',
     name: 'Demo User',
-    company: 'RepNet Labs',
-    email: 'demo@repnet.ai',
+    company: 'Repnex Labs',
+    email: 'demo@repnex.ai',
     password: 'demo@123',
     mfaEnabled: true,
     ssoProvider: null,

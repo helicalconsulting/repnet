@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -15,8 +15,6 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeSection, setActiveSection] = useState("");
-  const navigate = useNavigate();
-
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -64,7 +62,7 @@ export default function Header() {
                 <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
               </div>
               <span className="text-lg font-semibold text-slate-900 font-['Outfit'] tracking-tight">
-                RepNet
+                Repnex
               </span>
             </Link>
 
@@ -97,12 +95,12 @@ export default function Header() {
             <div className="hidden md:flex items-center gap-3">
               <motion.button
                 data-testid="nav-dashboard-btn"
-                onClick={() => navigate('/login')}
-                whileHover={{ scale: 1.03, boxShadow: "0 8px 30px rgba(0,85,255,0.25)" }}
-                whileTap={{ scale: 0.97 }}
-                className="bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white px-5 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-500/20"
+                onClick={() => scrollTo("#waitlist")}
+                whileHover={{ x: 2, y: 2, boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)" }}
+                whileTap={{ x: 4, y: 4, boxShadow: "1px 1px 0px 0px rgba(0,0,0,1)" }}
+                className="bg-[#0055FF] text-white px-5 py-2 rounded-lg text-sm font-bold transition-all border-[2px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
               >
-                Go to Dashboard
+                Subscribe
               </motion.button>
             </div>
 
@@ -144,10 +142,10 @@ export default function Header() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
-                  onClick={() => navigate('/login')}
-                  className="w-full bg-gradient-to-r from-[#0055FF] to-[#3B82F6] text-white px-5 py-2.5 rounded-lg text-sm font-medium mt-3"
+                  onClick={() => scrollTo("#waitlist")}
+                  className="w-full bg-[#0055FF] text-white px-5 py-2.5 rounded-lg text-sm font-bold mt-3 border-[2px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                 >
-                  Go to Dashboard
+                  Subscribe
                 </motion.button>
               </div>
             </motion.div>

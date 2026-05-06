@@ -22,7 +22,7 @@ const defaultFormData = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const THEME_STORAGE_KEY = 'repnet-theme';
+const THEME_STORAGE_KEY = 'repnex-theme';
 const ssoProviders = [
   { id: 'microsoft-entra', label: 'Microsoft Entra', logoSrc: '/sso/microsoft.svg' },
   { id: 'okta', label: 'Okta', logoSrc: '/sso/okta.svg' },
@@ -98,7 +98,7 @@ export default function AuthPage({ onAuthSuccess }) {
     resetMfaStep();
     setFormData((prev) => ({
       ...prev,
-      email: 'demo@repnet.ai',
+      email: 'demo@repnex.ai',
       password: 'demo@123',
       confirmPassword: '',
     }));
@@ -268,9 +268,9 @@ export default function AuthPage({ onAuthSuccess }) {
           <div className="hidden md:flex flex-col justify-between bg-gradient-to-br from-primary to-blue-700 p-10 text-white">
             <div>
               <div className="mb-8 inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2 backdrop-blur">
-                <img src="/270970406.jpeg" alt="RepNet logo" className="h-8 w-8 rounded-lg object-contain bg-white/90 p-1" />
+                <img src="/270970406.jpeg" alt="Repnex logo" className="h-8 w-8 rounded-lg object-contain bg-white/90 p-1" />
                 <div>
-                  <p className="text-sm font-semibold">RepNet</p>
+                  <p className="text-sm font-semibold">Repnex</p>
                   <p className="text-xs text-white/75">AI-Powered ERP Reports</p>
                 </div>
               </div>
@@ -299,8 +299,8 @@ export default function AuthPage({ onAuthSuccess }) {
           <div className="p-7 sm:p-9 md:p-10">
             <div className="mb-6 md:hidden">
               <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-border/50 bg-black/5 dark:bg-white/5 px-3 py-2">
-                <img src="/270970406.jpeg" alt="RepNet logo" className="h-7 w-7 rounded-md object-contain bg-white p-1" />
-                <span className="text-sm font-semibold">RepNet</span>
+                <img src="/270970406.jpeg" alt="Repnex logo" className="h-7 w-7 rounded-md object-contain bg-white p-1" />
+                <span className="text-sm font-semibold">Repnex</span>
               </div>
             </div>
 
@@ -368,7 +368,7 @@ export default function AuthPage({ onAuthSuccess }) {
                             type="text"
                             value={formData.company}
                             onChange={(event) => updateField('company', event.target.value)}
-                            placeholder="RepNet Labs"
+                            placeholder="Repnex Labs"
                             className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
                           />
                         </div>
@@ -569,7 +569,7 @@ export default function AuthPage({ onAuthSuccess }) {
                 </button>
               </div>
               <p className="mt-2 text-[11px]">
-                demo@repnet.ai / demo@123
+                demo@repnex.ai / demo@123
               </p>
             </div>
           </div>

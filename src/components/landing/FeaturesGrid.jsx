@@ -1,6 +1,7 @@
 import { useRef, useCallback } from "react";
 import { motion, useInView } from "framer-motion";
 import { MessageSquareText, BarChart3, LayoutDashboard, ShieldAlert, ArrowUpRight } from "lucide-react";
+import EarlyBirdBanner from "./EarlyBirdBanner";
 
 function SpotlightCard({ children, className = "" }) {
   const ref = useRef(null);
@@ -199,7 +200,7 @@ export default function FeaturesGrid() {
           {features.map((feature) => (
             <motion.div key={feature.title} variants={itemVariants} className={feature.span}>
               <SpotlightCard
-                className={`bg-white border border-slate-200/80 rounded-2xl p-7 h-full bg-gradient-to-br ${feature.gradient}`}
+                className={`bg-white border-[3px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-2xl p-7 h-full bg-gradient-to-br ${feature.gradient}`}
               >
                 <div className="relative z-10">
                   <div className="w-11 h-11 rounded-xl bg-white border border-slate-200/80 flex items-center justify-center mb-5 shadow-sm group-hover:shadow-md transition-shadow">
@@ -217,6 +218,15 @@ export default function FeaturesGrid() {
               </SpotlightCard>
             </motion.div>
           ))}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-20 flex justify-center"
+        >
+          <EarlyBirdBanner />
         </motion.div>
       </div>
     </section>

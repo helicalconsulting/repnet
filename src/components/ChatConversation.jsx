@@ -307,7 +307,7 @@ ORDER BY revenue DESC LIMIT 10;`
           <div className="flex items-center justify-between mt-auto px-2 py-1">
             <button type="button" className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-1 rounded bg-black/5 dark:bg-white/5">
               <Sparkles className="w-3 h-3 text-primary" />
-              RepNet AI Pro
+              Repnex AI Pro
             </button>
             <div className="flex items-center gap-2">
               <button type="button" className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">

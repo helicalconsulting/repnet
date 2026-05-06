@@ -38,6 +38,7 @@ export default function LogoStrip() {
               <motion.div
                 key={`${logo.name}-${i}`}
                 whileHover={{ scale: 1.15 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
                 className="flex-shrink-0 flex items-center gap-6 transition-all duration-300 cursor-pointer px-8 py-4 rounded-2xl hover:bg-blue-50/50"
                 data-testid={`logo-${logo.name.toLowerCase()}-${i}`}
               >

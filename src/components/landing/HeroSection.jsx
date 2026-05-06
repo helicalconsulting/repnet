@@ -4,7 +4,7 @@ import { ArrowRight, Play, Sparkles } from "lucide-react";
 import DotField from "../DotField";
 import EarlyBirdBanner from "./EarlyBirdBanner";
 
-const HERO_BG = "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/2e505fba189137fd9c570f2ce59e906eb741c9704edbc47a95a8902ce38dc051.png";
+const HERO_BG = "/background/hero-bg.png";
 
 const typingQueries = [
   "Show me total revenue by product category for Q4...",

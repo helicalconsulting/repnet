@@ -107,8 +107,8 @@ export default function HeroSection() {
 
       {/* Background image with parallax */}
       <motion.div className="absolute inset-0 z-0" style={{ y: bgY }}>
-        <img src={HERO_BG} alt="" className="w-full h-full object-cover opacity-[0.06]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/70 to-white" />
+        <img src={HERO_BG} alt="" className="w-full h-full object-cover opacity-100" />
+        <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]" />
       </motion.div>
 
       <div className="relative z-10 max-w-[90rem] mx-auto px-6 md:px-12 lg:px-16 w-full flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20">

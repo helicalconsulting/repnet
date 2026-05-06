@@ -16,7 +16,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-transparent relative" data-testid="app-root">
       {/* Global Background DotField */}
-      <div className="fixed inset-0 z-0 opacity-40 pointer-events-auto">
+      <div className="fixed inset-0 -z-10 opacity-40 pointer-events-auto">
         <DotField
           dotRadius={1.5}
           dotSpacing={14}

@@ -9,7 +9,7 @@ const logos = [
 
 export default function LogoStrip() {
   return (
-    <section data-testid="logo-strip" className="py-14 border-y border-slate-100/80 relative overflow-hidden">
+    <section data-testid="logo-strip" className="py-20 border-y border-slate-100/80 relative overflow-hidden bg-white">
       {/* Subtle bg */}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-50/50 via-white to-slate-50/50" />
       
@@ -18,7 +18,7 @@ export default function LogoStrip() {
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-8"
+          className="text-center text-xs font-bold uppercase tracking-[0.3em] text-slate-500 mb-12"
         >
           Trusted by teams using leading ERP systems
         </motion.p>
@@ -29,12 +29,12 @@ export default function LogoStrip() {
             {[...logos, ...logos, ...logos, ...logos].map((logo, i) => (
               <motion.div
                 key={`${logo.name}-${i}`}
-                whileHover={{ scale: 1.08 }}
-                className="flex-shrink-0 flex items-center gap-3 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-500 cursor-pointer px-4 py-2 rounded-lg hover:bg-blue-50/30"
+                whileHover={{ scale: 1.15 }}
+                className="flex-shrink-0 flex items-center gap-4 transition-all duration-300 cursor-pointer px-6 py-3 rounded-xl hover:bg-blue-50/50"
                 data-testid={`logo-${logo.name.toLowerCase()}-${i}`}
               >
-                <img src={logo.url} alt={logo.name} className="h-9 w-auto object-contain" />
-                <span className="text-sm font-semibold text-slate-600 font-['Outfit'] whitespace-nowrap">{logo.name}</span>
+                <img src={logo.url} alt={logo.name} className="h-11 w-auto object-contain" />
+                <span className="text-lg font-bold text-slate-800 font-['Outfit'] whitespace-nowrap tracking-tight">{logo.name}</span>
               </motion.div>
             ))}
           </div>

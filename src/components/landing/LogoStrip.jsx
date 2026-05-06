@@ -2,17 +2,9 @@ import { motion } from "framer-motion";
 
 const logos = [
   { name: "Acumatica", url: "/logos/Acumatica.png" },
-  { name: "Aptean", url: "/logos/Aptean.png" },
-  { name: "C1", url: "/logos/C1.png" },
-  { name: "Docusign", url: "/logos/Docusign.png" },
   { name: "Epicor", url: "/logos/Epicor_Logo_Teal_RGB_(1).png" },
   { name: "SYSPRO", url: "/logos/SYSPRO.png" },
   { name: "Sage", url: "/logos/Sage_logo.png" },
-  { name: "Solutech", url: "/logos/Solutech.svg" },
-  { name: "UiPath", url: "/logos/UiPath.png" },
-  { name: "ZAP", url: "/logos/ZAP.png" },
-  { name: "Kissflow", url: "/logos/kissflow_logo_600.png" },
-  { name: "Zoho", url: "/logos/zoho_logo.png" },
 ];
 
 export default function LogoStrip() {
@@ -34,7 +26,7 @@ export default function LogoStrip() {
           <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
           <div className="flex animate-marquee items-center gap-16">
-            {[...logos, ...logos, ...logos, ...logos].map((logo, i) => (
+            {[...logos, ...logos, ...logos, ...logos, ...logos, ...logos].map((logo, i) => (
               <motion.div
                 key={`${logo.name}-${i}`}
                 whileHover={{ scale: 1.15 }}

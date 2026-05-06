@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, Users, Sparkles } from "lucide-react";
 import axios from "axios";
 
-const API = `${import.meta.env.VITE_BACKEND_URL || ''}/api`;
+const API = "/api";
 const subscribeReasons = [
   "Replace Crystal Reports and Power BI back-and-forth with natural language analytics.",
   "Get launch updates, demos, and product education before public release.",

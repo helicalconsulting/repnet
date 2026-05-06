@@ -9,23 +9,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Routes
 app.post('/api/subscribe', async (req, res) => {
   const { name, email, countryCode, phone } = req.body;
 
   try {
-    const rawPass = process.env.SMTP_PASS || 'cishyizfyoqehjhk';
-    const cleanPass = rawPass.replace(/["\s]/g, '');
+    const rawPass = process.env.SMTP_PASS;
+    const cleanPass = rawPass ? rawPass.replace(/["\s]/g, '') : '';
     
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.SMTP_USER || 'helicalconsulting@gmail.com',
+        user: process.env.SMTP_USER,
         pass: cleanPass
       }
     });
 
     const mailOptions = {
-      from: '"Repnex AI" <' + (process.env.SMTP_USER || 'helicalconsulting@gmail.com') + '>',
+      from: `"Repnex AI" <${process.env.SMTP_USER}>`,
       to: 'jai@helical.consulting, keshav@helical.consulting, helicalconsulting@gmail.com',
       subject: '🔥 New Early Bird Subscriber - Repnex AI',
       html: `
@@ -44,12 +45,8 @@ app.post('/api/subscribe', async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: 'Email sent successfully' });
   } catch (error) {
-    console.error('Detailed SMTP Error:', error);
-    res.status(500).json({ 
-      error: 'Failed to send email', 
-      details: error.message,
-      code: error.code
-    });
+    console.error('SMTP Error:', error);
+    res.status(500).json({ error: 'Failed to send email' });
   }
 });
 
@@ -63,19 +60,19 @@ app.post('/api/waitlist', async (req, res) => {
   const { email, company, erp_system } = req.body;
 
   try {
-    const rawPass = process.env.SMTP_PASS || 'cishyizfyoqehjhk';
-    const cleanPass = rawPass.replace(/["\s]/g, '');
+    const rawPass = process.env.SMTP_PASS;
+    const cleanPass = rawPass ? rawPass.replace(/["\s]/g, '') : '';
     
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.SMTP_USER || 'helicalconsulting@gmail.com',
+        user: process.env.SMTP_USER,
         pass: cleanPass
       }
     });
 
     const mailOptions = {
-      from: '"Repnex AI" <' + (process.env.SMTP_USER || 'helicalconsulting@gmail.com') + '>',
+      from: `"Repnex AI" <${process.env.SMTP_USER}>`,
       to: 'jai@helical.consulting, keshav@helical.consulting, helicalconsulting@gmail.com',
       subject: '✨ New Waitlist Signup - Repnex AI',
       html: `
@@ -92,7 +89,6 @@ app.post('/api/waitlist', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    waitlistCount++;
     res.status(200).json({ message: 'Waitlist signup successful' });
   } catch (error) {
     console.error('Waitlist SMTP Error:', error);
@@ -100,7 +96,5 @@ app.post('/api/waitlist', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Export the app for Vercel
+export default app;

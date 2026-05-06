@@ -4,7 +4,7 @@ import { ArrowRight, Play, Sparkles } from "lucide-react";
 import DotField from "../DotField";
 import EarlyBirdBanner from "./EarlyBirdBanner";
 
-const HERO_BG = "/background/hero-new.png";
+const HERO_BG = "/background/hero-final.png";
 
 const typingQueries = [
   "Show me total revenue by product category for Q4...",

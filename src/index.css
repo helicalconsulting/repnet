@@ -168,7 +168,11 @@ body {
 }
 
 .animate-marquee {
-  animation: marquee 30s linear infinite;
+  animation: marquee 15s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
 }
 
 /* ===== LANDING PAGE STYLES FROM UI-REPNET ===== */

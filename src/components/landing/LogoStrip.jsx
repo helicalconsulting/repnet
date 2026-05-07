@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
 
 const logos = [
-  { name: "SYSPRO", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/b16d6877fe2259ae1d4af680ca188324ad844820c6ea81cfc164ca44c0b35135.png" },
-  { name: "Acumatica", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/c90756a8c1d8fa29735ab682462ed4bbf6c2e74d516f345882229d52e4a00977.png" },
-  { name: "Sage", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/33b51baf0cc935a455b244bba0ab023f847b9c0c046a8f83742865cc8526e56a.png" },
-  { name: "Epicor", url: "https://static.prod-images.emergentagent.com/jobs/1b50ded6-5f6b-43ec-bb6e-1400db92ec24/images/c0c22824ff18de96d590750ea816b69f88f1d2db0b652e1af24fa1500570f614.png" },
+  { name: "Acumatica", url: "/logos/Acumatica.png" },
+  { name: "Epicor", url: "/logos/Epicor_Logo_Teal_RGB_(1).png" },
+  { name: "SYSPRO", url: "/logos/SYSPRO.png" },
+  { name: "Sage", url: "/logos/Sage_logo.png" },
 ];
 
 export default function LogoStrip() {
@@ -26,15 +26,15 @@ export default function LogoStrip() {
           <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
           <div className="flex animate-marquee items-center gap-16">
-            {[...logos, ...logos, ...logos, ...logos].map((logo, i) => (
+            {[...logos, ...logos, ...logos, ...logos, ...logos, ...logos].map((logo, i) => (
               <motion.div
                 key={`${logo.name}-${i}`}
                 whileHover={{ scale: 1.15 }}
-                className="flex-shrink-0 flex items-center gap-6 transition-all duration-300 cursor-pointer px-8 py-4 rounded-2xl hover:bg-blue-50/50"
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                className="flex-shrink-0 flex items-center transition-all duration-300 cursor-pointer px-10 py-4 rounded-2xl hover:bg-blue-50/50"
                 data-testid={`logo-${logo.name.toLowerCase()}-${i}`}
               >
-                <img src={logo.url} alt={logo.name} className="h-14 w-auto object-contain" />
-                <span className="text-2xl font-black text-slate-900 font-['Outfit'] whitespace-nowrap tracking-tighter">{logo.name}</span>
+                <img src={logo.url} alt={logo.name} className="h-12 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
               </motion.div>
             ))}
           </div>

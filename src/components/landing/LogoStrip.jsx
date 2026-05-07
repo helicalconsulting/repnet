@@ -31,11 +31,10 @@ export default function LogoStrip() {
                 key={`${logo.name}-${i}`}
                 whileHover={{ scale: 1.15 }}
                 transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                className="flex-shrink-0 flex items-center gap-6 transition-all duration-300 cursor-pointer px-8 py-4 rounded-2xl hover:bg-blue-50/50"
+                className="flex-shrink-0 flex items-center transition-all duration-300 cursor-pointer px-10 py-4 rounded-2xl hover:bg-blue-50/50"
                 data-testid={`logo-${logo.name.toLowerCase()}-${i}`}
               >
-                <img src={logo.url} alt={logo.name} className="h-14 w-auto object-contain" />
-                <span className="text-2xl font-black text-slate-900 font-['Outfit'] whitespace-nowrap tracking-tighter">{logo.name}</span>
+                <img src={logo.url} alt={logo.name} className="h-12 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity duration-300" />
               </motion.div>
             ))}
           </div>

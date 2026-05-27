@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import AuthPage from './components/AuthPage';
 import { AppProvider } from './context/AppContext';
-import { authApi } from './services/mockApi';
+import { authApi } from './services/api';
 
 import MainLayout from './layouts/MainLayout';
 import ChatPage from './pages/ChatPage';
@@ -10,6 +10,8 @@ import ReportPage from './pages/ReportPage';
 import DashboardPage from './pages/DashboardPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import LandingPage from './pages/LandingPage';
+import OnboardingPage from './pages/OnboardingPage';
+import SettingsPage from './pages/SettingsPage';
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
@@ -35,11 +37,29 @@ function ProtectedLayout({ sessionUser, onSignOut }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  if (!sessionUser.onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return (
     <AppProvider>
-      <MainLayout user={sessionUser} onSignOut={onSignOut} />
+      <MainLayout user={sessionUser} onSignOut={onSignOut} settingsPage={<SettingsPage user={sessionUser} />} />
     </AppProvider>
   );
+}
+
+function OnboardingRoute({ sessionUser, onOnboardingComplete }) {
+  const location = useLocation();
+
+  if (!sessionUser) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (sessionUser.onboardingCompleted) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <OnboardingPage user={sessionUser} onComplete={onOnboardingComplete} />;
 }
 
 function App() {
@@ -74,6 +94,10 @@ function App() {
     setSessionUser(authenticatedUser);
   };
 
+  const handleOnboardingComplete = (authenticatedUser) => {
+    setSessionUser(authenticatedUser);
+  };
+
   const handleSignOut = async () => {
     await authApi.signOut();
     setSessionUser(null);
@@ -100,12 +124,22 @@ function App() {
             />
           }
         />
+        <Route
+          path="/onboarding"
+          element={
+            <OnboardingRoute
+              sessionUser={sessionUser}
+              onOnboardingComplete={handleOnboardingComplete}
+            />
+          }
+        />
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />
           <Route path="/connections" element={<ConnectionsPage />} />
+          <Route path="/settings" element={<SettingsPage user={sessionUser} />} />
           {/* Fallback for other sidebar items like /saved */}
           <Route path="*" element={
             <div className="flex h-full items-center justify-center text-foreground font-semibold flex-col gap-2">

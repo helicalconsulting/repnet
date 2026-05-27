@@ -17,7 +17,6 @@ import {
 import clsx from "clsx";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { mockChatHistory } from "../services/mockData";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", path: "/dashboard" },
@@ -25,6 +24,7 @@ const navItems = [
   { icon: Database, label: "Connections", id: "connections", path: "/connections" },
   { icon: BarChart3, label: "Reports", id: "reports", path: "/report" },
   { icon: Bookmark, label: "Saved Views", id: "saved", path: "/saved" },
+  { icon: Settings, label: "Settings", id: "settings", path: "/settings" },
 ];
 
 export default function Sidebar({
@@ -32,7 +32,7 @@ export default function Sidebar({
   setIsOpen
 }) {
   const [showHistory, setShowHistory] = useState(true);
-  const [chatHistory] = useState(mockChatHistory);
+  const [chatHistory] = useState([]); // Populated from real API sessions
   const location = useLocation();
   const navigate = useNavigate();
   

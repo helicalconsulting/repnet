@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { databaseApi, reportApi, aiApi } from '../services/mockApi';
-import { mockReports, mockDatabaseConnections } from '../services/mockData';
+import { databaseApi, reportApi, aiApi, queryApi, templateApi } from '../services/api';
 
 const AppContext = createContext(null);
 
@@ -71,6 +70,18 @@ export function AppProvider({ children }) {
 
   const testConnection = useCallback(async (connectionData) => {
     return await databaseApi.testConnection(connectionData);
+  }, []);
+
+  const syncConnection = useCallback(async (id) => {
+    await databaseApi.syncConnection(id);
+    setConnections((prev) =>
+      prev.map((connection) =>
+        connection.id === id
+          ? { ...connection, status: 'connected', lastSync: 'Just now' }
+          : connection
+      )
+    );
+    addNotification('success', 'Connection synced');
   }, []);
 
   // Report functions
@@ -154,6 +165,7 @@ export function AppProvider({ children }) {
     addConnection,
     removeConnection,
     testConnection,
+    syncConnection,
 
     // Reports state
     reports,

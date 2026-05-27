@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { PanelLeftOpen, Sun, Moon, Bell, LogOut, MessageSquarePlus } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
-import { authApi } from '../services/mockApi';
 import Sidebar from '../components/Sidebar';
 
 const THEME_STORAGE_KEY = 'repnex-theme';
@@ -68,8 +67,9 @@ export default function MainLayout({ user, onSignOut }) {
   }, [darkMode]);
 
   const handleSignOut = async () => {
-    await authApi.signOut();
-    if (onSignOut) onSignOut();
+    if (onSignOut) {
+      await onSignOut();
+    }
   };
 
   const handleNewChat = () => {

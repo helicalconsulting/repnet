@@ -60,7 +60,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { mockReports, kpiData } from "../services/mockData";
+// No mock data — all data comes from real API
 
 // Mini chart component for KPI cards
 function MiniChart({ data, type = "area", color = "#2563eb" }) {
@@ -217,8 +217,8 @@ function SortableReportCard({ report, onUnpin, onOpen }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [reports, setReports] = useState(mockReports.filter(r => r.isPinned));
-  const [allReports, setAllReports] = useState(mockReports);
+  const [reports, setReports] = useState([]);
+  const [allReports, setAllReports] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid"); // grid | list
   const [filterType, setFilterType] = useState("all"); // all | bar | line | pie | table
@@ -301,28 +301,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {kpiData.map((kpi, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-card border border-border/50 rounded-xl p-5 hover:border-primary/30 transition-all shadow-sm"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <p className="text-sm font-medium text-muted-foreground">{kpi.label}</p>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  kpi.type === 'positive' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                }`}>
-                  {kpi.change}
-                </span>
-              </div>
-              <p className="text-2xl font-bold mb-3">{kpi.value}</p>
-              <MiniChart data={kpi.trend} color={kpi.type === 'positive' ? '#22c55e' : '#ef4444'} />
-            </motion.div>
-          ))}
+        {/* KPI Cards — populated once reports are generated */}
+        <div className="mb-8 rounded-2xl border border-dashed border-border/60 bg-card/40 px-6 py-8 text-center">
+          <TrendingUp className="mx-auto mb-2 h-7 w-7 text-muted-foreground/50" />
+          <p className="text-sm font-medium text-muted-foreground">No KPI data yet</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">Connect a database and run AI queries to generate report metrics.</p>
         </div>
 
         {/* Search and Filters */}

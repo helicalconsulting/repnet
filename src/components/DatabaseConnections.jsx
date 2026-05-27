@@ -19,11 +19,11 @@ import {
 import { useApp } from "../context/AppContext";
 
 const dbTypes = [
-  { id: "postgresql", name: "PostgreSQL", icon: "🐘", color: "#336791" },
-  { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1" },
-  { id: "sqlserver", name: "SQL Server", icon: "🔷", color: "#CC2927" },
-  { id: "oracle", name: "Oracle", icon: "🔴", color: "#F80000" },
-  { id: "sqlite", name: "SQLite", icon: "🪶", color: "#003B57" },
+  { id: "postgres", name: "PostgreSQL", icon: "🐘", color: "#336791", port: "5432" },
+  { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
+  { id: "mssql", name: "SQL Server / Syspro", icon: "🔷", color: "#CC2927", port: "1433" },
+  { id: "oracle", name: "Oracle", icon: "🔴", color: "#F80000", port: "1521" },
+  { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
 ];
 
 function ConnectionCard({ connection, onSync, onDelete }) {
@@ -138,7 +138,16 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
   const handleAdd = async () => {
     setIsAdding(true);
-    await onAdd({ ...formData, type: selectedType });
+    await onAdd({
+      name: formData.name,
+      db_type: selectedType,
+      host: formData.host,
+      port: parseInt(formData.port) || 0,
+      db_name: formData.database,
+      username: formData.username,
+      password: formData.password,
+      ssl_enabled: false,
+    });
     setIsAdding(false);
     onClose();
     resetForm();
@@ -151,13 +160,8 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setTestResult(null);
   };
 
-  const defaultPorts = {
-    postgresql: '5432',
-    mysql: '3306',
-    sqlserver: '1433',
-    oracle: '1521',
-    sqlite: ''
-  };
+  const defaultPorts = {};
+  dbTypes.forEach(d => { defaultPorts[d.id] = d.port; });
 
   if (!isOpen) return null;
 
@@ -390,14 +394,13 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 }
 
 export default function DatabaseConnections() {
-  const { connections, addConnection, removeConnection } = useApp();
+  const { connections, addConnection, removeConnection, syncConnection } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
 
   const handleSync = async (connectionId) => {
     setSyncingId(connectionId);
-    // Simulate sync
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await syncConnection(connectionId);
     setSyncingId(null);
   };
 

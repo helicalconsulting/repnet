@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
-import { authApi } from '../services/mockApi';
+import { authApi } from '../services/api';
 
 const defaultFormData = {
   name: '',
@@ -23,11 +23,7 @@ const defaultFormData = {
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const THEME_STORAGE_KEY = 'repnex-theme';
-const ssoProviders = [
-  { id: 'microsoft-entra', label: 'Microsoft Entra', logoSrc: '/sso/microsoft.svg' },
-  { id: 'okta', label: 'Okta', logoSrc: '/sso/okta.svg' },
-  { id: 'google', label: 'Google Workspace', logoSrc: '/sso/google.svg' },
-];
+const ssoProviders = [];
 
 const designPillars = [
   {
@@ -88,18 +84,6 @@ export default function AuthPage({ onAuthSuccess }) {
     setFormData((prev) => ({
       ...prev,
       password: '',
-      confirmPassword: '',
-    }));
-  };
-
-  const applyDemoCredentials = () => {
-    setMode('signin');
-    setErrorMessage('');
-    resetMfaStep();
-    setFormData((prev) => ({
-      ...prev,
-      email: 'demo@repnex.ai',
-      password: 'demo@123',
       confirmPassword: '',
     }));
   };
@@ -442,14 +426,14 @@ export default function AuthPage({ onAuthSuccess }) {
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        {isSignIn ? 'Continue to MFA' : 'Create account'}
+                        {isSignIn ? 'Sign in' : 'Create account'}
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </button>
                 </form>
 
-                {isSignIn && (
+                {isSignIn && ssoProviders.length > 0 && (
                   <div className="mt-5">
                     <div className="relative my-4">
                       <div className="absolute inset-0 flex items-center">
@@ -558,19 +542,10 @@ export default function AuthPage({ onAuthSuccess }) {
             <div className="mt-6 rounded-xl border border-border/50 bg-black/[0.02] p-4 text-xs text-muted-foreground dark:bg-white/[0.02]">
               <div className="flex items-center justify-between gap-4">
                 <p className="leading-relaxed">
-                  Use the built-in demo account for instant access while evaluating the interface.
+                  Create a workspace account first, then complete organization onboarding and database setup.
                 </p>
-                <button
-                  type="button"
-                  onClick={applyDemoCredentials}
-                  className="shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15 transition-colors"
-                >
-                  Use demo login
-                </button>
               </div>
-              <p className="mt-2 text-[11px]">
-                demo@repnex.ai / demo@123
-              </p>
+              <p className="mt-2 text-[11px]">SSO and MFA are kept for the later enterprise step.</p>
             </div>
           </div>
         </div>

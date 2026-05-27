@@ -1,8 +1,47 @@
-import { motion, AnimatePresence } from "framer-motion";
 import { Paperclip, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
-import { suggestions } from "../services/mockData";
 import { useApp } from "../context/AppContext";
+
+const suggestions = [
+  {
+    category: "Accounts Payable",
+    prompts: [
+      { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
+      { text: "List overdue supplier invoices as of today", icon: "⚠️" },
+      { text: "Top suppliers by outstanding amount", icon: "🏆" },
+      { text: "Invoices missing purchase order", icon: "🔍" },
+    ],
+  },
+  {
+    category: "Sales & Revenue",
+    prompts: [
+      { text: "Sales orders by customer this month", icon: "💰" },
+      { text: "Top 10 customers by revenue", icon: "📈" },
+      { text: "Backorder analysis by stock code", icon: "📦" },
+      { text: "Outstanding sales orders summary", icon: "📋" },
+    ],
+  },
+  {
+    category: "Inventory & Stock",
+    prompts: [
+      { text: "Stock on hand valuation summary", icon: "🏭" },
+      { text: "Slow moving inventory last 6 months", icon: "🐌" },
+      { text: "Negative stock items report", icon: "⚠️" },
+      { text: "Purchase order receipts this month", icon: "📥" },
+    ],
+  },
+  {
+    category: "Finance & GL",
+    prompts: [
+      { text: "Trial balance for current period", icon: "📑" },
+      { text: "GL journal entries today", icon: "📝" },
+      { text: "P&L summary this month", icon: "💹" },
+      { text: "Cash flow projection next 30 days", icon: "💵" },
+    ],
+  },
+];
+
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatArea({ onSearch }) {
   const { connections, activeConnection } = useApp();
@@ -13,10 +52,10 @@ export default function AIChatArea({ onSearch }) {
   const activeConn = connections.find(c => c.id === activeConnection);
 
   const categoryIcons = {
-    "Sales & Revenue": <DollarSign className="w-4 h-4" />,
-    "Production & Quality": <Package className="w-4 h-4" />,
-    "Inventory & Procurement": <TrendingUp className="w-4 h-4" />,
-    "Finance & Analytics": <Zap className="w-4 h-4" />,
+    "Accounts Payable": <DollarSign className="w-4 h-4" />,
+    "Sales & Revenue": <TrendingUp className="w-4 h-4" />,
+    "Inventory & Stock": <Package className="w-4 h-4" />,
+    "Finance & GL": <Zap className="w-4 h-4" />,
   };
 
   const handleSearch = (e) => {

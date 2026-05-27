@@ -1,131 +1,271 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Paperclip, ArrowUp, Sparkles, Bot, User, Copy, Check, RefreshCw, Database, Code, ChevronDown, Lightbulb, Plus, AlertCircle } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import {
+  Paperclip, ArrowUp, Sparkles, Bot, User, Copy, Check,
+  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown
+} from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useApp } from "../context/AppContext";
+import { queryApi } from "../services/api";
+import ParameterCard from "./ParameterCard";
+import PipelineStatus from "./PipelineStatus";
 
-export default function ChatConversation({ 
-  initialQuery, 
-  onOpenReport 
-}) {
+export default function ChatConversation({ initialQuery, onOpenReport }) {
   const { connections, activeConnection, addNotification } = useApp();
-  const [messages, setMessages] = useState([
-    { id: "1", role: "user", content: initialQuery }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const [isTyping, setIsTyping] = useState(true);
-  const [streamedContent, setStreamedContent] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [pipelineStep, setPipelineStep] = useState(null);
+  const [completedSteps, setCompletedSteps] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [currentSuggestions, setCurrentSuggestions] = useState([]);
   const bottomRef = useRef(null);
 
-  const activeConn = connections.find(c => c.id === activeConnection);
+  const activeConn = connections.find((c) => c.id === activeConnection);
 
-  // Simulated streaming response
-  useEffect(() => {
-    if (isTyping && messages[messages.length - 1].role === "user") {
-      const lastUserMsg = messages[messages.length - 1].content;
-      
-      const fullResponse = `I've analyzed your request and queried the connected ERP database.
+  // ── Process a user query ────────────────────────────────────────────
+  const processQuery = useCallback(
+    async (query) => {
+      setIsProcessing(true);
+      setShowSuggestions(false);
+      setPipelineStep("classify");
+      setCompletedSteps([]);
 
-**Query Analysis:**
-Based on "${lastUserMsg.slice(0, 50)}...", I identified the relevant data sources and generated an optimized SQL query.
+      // Add user message
+      const userMsg = { id: Date.now().toString(), role: "user", content: query };
+      setMessages((prev) => [...prev, userMsg]);
 
-**Data Sources:**
-• products (3,421 records)
-• sales_transactions (89,234 records)  
-• customers (15,420 records)
+      try {
+        // Simulate pipeline progression
+        await new Promise((r) => setTimeout(r, 400));
+        setCompletedSteps(["classify"]);
+        setPipelineStep("search");
 
-**Key Findings:**
-1. Found **2,847 matching records** across 3 tables
-2. Time period: Last 6 months of data
-3. Applied filters for margin > 10%
+        await new Promise((r) => setTimeout(r, 300));
+        setCompletedSteps(["classify", "search"]);
+        setPipelineStep("extract");
 
-I've prepared a comprehensive report with interactive visualizations. You can explore the data in different chart types, customize colors, and export to CSV.`;
+        // Call the real backend
+        const response = await queryApi.chat({
+          naturalLanguage: query,
+          connectionId: activeConnection || null,
+        });
 
-      let currentIndex = 0;
-      const streamInterval = setInterval(() => {
-        if (currentIndex < fullResponse.length) {
-          setStreamedContent(fullResponse.slice(0, currentIndex + 1));
-          currentIndex++;
-        } else {
-          clearInterval(streamInterval);
-          setMessages(prev => [
-            ...prev, 
-            { 
-              id: Date.now().toString(), 
-              role: "ai", 
-              content: fullResponse,
-              showReportBtn: true,
-              tables: ["products", "sales_transactions", "customers"],
-              sql: `SELECT p.name, SUM(s.amount) as revenue, AVG(s.margin) as margin
-FROM products p JOIN sales_transactions s ON p.id = s.product_id
-WHERE s.date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY p.id HAVING margin > 10
-ORDER BY revenue DESC LIMIT 10;`
-            }
+        setCompletedSteps(["classify", "search", "extract"]);
+
+        if (response.type === "conversational") {
+          // Conversational response
+          setPipelineStep(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "conversational",
+              content: response.message,
+            },
           ]);
-          setStreamedContent("");
-          setIsTyping(false);
+          setCurrentSuggestions(response.suggestions || []);
           setShowSuggestions(true);
+
+        } else if (response.type === "params_needed") {
+          // Need user input for params
+          setPipelineStep(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "params_needed",
+              content: response.message,
+              templateId: response.template_id,
+              templateDescription: response.template_description,
+              extractedParams: response.extracted_params || {},
+              missingParams: response.missing_params || [],
+            },
+          ]);
+          setCurrentSuggestions(response.suggestions || []);
+
+        } else if (response.type === "executable") {
+          // Query executed successfully
+          setPipelineStep("execute");
+          await new Promise((r) => setTimeout(r, 300));
+          setCompletedSteps(["classify", "search", "extract", "execute"]);
+          setPipelineStep("insight");
+          await new Promise((r) => setTimeout(r, 200));
+          setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
+          setPipelineStep(null);
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "executable",
+              content: response.summary || response.message,
+              sql: response.sql,
+              rows: response.rows,
+              rowsReturned: response.rows_returned,
+              executionTime: response.execution_time_ms,
+              templateId: response.template_id,
+              templateDescription: response.template_description,
+              showReportBtn: true,
+            },
+          ]);
+          setCurrentSuggestions(response.suggestions || []);
+          setShowSuggestions(true);
+
+        } else {
+          // Error
+          setPipelineStep(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "error",
+              content: response.message || "Something went wrong.",
+            },
+          ]);
+          setCurrentSuggestions(response.suggestions || []);
+          setShowSuggestions(response.suggestions?.length > 0);
         }
-      }, 15);
+      } catch (err) {
+        setPipelineStep(null);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: "ai",
+            type: "error",
+            content: `Error: ${err.message}`,
+          },
+        ]);
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [activeConnection]
+  );
 
-      return () => clearInterval(streamInterval);
+  // Process initial query
+  useEffect(() => {
+    if (initialQuery) {
+      processQuery(initialQuery);
     }
-  }, [messages, isTyping]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamedContent]);
+  }, [messages, pipelineStep]);
 
+  // ── Execute with user-provided params ───────────────────────────────
+  const handleParamSubmit = useCallback(
+    async (templateId, params) => {
+      if (!activeConnection) {
+        addNotification("error", "Please select a database connection first.");
+        return;
+      }
+
+      setIsProcessing(true);
+      setPipelineStep("execute");
+      setCompletedSteps(["classify", "search", "extract"]);
+
+      try {
+        const response = await queryApi.execute({
+          templateId,
+          params,
+          connectionId: activeConnection,
+        });
+
+        setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
+        setPipelineStep(null);
+
+        if (response.type === "executable") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "executable",
+              content: response.summary || response.message,
+              sql: response.sql,
+              rows: response.rows,
+              rowsReturned: response.rows_returned,
+              executionTime: response.execution_time_ms,
+              templateId: response.template_id,
+              showReportBtn: true,
+            },
+          ]);
+          setCurrentSuggestions(response.suggestions || []);
+          setShowSuggestions(true);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "error",
+              content: response.message || "Execution failed.",
+            },
+          ]);
+        }
+      } catch (err) {
+        setPipelineStep(null);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: "ai",
+            type: "error",
+            content: `Error: ${err.message}`,
+          },
+        ]);
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [activeConnection, addNotification]
+  );
+
+  // ── Handlers ────────────────────────────────────────────────────────
   const handleSubmit = (e) => {
     e?.preventDefault();
-    if (!inputValue.trim()) return;
-
-    setMessages(prev => [...prev, { id: Date.now().toString(), role: "user", content: inputValue }]);
+    if (!inputValue.trim() || isProcessing) return;
+    const query = inputValue.trim();
     setInputValue("");
-    setIsTyping(true);
-    setShowSuggestions(false);
+    processQuery(query);
   };
 
   const handleCopy = (content, id) => {
     navigator.clipboard.writeText(content);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-    addNotification('success', 'Copied to clipboard');
+    addNotification("success", "Copied to clipboard");
   };
 
-  const followUpSuggestions = [
-    "Add a breakdown by region",
-    "Compare with previous quarter",
-    "Show only top 5 performers",
-    "Include trend analysis"
-  ];
-
-  // Format message content with markdown-like rendering
+  // ── Format message content ──────────────────────────────────────────
   const formatContent = (content) => {
-    return content.split('\n').map((line, i) => {
-      // Bold text
-      line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      // Bullet points
-      if (line.startsWith('• ')) {
+    if (!content) return null;
+    return content.split("\n").map((line, i) => {
+      line = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      if (line.startsWith("• ")) {
         return <li key={i} className="ml-4 list-disc" dangerouslySetInnerHTML={{ __html: line.slice(2) }} />;
       }
-      // Numbered lists
       const numberedMatch = line.match(/^(\d+)\.\s(.+)/);
       if (numberedMatch) {
         return <li key={i} className="ml-4 list-decimal" dangerouslySetInnerHTML={{ __html: numberedMatch[2] }} />;
       }
-      // Empty lines
       if (!line.trim()) return <br key={i} />;
-      // Regular paragraphs
       return <p key={i} className="mb-2" dangerouslySetInnerHTML={{ __html: line }} />;
     });
   };
 
+  // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col items-center w-full min-h-full relative bg-background">
-      
       {/* Connection Status Bar */}
       {activeConn && (
         <div className="absolute top-0 left-0 right-0 flex justify-center pt-4 z-10">
@@ -139,35 +279,45 @@ ORDER BY revenue DESC LIMIT 10;`
       )}
 
       <div className="w-full max-w-3xl flex-1 flex flex-col pt-20 pb-40 px-6 overflow-y-auto custom-scrollbar">
-        
         {messages.map((msg) => (
-          <motion.div 
+          <motion.div
             key={msg.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`flex w-full mb-6 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex w-full mb-6 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            {msg.role === 'ai' && (
-               <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
-                 <Bot className="w-4 h-4 text-blue-700" />
-               </div>
+            {msg.role === "ai" && (
+              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
+                <Bot className="w-4 h-4 text-blue-700" />
+              </div>
             )}
-            <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-[85%]`}>
-              <div className={`relative group ${
-                msg.role === 'user' 
-                  ? 'px-5 py-3 bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-lg shadow-primary/20' 
-                  : 'bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm'
-              }`}>
-                {msg.role === 'user' ? (
+
+            <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} max-w-[85%]`}>
+              <div
+                className={`relative group ${
+                  msg.role === "user"
+                    ? "px-5 py-3 bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-lg shadow-primary/20"
+                    : msg.type === "error"
+                    ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm"
+                    : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
+                }`}
+              >
+                {msg.role === "user" ? (
                   <span className="text-[15px] leading-relaxed">{msg.content}</span>
                 ) : (
                   <div className="text-[15px] leading-relaxed text-foreground">
+                    {msg.type === "error" && (
+                      <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-xs font-semibold uppercase">Could not process</span>
+                      </div>
+                    )}
                     {formatContent(msg.content)}
                   </div>
                 )}
-                
-                {/* Copy button for AI messages */}
-                {msg.role === 'ai' && (
+
+                {/* Copy button */}
+                {msg.role === "ai" && msg.content && (
                   <button
                     onClick={() => handleCopy(msg.content, msg.id)}
                     className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
@@ -180,25 +330,70 @@ ORDER BY revenue DESC LIMIT 10;`
                   </button>
                 )}
               </div>
-              
-              {/* Tables & SQL info */}
-              {msg.tables && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                  <Code className="w-3.5 h-3.5" />
-                  <span>Queried: {msg.tables.join(', ')}</span>
+
+              {/* SQL display */}
+              {msg.sql && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mt-3 w-full"
+                >
+                  <button
+                    onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1.5"
+                  >
+                    <Code className="w-3.5 h-3.5" />
+                    <span>SQL Query</span>
+                    {copiedId === `sql-${msg.id}` && <Check className="w-3 h-3 text-emerald-500" />}
+                  </button>
+                  <pre className="p-3 bg-slate-900 dark:bg-black/40 text-slate-300 text-xs rounded-xl overflow-x-auto font-mono leading-relaxed border border-slate-800/50">
+                    {msg.sql}
+                  </pre>
+                </motion.div>
+              )}
+
+              {/* Execution stats */}
+              {msg.type === "executable" && (
+                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  {msg.rowsReturned != null && (
+                    <span className="flex items-center gap-1">
+                      <Rows3 className="w-3.5 h-3.5" />
+                      {msg.rowsReturned.toLocaleString()} rows
+                    </span>
+                  )}
+                  {msg.executionTime != null && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {msg.executionTime}ms
+                    </span>
+                  )}
                 </div>
               )}
-              
+
+              {/* Parameter Card for params_needed */}
+              {msg.type === "params_needed" && (
+                <div className="mt-4">
+                  <ParameterCard
+                    templateId={msg.templateId}
+                    templateDescription={msg.templateDescription}
+                    extractedParams={msg.extractedParams}
+                    missingParams={msg.missingParams}
+                    onSubmit={(params) => handleParamSubmit(msg.templateId, params)}
+                    isLoading={isProcessing}
+                  />
+                </div>
+              )}
+
               {/* Report Button */}
               {msg.showReportBtn && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.2 }}
                   className="mt-4"
                 >
-                  <button 
-                    onClick={() => onOpenReport(initialQuery)}
+                  <button
+                    onClick={() => onOpenReport(initialQuery, { rows: msg.rows, sql: msg.sql })}
                     className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 group font-medium text-sm"
                   >
                     <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
@@ -208,54 +403,50 @@ ORDER BY revenue DESC LIMIT 10;`
                 </motion.div>
               )}
             </div>
-            {msg.role === 'user' && (
-               <div className="w-9 h-9 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center ml-3 shrink-0">
-                 <User className="w-5 h-5 text-muted-foreground" />
-               </div>
+
+            {msg.role === "user" && (
+              <div className="w-9 h-9 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center ml-3 shrink-0">
+                <User className="w-5 h-5 text-muted-foreground" />
+              </div>
             )}
           </motion.div>
         ))}
 
-        {/* Streaming response */}
-        {isTyping && streamedContent && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+        {/* Pipeline Status during processing */}
+        {isProcessing && pipelineStep && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
             className="flex w-full mb-6 justify-start"
           >
             <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
               <Bot className="w-4 h-4 text-blue-700" />
             </div>
-            <div className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm max-w-[85%]">
-              <div className="text-[15px] leading-relaxed text-foreground">
-                {formatContent(streamedContent)}
-                <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-0.5" />
-              </div>
-            </div>
+            <PipelineStatus currentStep={pipelineStep} completedSteps={completedSteps} />
           </motion.div>
         )}
 
-        {/* Typing indicator */}
-        {isTyping && !streamedContent && (
-          <motion.div 
+        {/* Typing indicator (no pipeline yet) */}
+        {isProcessing && !pipelineStep && (
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex w-full mb-6 justify-start items-center"
           >
-             <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
-               <Bot className="w-4 h-4 text-blue-700" />
-             </div>
-             <div className="flex gap-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 px-5 py-4 rounded-2xl rounded-tl-sm">
-               <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></span>
-               <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></span>
-               <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></span>
-             </div>
+            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
+              <Bot className="w-4 h-4 text-blue-700" />
+            </div>
+            <div className="flex gap-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 px-5 py-4 rounded-2xl rounded-tl-sm">
+              <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
+              <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
+              <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
+            </div>
           </motion.div>
         )}
 
         {/* Follow-up suggestions */}
         <AnimatePresence>
-          {showSuggestions && !isTyping && (
+          {showSuggestions && !isProcessing && currentSuggestions.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -266,16 +457,16 @@ ORDER BY revenue DESC LIMIT 10;`
                 <Lightbulb className="w-3.5 h-3.5" />
                 <span>Suggestions:</span>
               </div>
-              {followUpSuggestions.map((sug, i) => (
+              {currentSuggestions.map((sug, i) => (
                 <button
                   key={i}
                   onClick={() => {
-                    setInputValue(sug);
                     setShowSuggestions(false);
+                    processQuery(typeof sug === "string" ? sug : sug.text || sug);
                   }}
                   className="px-3 py-1.5 text-xs font-medium bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 hover:border-primary/50 rounded-lg transition-colors"
                 >
-                  {sug}
+                  {typeof sug === "string" ? sug : sug.text || sug}
                 </button>
               ))}
             </motion.div>
@@ -287,8 +478,7 @@ ORDER BY revenue DESC LIMIT 10;`
 
       {/* Fixed Bottom Input */}
       <div className="absolute bottom-0 w-full left-0 right-0 px-6 pb-6 bg-gradient-to-t from-[#fcfcf9] via-[#fcfcf9]/95 dark:from-[#141414] dark:via-[#141414]/95 to-transparent z-10 pt-10 flex justify-center pointer-events-none">
-        
-        <form 
+        <form
           onSubmit={handleSubmit}
           className="relative w-full max-w-3xl pointer-events-auto bg-card dark:bg-[#1C1C1C] rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] border border-border/50 dark:border-white/5 flex flex-col p-2 min-h-[90px] focus-within:border-primary/30 focus-within:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all"
         >
@@ -298,24 +488,30 @@ ORDER BY revenue DESC LIMIT 10;`
             placeholder="Ask a follow-up question..."
             className="w-full bg-transparent border-none outline-none text-foreground text-[15px] p-3 resize-none placeholder:text-muted-foreground/60 min-h-[44px] max-h-[200px] overflow-y-auto"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSubmit();
               }
             }}
           />
           <div className="flex items-center justify-between mt-auto px-2 py-1">
-            <button type="button" className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-1 rounded bg-black/5 dark:bg-white/5">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-1 rounded bg-black/5 dark:bg-white/5"
+            >
               <Sparkles className="w-3 h-3 text-primary" />
               Repnex AI Pro
             </button>
             <div className="flex items-center gap-2">
-              <button type="button" className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+              >
                 <Paperclip className="w-4 h-4" />
               </button>
-              <button 
-                type="submit" 
-                disabled={!inputValue.trim() || isTyping}
+              <button
+                type="submit"
+                disabled={!inputValue.trim() || isProcessing}
                 className="w-8 h-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-30 disabled:bg-muted-foreground rounded-full transition-all shadow-lg shadow-primary/30 disabled:shadow-none group"
               >
                 <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />
@@ -323,7 +519,6 @@ ORDER BY revenue DESC LIMIT 10;`
             </div>
           </div>
         </form>
-
       </div>
     </div>
   );

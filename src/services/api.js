@@ -3,7 +3,7 @@
  * Handles auth, connections, queries, templates, and organizations
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/v1';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://repnex-backend.onrender.com/v1';
 const AUTH_TOKEN_KEY = 'repnex-auth-token';
 
 // ── Storage helpers ───────────────────────────────────────────────────

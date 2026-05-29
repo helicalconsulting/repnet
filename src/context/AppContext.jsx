@@ -24,6 +24,21 @@ export function AppProvider({ children }) {
   // UI state
   const [notifications, setNotifications] = useState([]);
 
+  // Helper to map backend database connection to frontend schema
+  const formatConnection = useCallback((conn) => {
+    if (!conn) return null;
+    return {
+      ...conn,
+      type: conn.db_type || conn.type || 'mssql',
+      database: conn.db_name || conn.database || '',
+      status: conn.is_active ? 'connected' : 'disconnected',
+      tables: conn.tables || 0,
+      lastSync: conn.last_tested_at 
+        ? new Date(conn.last_tested_at).toLocaleDateString() 
+        : 'Never'
+    };
+  }, []);
+
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
@@ -32,12 +47,13 @@ export function AppProvider({ children }) {
           databaseApi.getConnections(),
           reportApi.getReports()
         ]);
-        setConnections(conns);
+        const formatted = conns.map(formatConnection).filter(Boolean);
+        setConnections(formatted);
         setReports(reps);
         setPinnedReports(reps.filter(r => r.isPinned));
         
         // Set first connected database as active
-        const firstConnected = conns.find(c => c.status === 'connected');
+        const firstConnected = formatted.find(c => c.status === 'connected');
         if (firstConnected) {
           setActiveConnection(firstConnected.id);
         }
@@ -49,15 +65,19 @@ export function AppProvider({ children }) {
       }
     };
     loadData();
-  }, []);
+  }, [formatConnection]);
 
   // Database functions
   const addConnection = useCallback(async (connectionData) => {
     const newConn = await databaseApi.addConnection(connectionData);
-    setConnections(prev => [...prev, newConn]);
+    const formatted = formatConnection(newConn);
+    setConnections(prev => [...prev, formatted]);
+    if (!activeConnection) {
+      setActiveConnection(formatted.id);
+    }
     addNotification('success', `Connected to ${connectionData.name}`);
-    return newConn;
-  }, []);
+    return formatted;
+  }, [activeConnection, formatConnection]);
 
   const removeConnection = useCallback(async (id) => {
     await databaseApi.deleteConnection(id);
@@ -81,8 +101,11 @@ export function AppProvider({ children }) {
           : connection
       )
     );
+    if (!activeConnection) {
+      setActiveConnection(id);
+    }
     addNotification('success', 'Connection synced');
-  }, []);
+  }, [activeConnection]);
 
   // Report functions
   const togglePinReport = useCallback(async (reportId) => {

@@ -14,7 +14,9 @@ import {
   Zap,
   AlertCircle,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Link2,
+  SlidersHorizontal
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
@@ -114,6 +116,7 @@ function ConnectionCard({ connection, onSync, onDelete }) {
 function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
+  const [inputMode, setInputMode] = useState('fields'); // 'fields' | 'string'
   const [formData, setFormData] = useState({
     name: '',
     host: '',
@@ -121,6 +124,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     database: '',
     username: '',
     password: '',
+    connectionString: '',
   });
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -138,16 +142,30 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
   const handleAdd = async () => {
     setIsAdding(true);
-    await onAdd({
-      name: formData.name,
-      db_type: selectedType,
-      host: formData.host,
-      port: parseInt(formData.port) || 0,
-      db_name: formData.database,
-      username: formData.username,
-      password: formData.password,
-      ssl_enabled: false,
-    });
+    const payload = inputMode === 'string'
+      ? {
+          name: formData.name,
+          db_type: selectedType || 'mssql',
+          connection_string: formData.connectionString,
+          // backend will parse these from connection_string
+          host: '',
+          port: 0,
+          db_name: '',
+          username: '',
+          password: '',
+          ssl_enabled: false,
+        }
+      : {
+          name: formData.name,
+          db_type: selectedType,
+          host: formData.host,
+          port: parseInt(formData.port) || 0,
+          db_name: formData.database,
+          username: formData.username,
+          password: formData.password,
+          ssl_enabled: false,
+        };
+    await onAdd(payload);
     setIsAdding(false);
     onClose();
     resetForm();
@@ -156,7 +174,8 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const resetForm = () => {
     setStep(1);
     setSelectedType(null);
-    setFormData({ name: '', host: '', port: '', database: '', username: '', password: '' });
+    setInputMode('fields');
+    setFormData({ name: '', host: '', port: '', database: '', username: '', password: '', connectionString: '' });
     setTestResult(null);
   };
 
@@ -245,7 +264,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                   Back to database selection
                 </button>
 
-                <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl mb-4">
+                <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl">
                   <span className="text-2xl">{dbTypes.find(d => d.id === selectedType)?.icon}</span>
                   <div>
                     <p className="font-medium">{dbTypes.find(d => d.id === selectedType)?.name}</p>
@@ -253,75 +272,121 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Connection Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g., Production Database"
-                      className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
-                      <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Host</label>
-                      <input
-                        type="text"
-                        value={formData.host}
-                        onChange={e => setFormData(prev => ({ ...prev, host: e.target.value }))}
-                        placeholder="localhost or IP"
-                        className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Port</label>
-                      <input
-                        type="text"
-                        value={formData.port}
-                        onChange={e => setFormData(prev => ({ ...prev, port: e.target.value }))}
-                        placeholder={defaultPorts[selectedType]}
-                        className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Database Name</label>
-                    <input
-                      type="text"
-                      value={formData.database}
-                      onChange={e => setFormData(prev => ({ ...prev, database: e.target.value }))}
-                      placeholder="your_database"
-                      className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Username</label>
-                      <input
-                        type="text"
-                        value={formData.username}
-                        onChange={e => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                        placeholder="db_user"
-                        className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Password</label>
-                      <input
-                        type="password"
-                        value={formData.password}
-                        onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="••••••••"
-                        className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
+                {/* Mode toggle */}
+                <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-sm">
+                  <button
+                    onClick={() => setInputMode('fields')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-medium transition-colors ${
+                      inputMode === 'fields'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    Manual Fields
+                  </button>
+                  <button
+                    onClick={() => setInputMode('string')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-medium transition-colors ${
+                      inputMode === 'string'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    Connection String
+                  </button>
                 </div>
+
+                {/* Connection Name (always shown) */}
+                <div>
+                  <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Connection Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., Production ERP"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                  />
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {inputMode === 'string' ? (
+                    <motion.div key="str" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+                      <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Connection String</label>
+                      <textarea
+                        value={formData.connectionString}
+                        onChange={e => setFormData(prev => ({ ...prev, connectionString: e.target.value }))}
+                        rows={5}
+                        placeholder={`ADO.NET (SQL Server / SysPro):\nServer=myhost,1433;Database=mydb;User Id=sa;Password=mypass;\n\nOr SQLAlchemy URL:\nmssql+pyodbc://sa:mypass@myhost:1433/mydb\npostgresql://user:pass@host:5432/db`}
+                        className="w-full px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors font-mono text-xs resize-none leading-relaxed placeholder:text-muted-foreground/50"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Supports ADO.NET (<code className="font-mono">Server=…;Database=…;User Id=…;Password=…</code>) and SQLAlchemy URLs.
+                        Host, port, database and credentials are parsed automatically.
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="fields" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Host</label>
+                          <input
+                            type="text"
+                            value={formData.host}
+                            onChange={e => setFormData(prev => ({ ...prev, host: e.target.value }))}
+                            placeholder="localhost or IP"
+                            className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Port</label>
+                          <input
+                            type="text"
+                            value={formData.port}
+                            onChange={e => setFormData(prev => ({ ...prev, port: e.target.value }))}
+                            placeholder={defaultPorts[selectedType]}
+                            className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Database Name</label>
+                        <input
+                          type="text"
+                          value={formData.database}
+                          onChange={e => setFormData(prev => ({ ...prev, database: e.target.value }))}
+                          placeholder="your_database"
+                          className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Username</label>
+                          <input
+                            type="text"
+                            value={formData.username}
+                            onChange={e => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                            placeholder="db_user"
+                            className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Password</label>
+                          <input
+                            type="password"
+                            value={formData.password}
+                            onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                            placeholder="••••••••"
+                            className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Test Result */}
                 <AnimatePresence>
@@ -362,29 +427,31 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         {/* Footer */}
         {step === 2 && (
           <div className="flex items-center gap-3 p-5 border-t border-border/50 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-            <button
-              onClick={handleTest}
-              disabled={isTesting || !formData.host || !formData.database}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl font-medium transition-colors disabled:opacity-50"
-            >
-              {isTesting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Zap className="w-4 h-4" />
-              )}
-              Test Connection
-            </button>
+            {inputMode === 'fields' && (
+              <button
+                onClick={handleTest}
+                disabled={isTesting || !formData.host || !formData.database}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl font-medium transition-colors disabled:opacity-50"
+              >
+                {isTesting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4" />
+                )}
+                Test Connection
+              </button>
+            )}
             <button
               onClick={handleAdd}
-              disabled={isAdding || !testResult?.success}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors disabled:opacity-50"
+              disabled={isAdding || !formData.name || (inputMode === 'fields' ? (!testResult?.success) : !formData.connectionString.trim())}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-600/90 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
             >
               {isAdding ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              Add Connection
+              {inputMode === 'string' ? 'Save Connection' : 'Add Connection'}
             </button>
           </div>
         )}

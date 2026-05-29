@@ -168,10 +168,13 @@ export default function AIChatArea({ onSearch }) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 * i }}
-              onClick={() => { setQuery(sug); if(onSearch) onSearch(sug); }}
+              onClick={() => { setQuery(sug.text); if(onSearch) onSearch(sug.text); }}
               className="px-5 py-3.5 text-left rounded-xl bg-card hover:bg-muted transition-all text-[13px] font-medium text-foreground/80 flex items-center justify-between leading-relaxed border border-border hover:border-primary/30 group shadow-sm"
             >
-              <span className="flex-1">{sug}</span>
+              <span className="flex items-center gap-2 flex-1">
+                <span className="text-base shrink-0">{sug.icon}</span>
+                <span className="flex-1">{sug.text}</span>
+              </span>
               <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all ml-3 shrink-0" />
             </motion.button>
           ))}

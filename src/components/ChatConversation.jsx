@@ -53,6 +53,14 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
 
         setCompletedSteps(["classify", "search", "extract"]);
 
+        const getCombinedSuggestions = (res) => {
+          const sim = (res.candidates || [])
+            .map((c) => c.description)
+            .filter((d) => d && d !== res.template_description);
+          const all = [...new Set([...sim.slice(0, 3), ...(res.suggestions || [])])];
+          return all.slice(0, 5);
+        };
+
         if (response.type === "conversational") {
           // Conversational response
           setPipelineStep(null);
@@ -65,7 +73,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
               content: response.message,
             },
           ]);
-          setCurrentSuggestions(response.suggestions || []);
+          setCurrentSuggestions(getCombinedSuggestions(response));
           setShowSuggestions(true);
 
         } else if (response.type === "params_needed") {
@@ -84,7 +92,8 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
               missingParams: response.missing_params || [],
             },
           ]);
-          setCurrentSuggestions(response.suggestions || []);
+          setCurrentSuggestions(getCombinedSuggestions(response));
+          setShowSuggestions(true);
 
         } else if (response.type === "executable") {
           // Query executed successfully
@@ -112,7 +121,26 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
               showReportBtn: true,
             },
           ]);
-          setCurrentSuggestions(response.suggestions || []);
+          setCurrentSuggestions(getCombinedSuggestions(response));
+          setShowSuggestions(true);
+
+        } else if (response.type === "template_preview") {
+          // No DB connected - show template preview + SQL
+          setPipelineStep(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "template_preview",
+              content: response.message,
+              sql: response.sql,
+              templateId: response.template_id,
+              templateDescription: response.template_description,
+              templateModule: response.template_module,
+            },
+          ]);
+          setCurrentSuggestions(getCombinedSuggestions(response));
           setShowSuggestions(true);
 
         } else {
@@ -287,7 +315,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
             className={`flex w-full mb-6 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.role === "ai" && (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
                 <Bot className="w-4 h-4 text-blue-700" />
               </div>
             )}
@@ -296,7 +324,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
               <div
                 className={`relative group ${
                   msg.role === "user"
-                    ? "px-5 py-3 bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-lg shadow-primary/20"
+                    ? "px-5 py-3 bg-blue-600 dark:bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm"
                     : msg.type === "error"
                     ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm"
                     : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
@@ -419,7 +447,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
             animate={{ opacity: 1, y: 0 }}
             className="flex w-full mb-6 justify-start"
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
               <Bot className="w-4 h-4 text-blue-700" />
             </div>
             <PipelineStatus currentStep={pipelineStep} completedSteps={completedSteps} />
@@ -433,7 +461,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
             animate={{ opacity: 1 }}
             className="flex w-full mb-6 justify-start items-center"
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow-lg shadow-primary/20">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
               <Bot className="w-4 h-4 text-blue-700" />
             </div>
             <div className="flex gap-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 px-5 py-4 rounded-2xl rounded-tl-sm">

@@ -327,6 +327,13 @@ export const reportApi = {
     });
   },
 
+  async runReport(id, connectionId) {
+    return request(`/reports/${id}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ connection_id: connectionId }),
+    });
+  },
+
   async searchReports(query) {
     const response = await request(`/reports?search=${encodeURIComponent(query)}`);
     return Array.isArray(response) ? response : response.reports || [];

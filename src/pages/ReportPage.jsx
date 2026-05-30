@@ -4,11 +4,13 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import ReportBuilder from '../components/ReportBuilder';
 import RightPanel from '../components/RightPanel';
 import { reportApi } from '../services/api';
+import { useApp } from '../context/AppContext';
 
 export default function ReportPage() {
   const { id } = useParams();          // /report/:id  → from list page
   const location = useLocation();
   const navigate = useNavigate();
+  const { activeConnection, connections } = useApp();
 
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [reportData, setReportData] = useState(location.state?.data || null);
@@ -17,17 +19,32 @@ export default function ReportPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (id && !location.state?.data) {
+    if (id && id !== 'new' && !location.state?.data) {
       setLoading(true);
       reportApi.getReport(id)
-        .then(data => {
-          setReportData(data);
-          setQuery(data.name || 'Report');
+        .then(async (config) => {
+          try {
+            const connId = activeConnection || (connections && connections[0]?.id);
+            if (connId) {
+              const runResult = await reportApi.runReport(id, connId);
+              setReportData({
+                ...config,
+                rows: runResult.rows,
+                sql: config.sql || runResult.sql,
+              });
+            } else {
+              setReportData(config);
+            }
+          } catch (runErr) {
+            console.error('Failed to run report:', runErr);
+            setReportData(config);
+          }
+          setQuery(config.name || 'Report');
         })
         .catch(err => setError(err.message || 'Could not load report'))
         .finally(() => setLoading(false));
     }
-  }, [id, location.state?.data]);
+  }, [id, location.state?.data, activeConnection, connections]);
 
   if (loading) {
     return (

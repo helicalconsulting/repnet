@@ -44,7 +44,7 @@ export default function ChatPage() {
     setReportData(data);
     setChatState("report");
     setIsRightPanelOpen(true);
-    navigate('/report', { state: { query, data } });
+    navigate('/report/new', { state: { query, data } });
   };
 
   return (

@@ -140,6 +140,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               executionTime: response.execution_time_ms,
               templateId: response.template_id,
               templateDescription: response.template_description,
+              extractedParams: response.extracted_params || {},
               showReportBtn: true,
             },
           ]);
@@ -277,6 +278,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               rowsReturned: response.rows_returned,
               executionTime: response.execution_time_ms,
               templateId: response.template_id,
+              templateDescription: response.template_description || msg?.templateDescription || "",
+              extractedParams: params || {},
               showReportBtn: true,
             },
           ]);
@@ -480,7 +483,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   className="mt-4"
                 >
                   <button
-                    onClick={() => onOpenReport(initialQuery, { rows: msg.rows, sql: msg.sql })}
+                    onClick={() => onOpenReport(msg.templateDescription || initialQuery, { 
+                      rows: msg.rows, 
+                      sql: msg.sql, 
+                      templateId: msg.templateId, 
+                      extractedParams: msg.extractedParams 
+                    })}
                     className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 group font-medium text-sm"
                   >
                     <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />

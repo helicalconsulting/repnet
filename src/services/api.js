@@ -142,6 +142,16 @@ export const authApi = {
     });
   },
 
+  async signInWithGoogle(idToken) {
+    const response = await request('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ id_token: idToken }),
+    });
+    const token = response.token || response.tokens?.access_token;
+    if (token) setToken(token);
+    return response.user || response;
+  },
+
   getSsoProviders() {
     return [
       { id: 'microsoft-entra', label: 'Microsoft Entra' },
@@ -360,6 +370,30 @@ export const aiApi = {
       { text: 'Top customers by revenue', icon: '💰' },
       { text: 'Stock on hand summary', icon: '📦' },
     ];
+  },
+};
+
+// ── Session API ───────────────────────────────────────────────────────
+
+export const sessionsApi = {
+  async list() {
+    const response = await request('/sessions');
+    return Array.isArray(response) ? response : response.sessions || [];
+  },
+
+  async create(data) {
+    return request('/sessions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async get(sessionId) {
+    return request(`/sessions/${sessionId}`);
+  },
+
+  async delete(sessionId) {
+    return request(`/sessions/${sessionId}`, { method: 'DELETE' });
   },
 };
 

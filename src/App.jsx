@@ -7,6 +7,7 @@ import { authApi } from './services/api';
 import MainLayout from './layouts/MainLayout';
 import ChatPage from './pages/ChatPage';
 import ReportPage from './pages/ReportPage';
+import ReportsListPage from './pages/ReportsListPage';
 import DashboardPage from './pages/DashboardPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import LandingPage from './pages/LandingPage';
@@ -136,7 +137,8 @@ function App() {
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/report" element={<ReportPage />} />
+          <Route path="/report" element={<ReportsListPage />} />
+          <Route path="/report/:id" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />
           <Route path="/connections" element={<ConnectionsPage />} />
           <Route path="/settings" element={<SettingsPage user={sessionUser} />} />

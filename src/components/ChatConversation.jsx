@@ -39,13 +39,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       try {
         let activeSessionId = currentSessionId;
-        if (!activeSessionId) {
-          if (!activeConnection) {
-            addNotification("error", "Please select a database connection first.");
-            setIsProcessing(false);
-            setPipelineStep(null);
-            return;
-          }
+        if (!activeSessionId && activeConnection) {
           try {
             const newSession = await sessionsApi.create({
               connection_id: activeConnection,

@@ -193,25 +193,9 @@ export default function AuthPage({ onAuthSuccess }) {
     setGoogleLoading(true);
     setErrorMessage('');
 
-    const isMockClient = !GOOGLE_CLIENT_ID || 
-                         GOOGLE_CLIENT_ID.startsWith('your-') || 
-                         GOOGLE_CLIENT_ID.includes('fallback') ||
-                         GOOGLE_CLIENT_ID.startsWith('437812984712-ab7d6f7a8e9c10b11c12d13e14f15g16');
-    
-    if (isMockClient) {
-      setTimeout(() => {
-        const mockUser = {
-          id: 'google-demo-id',
-          name: 'Keshav Sharma',
-          email: 'keshav.sharma@helical.consulting',
-          role: 'admin',
-          onboardingCompleted: true,
-          company: 'Helical Consulting',
-        };
-        localStorage.setItem('repnex-auth-token', 'mock-google-token');
-        onAuthSuccess(mockUser);
-        setGoogleLoading(false);
-      }, 1000);
+    if (!GOOGLE_CLIENT_ID) {
+      setErrorMessage('Google Sign-In is not configured (missing VITE_GOOGLE_CLIENT_ID).');
+      setGoogleLoading(false);
       return;
     }
 
@@ -243,20 +227,8 @@ export default function AuthPage({ onAuthSuccess }) {
         }
       });
     } catch (err) {
-      // Script or window.google not available, run mock
-      setTimeout(() => {
-        const mockUser = {
-          id: 'google-demo-id',
-          name: 'Keshav Sharma',
-          email: 'keshav.sharma@helical.consulting',
-          role: 'admin',
-          onboardingCompleted: true,
-          company: 'Helical Consulting',
-        };
-        localStorage.setItem('repnex-auth-token', 'mock-google-token');
-        onAuthSuccess(mockUser);
-        setGoogleLoading(false);
-      }, 1000);
+      setErrorMessage('Google Sign-In could not be initialized. Please check if Google services are blocked.');
+      setGoogleLoading(false);
     }
   };
 

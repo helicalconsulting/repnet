@@ -44,13 +44,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             const newSession = await sessionsApi.create({
               title: query.slice(0, 60) || "New chat",
             });
+            console.log('[Chat] Session created:', newSession);
             if (newSession?.id) {
               activeSessionId = newSession.id;
               setCurrentSessionId(activeSessionId);
               window.dispatchEvent(new Event("repnex-sessions-updated"));
+            } else {
+              console.warn('[Chat] Session created but no ID returned:', newSession);
             }
           } catch (err) {
-            console.error("Session create failed:", err);
+            console.error('[Chat] Session create failed:', err?.message || err);
           }
         }
 

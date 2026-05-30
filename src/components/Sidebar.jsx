@@ -41,6 +41,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const [showHistory, setShowHistory] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionsError, setSessionsError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,10 +49,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
+    setSessionsError(null);
     try {
       const data = await sessionsApi.list();
-      setSessions(data.slice(0, 15)); // show latest 15
-    } catch {
+      // Normalize — backend returns array directly
+      const list = Array.isArray(data) ? data : (data?.sessions || data?.items || []);
+      setSessions(list.slice(0, 15));
+    } catch (err) {
+      console.error('[Sidebar] Sessions fetch failed:', err?.message || err);
+      setSessionsError(err?.message || 'Failed to load chats');
       setSessions([]);
     } finally {
       setLoadingSessions(false);
@@ -211,6 +217,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                   {loadingSessions ? (
                     <div className="flex items-center justify-center py-6">
                       <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : sessionsError ? (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
+                      <button
+                        onClick={fetchSessions}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Retry
+                      </button>
                     </div>
                   ) : sessions.length === 0 ? (
                     <div className="px-3 py-4 text-center">

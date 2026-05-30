@@ -1,15 +1,15 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Paperclip, ArrowUp, Sparkles, Bot, User, Copy, Check,
+  Paperclip, ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useApp } from "../context/AppContext";
-import { queryApi } from "../services/api";
+import { queryApi, sessionsApi } from "../services/api";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 
-export default function ChatConversation({ initialQuery, onOpenReport }) {
+export default function ChatConversation({ initialQuery, onOpenReport, sessionId }) {
   const { connections, activeConnection, addNotification } = useApp();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
@@ -19,6 +19,8 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
   const [copiedId, setCopiedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentSuggestions, setCurrentSuggestions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(sessionId || null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const bottomRef = useRef(null);
 
   const activeConn = connections.find((c) => c.id === activeConnection);
@@ -36,6 +38,27 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
+        let activeSessionId = currentSessionId;
+        if (!activeSessionId) {
+          if (!activeConnection) {
+            addNotification("error", "Please select a database connection first.");
+            setIsProcessing(false);
+            setPipelineStep(null);
+            return;
+          }
+          try {
+            const newSession = await sessionsApi.create({
+              connection_id: activeConnection,
+              title: query.slice(0, 50) || "New chat",
+            });
+            activeSessionId = newSession.id;
+            setCurrentSessionId(activeSessionId);
+            window.dispatchEvent(new Event("repnex-sessions-updated"));
+          } catch (err) {
+            console.error("Failed to create session:", err);
+          }
+        }
+
         // Simulate pipeline progression
         await new Promise((r) => setTimeout(r, 400));
         setCompletedSteps(["classify"]);
@@ -49,6 +72,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
         const response = await queryApi.chat({
           naturalLanguage: query,
           connectionId: activeConnection || null,
+          sessionId: activeSessionId || null,
         });
 
         setCompletedSteps(["classify", "search", "extract"]);
@@ -173,12 +197,42 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
         setIsProcessing(false);
       }
     },
-    [activeConnection]
+    [activeConnection, currentSessionId, addNotification]
   );
+
+  // ── Load session history ───────────────────────────────────────────
+  useEffect(() => {
+    if (sessionId) {
+      const loadHistory = async () => {
+        setLoadingHistory(true);
+        try {
+          const details = await sessionsApi.get(sessionId);
+          // Map backend context window turns to frontend messages format
+          const loaded = (details.context_window || []).map((turn, idx) => ({
+            id: `history-${idx}-${Date.now()}`,
+            role: turn.role === "user" ? "user" : "ai",
+            content: turn.content,
+            type: "conversational",
+          }));
+          setMessages(loaded);
+          setCurrentSessionId(sessionId);
+        } catch (err) {
+          console.error("Failed to load session history:", err);
+          addNotification("error", "Failed to load session chat history.");
+        } finally {
+          setLoadingHistory(false);
+        }
+      };
+      loadHistory();
+    } else {
+      setMessages([]);
+      setCurrentSessionId(null);
+    }
+  }, [sessionId, addNotification]);
 
   // Process initial query
   useEffect(() => {
-    if (initialQuery) {
+    if (initialQuery && !sessionId) {
       processQuery(initialQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,6 +260,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
           templateId,
           params,
           connectionId: activeConnection,
+          sessionId: currentSessionId || null,
         });
 
         setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
@@ -255,7 +310,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
         setIsProcessing(false);
       }
     },
-    [activeConnection, addNotification]
+    [activeConnection, currentSessionId, addNotification]
   );
 
   // ── Handlers ────────────────────────────────────────────────────────
@@ -307,12 +362,18 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
       )}
 
       <div className="w-full max-w-3xl flex-1 flex flex-col pt-20 pb-40 px-6 overflow-y-auto custom-scrollbar">
-        {messages.map((msg) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`flex w-full mb-6 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+        {loadingHistory ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+            <span className="text-sm">Loading chat history...</span>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex w-full mb-6 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.role === "ai" && (
               <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
@@ -438,7 +499,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
               </div>
             )}
           </motion.div>
-        ))}
+        )))}
 
         {/* Pipeline Status during processing */}
         {isProcessing && pipelineStep && (

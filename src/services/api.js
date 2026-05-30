@@ -113,6 +113,8 @@ export const authApi = {
   async signOut() {
     try {
       await request('/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.warn('Backend logout failed:', e);
     } finally {
       clearToken();
     }

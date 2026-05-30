@@ -39,17 +39,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       try {
         let activeSessionId = currentSessionId;
-        if (!activeSessionId && activeConnection) {
-          try {
-            const newSession = await sessionsApi.create({
-              connection_id: activeConnection,
-              title: query.slice(0, 50) || "New chat",
-            });
-            activeSessionId = newSession.id;
-            setCurrentSessionId(activeSessionId);
-            window.dispatchEvent(new Event("repnex-sessions-updated"));
-          } catch (err) {
-            console.error("Failed to create session:", err);
+        if (!activeSessionId) {
+          // Use active connection or fall back to first available connection
+          const connId = activeConnection || (connections.length > 0 ? connections[0].id : null);
+          if (connId) {
+            try {
+              const newSession = await sessionsApi.create({
+                connection_id: connId,
+                title: query.slice(0, 50) || "New chat",
+              });
+              activeSessionId = newSession.id;
+              setCurrentSessionId(activeSessionId);
+              window.dispatchEvent(new Event("repnex-sessions-updated"));
+            } catch (err) {
+              console.error("Failed to create session:", err);
+            }
           }
         }
 
@@ -191,7 +195,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setIsProcessing(false);
       }
     },
-    [activeConnection, currentSessionId, addNotification]
+    [activeConnection, connections, currentSessionId, addNotification]
   );
 
   // ── Load session history ───────────────────────────────────────────

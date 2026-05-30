@@ -60,13 +60,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   useEffect(() => {
     fetchSessions();
+
+    // Listen for session creation events from ChatConversation
+    const handleUpdate = () => fetchSessions();
+    window.addEventListener('repnex-sessions-updated', handleUpdate);
+    return () => window.removeEventListener('repnex-sessions-updated', handleUpdate);
   }, [fetchSessions]);
 
-  // Refetch when navigating back to a route that might have new sessions
+  // Refetch on every route change so sidebar stays in sync
   useEffect(() => {
-    if (location.pathname === '/chat') {
-      fetchSessions();
-    }
+    fetchSessions();
   }, [location.pathname, fetchSessions]);
 
   const handleDeleteSession = async (e, sessionId) => {

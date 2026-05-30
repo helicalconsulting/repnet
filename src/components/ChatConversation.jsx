@@ -293,7 +293,7 @@ export default function ChatConversation({ initialQuery, onOpenReport }) {
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col items-center w-full min-h-full relative bg-background">
+    <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
       {/* Connection Status Bar */}
       {activeConn && (
         <div className="absolute top-0 left-0 right-0 flex justify-center pt-4 z-10">

@@ -42,7 +42,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex-1 flex w-full h-full relative">
+    <div className="flex-1 flex w-full h-full relative overflow-hidden">
       <AnimatePresence mode="wait">
         {chatState === 'landing' && (
           <Motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col h-full overflow-y-auto w-full">
@@ -51,7 +51,7 @@ export default function ChatPage() {
         )}
 
         {chatState === 'conversation' && (
-          <Motion.div key="conv" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto w-full">
+          <Motion.div key="conv" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col h-full w-full overflow-hidden">
             <ChatConversation initialQuery={activeQuery} onOpenReport={handleOpenReport} />
           </Motion.div>
         )}

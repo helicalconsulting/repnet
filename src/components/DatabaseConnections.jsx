@@ -158,7 +158,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
       const dbs = await listDatabases({
         db_type: selectedType,
         host: formData.host,
-        port: formData.port,
+        port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
         username: formData.username,
         password: formData.password,
       });
@@ -206,7 +206,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         name: formData.name || 'Test Connection',
         db_type: selectedType,
         host: formData.host,
-        port: parseInt(formData.port) || 0,
+        port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
         db_name: formData.database,
         username: formData.username,
         password: formData.password,
@@ -250,7 +250,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         name: formData.name,
         db_type: selectedType,
         host: formData.host,
-        port: parseInt(formData.port) || 0,
+        port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
         db_name: formData.database,
         username: formData.username,
         password: formData.password,

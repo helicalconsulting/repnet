@@ -16,7 +16,10 @@ import {
   CheckCircle2,
   ExternalLink,
   Link2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Copy,
+  Terminal,
+  ShieldAlert
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
@@ -117,6 +120,14 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
   const [inputMode, setInputMode] = useState('fields'); // 'fields' | 'string'
+  const [connectionMode, setConnectionMode] = useState('direct'); // 'direct' | 'gateway'
+  const [agentName, setAgentName] = useState('my-laptop');
+  const [localDbHost, setLocalDbHost] = useState('localhost');
+  const [localDbPort, setLocalDbPort] = useState('');
+  const [localDbUser, setLocalDbUser] = useState('');
+  const [localDbPassword, setLocalDbPassword] = useState('');
+  const [copied, setCopied] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     host: '',
@@ -130,41 +141,122 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [testResult, setTestResult] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
 
-  const { testConnection } = useApp();
+  // ── "Fetch Databases" state ───────────────────────────────────────────
+  const [isFetchingDbs, setIsFetchingDbs] = useState(false);
+  const [availableDbs, setAvailableDbs] = useState([]);
+  const [fetchDbError, setFetchDbError] = useState(null);
+
+  const { testConnection, listDatabases } = useApp();
+
+  const handleFetchDatabases = async () => {
+    setIsFetchingDbs(true);
+    setFetchDbError(null);
+    setAvailableDbs([]);
+    setFormData(prev => ({ ...prev, database: '' }));
+    setTestResult(null);
+    try {
+      const dbs = await listDatabases({
+        db_type: selectedType,
+        host: formData.host,
+        port: formData.port,
+        username: formData.username,
+        password: formData.password,
+      });
+      setAvailableDbs(dbs);
+      if (dbs.length === 1) {
+        setFormData(prev => ({ ...prev, database: dbs[0] }));
+      }
+    } catch (err) {
+      setFetchDbError(err.message || 'Could not connect to server');
+    } finally {
+      setIsFetchingDbs(false);
+    }
+  };
 
   const handleTest = async () => {
     setIsTesting(true);
     setTestResult(null);
-    const result = await testConnection({ ...formData, type: selectedType });
+    
+    let payload;
+    if (connectionMode === 'gateway') {
+      payload = {
+        name: formData.name || 'Test Gateway Connection',
+        db_type: selectedType,
+        host: `gateway:${agentName}`,
+        port: 0,
+        db_name: formData.database,
+        username: 'agent',
+        password: 'agent',
+        ssl_enabled: false,
+      };
+    } else if (inputMode === 'string') {
+      payload = {
+        name: formData.name || 'Test Connection',
+        db_type: selectedType || 'mssql',
+        connection_string: formData.connectionString,
+        host: '',
+        port: 0,
+        db_name: '',
+        username: '',
+        password: '',
+        ssl_enabled: false,
+      };
+    } else {
+      payload = {
+        name: formData.name || 'Test Connection',
+        db_type: selectedType,
+        host: formData.host,
+        port: parseInt(formData.port) || 0,
+        db_name: formData.database,
+        username: formData.username,
+        password: formData.password,
+        ssl_enabled: false,
+      };
+    }
+    const result = await testConnection(payload);
     setTestResult(result);
     setIsTesting(false);
   };
 
   const handleAdd = async () => {
     setIsAdding(true);
-    const payload = inputMode === 'string'
-      ? {
-          name: formData.name,
-          db_type: selectedType || 'mssql',
-          connection_string: formData.connectionString,
-          // backend will parse these from connection_string
-          host: '',
-          port: 0,
-          db_name: '',
-          username: '',
-          password: '',
-          ssl_enabled: false,
-        }
-      : {
-          name: formData.name,
-          db_type: selectedType,
-          host: formData.host,
-          port: parseInt(formData.port) || 0,
-          db_name: formData.database,
-          username: formData.username,
-          password: formData.password,
-          ssl_enabled: false,
-        };
+    
+    let payload;
+    if (connectionMode === 'gateway') {
+      payload = {
+        name: formData.name,
+        db_type: selectedType,
+        host: `gateway:${agentName}`,
+        port: 0,
+        db_name: formData.database,
+        username: 'agent',
+        password: 'agent',
+        ssl_enabled: false,
+      };
+    } else if (inputMode === 'string') {
+      payload = {
+        name: formData.name,
+        db_type: selectedType || 'mssql',
+        connection_string: formData.connectionString,
+        host: '',
+        port: 0,
+        db_name: '',
+        username: '',
+        password: '',
+        ssl_enabled: false,
+      };
+    } else {
+      payload = {
+        name: formData.name,
+        db_type: selectedType,
+        host: formData.host,
+        port: parseInt(formData.port) || 0,
+        db_name: formData.database,
+        username: formData.username,
+        password: formData.password,
+        ssl_enabled: false,
+      };
+    }
     await onAdd(payload);
     setIsAdding(false);
     onClose();
@@ -175,8 +267,17 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setStep(1);
     setSelectedType(null);
     setInputMode('fields');
+    setConnectionMode('direct');
+    setAgentName('my-laptop');
+    setLocalDbHost('localhost');
+    setLocalDbPort('');
+    setLocalDbUser('');
+    setLocalDbPassword('');
+    setCopied(false);
     setFormData({ name: '', host: '', port: '', database: '', username: '', password: '', connectionString: '' });
     setTestResult(null);
+    setAvailableDbs([]);
+    setFetchDbError(null);
   };
 
   const defaultPorts = {};
@@ -272,31 +373,76 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                   </div>
                 </div>
 
-                {/* Mode toggle */}
+                {/* Connection Mode toggle */}
                 <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-sm">
                   <button
-                    onClick={() => setInputMode('fields')}
+                    type="button"
+                    onClick={() => {
+                      setConnectionMode('direct');
+                      setFormData(prev => ({ ...prev, host: '', port: defaultPorts[selectedType] || '' }));
+                    }}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-medium transition-colors ${
-                      inputMode === 'fields'
+                      connectionMode === 'direct'
                         ? 'bg-blue-600 text-white'
                         : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <SlidersHorizontal className="w-3.5 h-3.5" />
-                    Manual Fields
+                    Direct Mode
                   </button>
                   <button
-                    onClick={() => setInputMode('string')}
+                    type="button"
+                    onClick={() => {
+                      setConnectionMode('gateway');
+                      setFormData(prev => ({
+                        ...prev,
+                        database: prev.database || 'CompanyDB',
+                      }));
+                      if (!localDbPort) {
+                        setLocalDbPort(defaultPorts[selectedType] || '1433');
+                      }
+                      if (!localDbUser) {
+                        setLocalDbUser(selectedType === 'postgres' ? 'postgres' : 'sa');
+                      }
+                    }}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 font-medium transition-colors ${
-                      inputMode === 'string'
+                      connectionMode === 'gateway'
                         ? 'bg-blue-600 text-white'
                         : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <Link2 className="w-3.5 h-3.5" />
-                    Connection String
+                    <Shield className="w-3.5 h-3.5" />
+                    Secure Gateway
                   </button>
                 </div>
+
+                {/* Sub-mode toggle for Direct Mode */}
+                {connectionMode === 'direct' && (
+                  <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-xs w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('fields')}
+                      className={`px-3 py-1.5 font-medium transition-colors ${
+                        inputMode === 'fields'
+                          ? 'bg-black/10 dark:bg-white/15 text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Manual Fields
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode('string')}
+                      className={`px-3 py-1.5 font-medium transition-colors ${
+                        inputMode === 'string'
+                          ? 'bg-black/10 dark:bg-white/15 text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Connection String
+                    </button>
+                  </div>
+                )}
 
                 {/* Connection Name (always shown) */}
                 <div>
@@ -311,7 +457,107 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 </div>
 
                 <AnimatePresence mode="wait">
-                  {inputMode === 'string' ? (
+                  {connectionMode === 'gateway' ? (
+                    <motion.div key="gateway" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Agent Name</label>
+                          <input
+                            type="text"
+                            value={agentName}
+                            onChange={e => setAgentName(e.target.value)}
+                            placeholder="my-laptop"
+                            className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Database Name</label>
+                          <input
+                            type="text"
+                            value={formData.database}
+                            onChange={e => setFormData(prev => ({ ...prev, database: e.target.value }))}
+                            placeholder="CompanyDB"
+                            className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Config fields to auto-generate CLI command */}
+                      <div className="p-4 rounded-xl border border-dashed border-border/50 dark:border-white/5 space-y-3">
+                        <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Configure Local Target DB (For CLI command generation)</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="col-span-2">
+                            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Local Host</label>
+                            <input
+                              type="text"
+                              value={localDbHost}
+                              onChange={e => setLocalDbHost(e.target.value)}
+                              placeholder="localhost"
+                              className="w-full px-3 py-1.5 text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-transparent outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Local Port</label>
+                            <input
+                              type="text"
+                              value={localDbPort}
+                              onChange={e => setLocalDbPort(e.target.value)}
+                              placeholder="1433"
+                              className="w-full px-3 py-1.5 text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-transparent outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Local DB User</label>
+                            <input
+                              type="text"
+                              value={localDbUser}
+                              onChange={e => setLocalDbUser(e.target.value)}
+                              placeholder="sa"
+                              className="w-full px-3 py-1.5 text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-transparent outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-muted-foreground block mb-1">Local DB Password</label>
+                            <input
+                              type="password"
+                              value={localDbPassword}
+                              onChange={e => setLocalDbPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full px-3 py-1.5 text-xs rounded-lg bg-black/5 dark:bg-white/5 border border-transparent outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Instructions & CLI Command Block */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground/80 block">Run Agent on Database Laptop</label>
+                        <div className="relative group bg-[#111] text-zinc-300 p-3 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed border border-white/5">
+                          <pre className="whitespace-pre-wrap select-all">
+                            {`python3 repnex-agent.py --token "${localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
+                          </pre>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cmd = `python3 repnex-agent.py --token "${localStorage.getItem('repnex-auth-token') || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
+                              navigator.clipboard.writeText(cmd);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }}
+                            className="absolute top-2.5 right-2.5 p-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-all"
+                          >
+                            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-normal flex items-start gap-1">
+                          <Terminal className="w-3 h-3 shrink-0 mt-0.5" />
+                          <span>Run this command on your database laptop to tunnel connections without exposing any ports.</span>
+                        </p>
+                      </div>
+                    </motion.div>
+                  ) : inputMode === 'string' ? (
                     <motion.div key="str" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
                       <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Connection String</label>
                       <textarea
@@ -330,12 +576,12 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     <motion.div key="fields" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                       <div className="grid grid-cols-3 gap-3">
                         <div className="col-span-2">
-                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Host</label>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Host / Server</label>
                           <input
                             type="text"
                             value={formData.host}
                             onChange={e => setFormData(prev => ({ ...prev, host: e.target.value }))}
-                            placeholder="localhost or IP"
+                            placeholder="192.168.1.10 or hostname"
                             className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
                           />
                         </div>
@@ -351,17 +597,6 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Database Name</label>
-                        <input
-                          type="text"
-                          value={formData.database}
-                          onChange={e => setFormData(prev => ({ ...prev, database: e.target.value }))}
-                          placeholder="your_database"
-                          className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
-                        />
-                      </div>
-
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Username</label>
@@ -369,7 +604,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                             type="text"
                             value={formData.username}
                             onChange={e => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                            placeholder="db_user"
+                            placeholder="sa"
                             className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
                           />
                         </div>
@@ -384,6 +619,65 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                           />
                         </div>
                       </div>
+
+                      {/* ── Fetch Databases button ─────────────────────────── */}
+                      <button
+                        type="button"
+                        onClick={handleFetchDatabases}
+                        disabled={isFetchingDbs || !formData.host || !formData.username || !formData.password}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-dashed border-primary/40 hover:border-primary/80 bg-primary/5 hover:bg-primary/10 text-primary rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isFetchingDbs ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Database className="w-4 h-4" />
+                        )}
+                        {isFetchingDbs ? 'Connecting to server…' : 'Fetch Databases'}
+                      </button>
+
+                      {/* ── Fetch error ────────────────────────────────────── */}
+                      <AnimatePresence>
+                        {fetchDbError && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm"
+                          >
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            {fetchDbError}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* ── Database dropdown (appears after fetch) ────────── */}
+                      <AnimatePresence>
+                        {availableDbs.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                          >
+                            <label className="text-sm font-medium text-foreground/80 mb-1.5 block">
+                              Select Database
+                              <span className="ml-2 text-xs text-muted-foreground font-normal">({availableDbs.length} found)</span>
+                            </label>
+                            <select
+                              value={formData.database}
+                              onChange={e => {
+                                setFormData(prev => ({ ...prev, database: e.target.value }));
+                                setTestResult(null);
+                              }}
+                              className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors"
+                            >
+                              <option value="">— choose a database —</option>
+                              {availableDbs.map(db => (
+                                <option key={db} value={db}>{db}</option>
+                              ))}
+                            </select>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -427,10 +721,10 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         {/* Footer */}
         {step === 2 && (
           <div className="flex items-center gap-3 p-5 border-t border-border/50 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-            {inputMode === 'fields' && (
+            {(connectionMode === 'gateway' || inputMode === 'fields') && (
               <button
                 onClick={handleTest}
-                disabled={isTesting || !formData.host || !formData.database}
+                disabled={isTesting || (connectionMode === 'gateway' ? (!agentName || !formData.database) : (!formData.host || !formData.database))}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl font-medium transition-colors disabled:opacity-50"
               >
                 {isTesting ? (
@@ -443,7 +737,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
             )}
             <button
               onClick={handleAdd}
-              disabled={isAdding || !formData.name || (inputMode === 'fields' ? (!testResult?.success) : !formData.connectionString.trim())}
+              disabled={isAdding || !formData.name || (connectionMode === 'gateway' ? (!testResult?.ok) : (inputMode === 'fields' ? (!testResult?.ok) : !formData.connectionString.trim()))}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-600/90 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
             >
               {isAdding ? (

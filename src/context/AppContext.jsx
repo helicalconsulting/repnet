@@ -92,6 +92,10 @@ export function AppProvider({ children }) {
     return await databaseApi.testConnection(connectionData);
   }, []);
 
+  const listDatabases = useCallback(async (serverInfo) => {
+    return await databaseApi.listDatabases(serverInfo);
+  }, []);
+
   const syncConnection = useCallback(async (id) => {
     await databaseApi.syncConnection(id);
     setConnections((prev) =>
@@ -188,6 +192,7 @@ export function AppProvider({ children }) {
     addConnection,
     removeConnection,
     testConnection,
+    listDatabases,
     syncConnection,
 
     // Reports state

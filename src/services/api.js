@@ -199,11 +199,36 @@ export const databaseApi = {
     return Array.isArray(response) ? response : response.connections || [];
   },
 
+  /**
+   * Step 1 of add-connection flow: connect to server, return database list.
+   * Does NOT require db_name — connects to master/postgres system DB.
+   */
+  async listDatabases({ db_type, host, port, username, password, ssl_enabled = false }) {
+    const response = await request('/connections/list-databases', {
+      method: 'POST',
+      body: JSON.stringify({ db_type, host, port: parseInt(port) || 1433, username, password, ssl_enabled }),
+    });
+    return response.databases || [];
+  },
+
+  /**
+   * Step 2: test the full credentials including selected db_name.
+   * Returns normalised { ok, message, latency } regardless of backend shape.
+   */
   async testConnection(connectionData) {
-    return request('/connections/test', {
+    const raw = await request('/connections/test', {
       method: 'POST',
       body: JSON.stringify(connectionData),
     });
+    // Normalise backend response { ok, latency_ms, error } → UI shape
+    return {
+      ok: raw.ok,
+      success: raw.ok,
+      message: raw.ok
+        ? `Connected successfully! Latency: ${raw.latency_ms ?? '?'}ms`
+        : raw.error || 'Connection failed',
+      latency: raw.latency_ms,
+    };
   },
 
   async addConnection(connectionData) {

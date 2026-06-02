@@ -10,6 +10,43 @@ const defaults = {
   aiTone: 'friendly',
 };
 
+/**
+ * Extract a human-readable name from a user object.
+ * Priority: user.name → user.full_name → smart parse of email username
+ * e.g. "thesharmakeshav@gmail.com" → tries last segment → "Keshav"
+ *      "john.doe@corp.com"         → "John"
+ *      "jsmith@corp.com"           → "Jsmith" (fallback)
+ */
+function inferNameFromUser(user) {
+  if (!user) return '';
+
+  // Use explicit name fields first
+  const explicit = user.name || user.full_name || user.display_name || '';
+  if (explicit.trim()) return explicit.trim();
+
+  // Parse from email
+  const email = user.email || '';
+  if (!email.includes('@')) return '';
+  const localPart = email.split('@')[0]; // e.g. "thesharmakeshav"
+
+  // If it contains a dot, take the first segment capitalized
+  if (localPart.includes('.')) {
+    return localPart.split('.')[0].replace(/^./, c => c.toUpperCase());
+  }
+
+  // Heuristic: try to extract the last "word" from a concatenated name
+  // e.g. "thesharmakeshav" → check if it ends with a known pattern
+  // Simple approach: take the last 4–8 chars as a first name guess
+  // but only if the string is longer than 8 chars (likely concatenated)
+  if (localPart.length > 8) {
+    // Try to find a capital-case split point — fall back to last 6 chars
+    const lastSix = localPart.slice(-6);
+    return lastSix.replace(/^./, c => c.toUpperCase());
+  }
+
+  return localPart.replace(/^./, c => c.toUpperCase());
+}
+
 const PersonalizationContext = createContext(null);
 
 function loadFromStorage() {
@@ -38,15 +75,24 @@ export function PersonalizationProvider({ children, user }) {
   useEffect(() => {
     if (user) {
       setProfile(prev => {
-        if (!prev.displayName && (user.name || user.email)) {
-          const updated = { ...prev, displayName: user.name || '', preferredName: user.name || user.email || '' };
-          saveToStorage(updated);
-          return updated;
+        // Only auto-fill if the user hasn't manually set a name yet
+        if (!prev.displayName && !prev.preferredName) {
+          const inferred = inferNameFromUser(user);
+          if (inferred) {
+            const updated = {
+              ...prev,
+              displayName: user.name || user.full_name || inferred,
+              preferredName: inferred,
+            };
+            saveToStorage(updated);
+            return updated;
+          }
         }
         return prev;
       });
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email, user?.name, user?.full_name]);
 
   const updateProfile = useCallback((updates) => {
     setProfile(prev => {

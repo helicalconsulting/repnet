@@ -53,7 +53,7 @@ function EmptyState({ icon: Icon, title, subtitle }) {
 
 // ─── Profile Tab ─────────────────────────────────────────────────────────────
 function ProfileTab({ showToast }) {
-  const { profile, updateProfile } = usePersonalization();
+  const { profile, updateProfile, getGreeting, getDisplayName } = usePersonalization();
   const [displayName, setDisplayName] = useState(profile.displayName || '');
   const [preferredName, setPreferredName] = useState(profile.preferredName || '');
   const [greetingStyle, setGreetingStyle] = useState(profile.greetingStyle || 'time-based');
@@ -81,11 +81,34 @@ function ProfileTab({ showToast }) {
     showToast('Profile preferences saved', 'success');
   };
 
+  const previewName = preferredName.trim() || displayName.trim() || getDisplayName();
+  const previewGreeting = (() => {
+    const hour = new Date().getHours();
+    if (greetingStyle === 'casual') return 'Hey';
+    if (greetingStyle === 'formal') return 'Hello';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
   return (
     <form onSubmit={handleSave} className="space-y-6 max-w-lg">
       <div>
         <h3 className="text-base font-semibold mb-1">Profile Personalization</h3>
         <p className="text-xs text-muted-foreground">Customize how the AI greets and addresses you.</p>
+      </div>
+
+      {/* Live Preview */}
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center shrink-0 shadow shadow-blue-500/20 mt-0.5">
+          <Sparkles className="w-3.5 h-3.5 text-blue-700" />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-0.5 font-medium uppercase tracking-wide">AI Preview</p>
+          <p className="text-sm text-foreground font-medium">
+            {previewGreeting}, {previewName || 'there'}! How can I help you analyze your data today?
+          </p>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-card/60 p-5 space-y-4">
@@ -105,9 +128,14 @@ function ProfileTab({ showToast }) {
             type="text"
             value={preferredName}
             onChange={(e) => setPreferredName(e.target.value)}
-            placeholder="e.g. Keshav"
+            placeholder={profile.preferredName || profile.displayName || 'e.g. Keshav'}
             className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
           />
+          {profile.preferredName && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Currently: <span className="font-medium text-foreground">{profile.preferredName}</span>
+            </p>
+          )}
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground/85">Greeting Style</label>
@@ -131,7 +159,7 @@ function ProfileTab({ showToast }) {
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground/85">AI Response Tone</label>
           <div className="flex gap-2">
-            {[{ id: 'friendly', label: 'Friendly' }, { id: 'professional', label: 'Professional' }, { id: 'concise', label: 'Concise' }].map(t => (
+            {[{ id: 'friendly', label: 'Friendly 😊' }, { id: 'professional', label: 'Professional' }, { id: 'concise', label: 'Concise' }].map(t => (
               <button
                 key={t.id}
                 type="button"
@@ -160,6 +188,7 @@ function ProfileTab({ showToast }) {
     </form>
   );
 }
+
 
 // ─── Organization Tab ─────────────────────────────────────────────────────────
 function OrganizationTab({ showToast }) {

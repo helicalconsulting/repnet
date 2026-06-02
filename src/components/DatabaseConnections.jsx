@@ -128,6 +128,13 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [localDbPassword, setLocalDbPassword] = useState('');
   const [copied, setCopied] = useState(false);
 
+  const getWsServerUrl = () => {
+    const apiBase = import.meta.env.VITE_API_BASE || 'https://repnex-backend.onrender.com/v1';
+    let wsBase = apiBase.replace(/\/v1\/?$/, '');
+    wsBase = wsBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+    return wsBase;
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     host: '',
@@ -536,12 +543,12 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                         <label className="text-sm font-medium text-foreground/80 block">Run Agent on Database Laptop</label>
                         <div className="relative group bg-[#111] text-zinc-300 p-3 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed border border-white/5">
                           <pre className="whitespace-pre-wrap select-all">
-                            {`python3 repnex-agent.py --token "${localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
+                            {`python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
                           </pre>
                           <button
                             type="button"
                             onClick={() => {
-                              const cmd = `python3 repnex-agent.py --token "${localStorage.getItem('repnex-auth-token') || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
+                              const cmd = `python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
                               navigator.clipboard.writeText(cmd);
                               setCopied(true);
                               setTimeout(() => setCopied(false), 2000);

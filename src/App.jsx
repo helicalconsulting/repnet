@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import AuthPage from './components/AuthPage';
 import { AppProvider } from './context/AppContext';
+import { PersonalizationProvider } from './context/PersonalizationContext';
 import { authApi } from './services/api';
 
 import MainLayout from './layouts/MainLayout';
@@ -44,7 +45,9 @@ function ProtectedLayout({ sessionUser, onSignOut }) {
 
   return (
     <AppProvider>
-      <MainLayout user={sessionUser} onSignOut={onSignOut} settingsPage={<SettingsPage user={sessionUser} />} />
+      <PersonalizationProvider user={sessionUser}>
+        <MainLayout user={sessionUser} onSignOut={onSignOut} settingsPage={<SettingsPage user={sessionUser} />} />
+      </PersonalizationProvider>
     </AppProvider>
   );
 }

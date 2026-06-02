@@ -255,13 +255,14 @@ export const queryApi = {
    * Unified chat endpoint: classify intent → retrieve template → execute
    * Returns ChatResponse with type: conversational | executable | params_needed | error
    */
-  async chat({ naturalLanguage, connectionId, sessionId }) {
+  async chat({ naturalLanguage, connectionId, sessionId, personalization }) {
     return request('/query/chat', {
       method: 'POST',
       body: JSON.stringify({
         natural_language: naturalLanguage,
         connection_id: connectionId || null,
         session_id: sessionId || null,
+        personalization: personalization || null,
       }),
     });
   },

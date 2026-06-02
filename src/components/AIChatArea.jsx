@@ -1,6 +1,7 @@
 import { Paperclip, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { usePersonalization } from "../context/PersonalizationContext";
 
 const suggestions = [
   {
@@ -45,6 +46,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatArea({ onSearch }) {
   const { connections, activeConnection } = useApp();
+  const { getGreeting, getDisplayName } = usePersonalization();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState(0);
   const [showConnectionBadge, setShowConnectionBadge] = useState(true);
@@ -58,19 +60,12 @@ export default function AIChatArea({ onSearch }) {
     "Finance & GL": <Zap className="w-4 h-4" />,
   };
 
+  // ── Handlers ────────────────────────────────────────────────────────
   const handleSearch = (e) => {
     e?.preventDefault();
     if (query.trim() && onSearch) {
       onSearch(query.replace('\n', ' '));
     }
-  };
-
-  // Get greeting based on time
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
   };
 
   return (
@@ -104,10 +99,10 @@ export default function AIChatArea({ onSearch }) {
           className="text-center mb-6"
         >
           <h2 className="text-3xl font-semibold tracking-tight text-foreground mb-3">
-            What report would you like to create?
+            {getGreeting()}, {getDisplayName()}
           </h2>
           <p className="text-xs text-muted-foreground/70 w-72 mx-auto leading-relaxed">
-            Ask me anything about your ERP data. I'll generate SQL queries and create visualizations.
+            What report would you like to create today?
           </p>
         </motion.div>
 

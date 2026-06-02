@@ -5,12 +5,14 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useApp } from "../context/AppContext";
+import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi, sessionsApi } from "../services/api";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId }) {
   const { connections, activeConnection, addNotification } = useApp();
+  const { getCasualResponse, profile } = usePersonalization();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -30,6 +32,22 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     async (query) => {
       setIsProcessing(true);
       setShowSuggestions(false);
+
+      // Handle casual greetings locally with personalized response
+      const casualResponse = getCasualResponse(query);
+      if (casualResponse) {
+        const userMsg = { id: Date.now().toString(), role: "user", content: query };
+        const aiMsg = {
+          id: (Date.now() + 1).toString(),
+          role: "ai",
+          type: "conversational",
+          content: casualResponse,
+        };
+        setMessages((prev) => [...prev, userMsg, aiMsg]);
+        setIsProcessing(false);
+        return;
+      }
+
       setPipelineStep("classify");
       setCompletedSteps([]);
 
@@ -71,6 +89,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           naturalLanguage: query,
           connectionId: activeConnection || null,
           sessionId: activeSessionId || null,
+          personalization: {
+            display_name: profile.displayName || '',
+            preferred_name: profile.preferredName || '',
+            greeting_style: profile.greetingStyle || 'time-based',
+            ai_tone: profile.aiTone || 'friendly',
+          },
         });
 
         setCompletedSteps(["classify", "search", "extract"]);
@@ -196,7 +220,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setIsProcessing(false);
       }
     },
-    [activeConnection, currentSessionId, addNotification]
+    [activeConnection, currentSessionId, addNotification, profile]
   );
 
   // ── Load session history ───────────────────────────────────────────

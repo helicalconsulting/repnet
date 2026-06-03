@@ -583,59 +583,83 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                             onClick={() => {
                               const token = localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN';
                               const port = localDbPort || (selectedType === 'postgres' ? '5432' : '1433');
-                              const batContent = `@echo off
-echo ============================================
-echo  Repnex Gateway Agent - Windows Setup
-echo ============================================
-echo.
-
-:: Check if Python is installed
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Python not found. Installing Python 3.11 automatically...
-    echo Downloading Python installer from python.org...
-    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe' -OutFile 'python_installer.exe'"
-    if not exist python_installer.exe (
-        echo Failed to download Python installer automatically. Please install Python manually.
-        pause
-        exit /b 1
-    )
-    echo Installing Python silently (please wait 1-2 minutes)...
-    start /wait python_installer.exe /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 Include_pip=1
-    del python_installer.exe
-    
-    :: Update PATH temporarily for current session
-    set "PATH=%PATH%;%LocalAppData%\\Programs\\Python\\Python311;%LocalAppData%\\Programs\\Python\\Python311\\Scripts;%ProgramFiles%\\Python311;%ProgramFiles%\\Python311\\Scripts"
-    
-    python --version >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo.
-        echo Python installation completed. Please close this window and run repnex-setup.bat again to start the service.
-        pause
-        exit /b 0
-    )
-)
-
-echo Installing Python dependencies...
-python -m pip install websockets pymssql asyncpg --quiet
-if %errorlevel% neq 0 (
-    echo.
-    echo Failed to install dependencies. Make sure your internet is working.
-    pause
-    exit /b 1
-)
-
-echo.
-echo Downloading agent script...
-powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download' -OutFile 'repnex-agent.py'"
-
-echo.
-echo Registering as Windows auto-start service...
-python repnex-agent.py --install-service --server "${getWsServerUrl()}" --token "${token}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${port}" --db-user "${localDbUser}" --db-password "${localDbPassword}"
-echo.
-pause
-`;
-                              const blob = new Blob([batContent], { type: 'text/plain' });
+                              const serverHttp = getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://');
+                              const serverWs = getWsServerUrl();
+                              // Hybrid Batch+PowerShell polyglot — never crashes
+                              const psLines = [
+                                '<# : ---- cmd launcher (do not edit) ----',
+                                '@echo off',
+                                'powershell -NoProfile -ExecutionPolicy Bypass -File "%~f0"',
+                                'pause',
+                                'exit /b',
+                                '#>',
+                                '',
+                                '# =====================================================',
+                                '#  Repnex Gateway Agent - Windows Setup (PowerShell)',
+                                '# =====================================================',
+                                '$ErrorActionPreference = "Continue"',
+                                'Write-Host "" ',
+                                'Write-Host "  Repnex Gateway Agent - Windows Setup" -ForegroundColor Cyan',
+                                'Write-Host "=====================================================" -ForegroundColor Cyan',
+                                'Write-Host ""',
+                                '',
+                                '# Find Python 3',
+                                '$py = $null',
+                                'foreach ($c in @("python","python3","py")) {',
+                                '    try {',
+                                '        $v = & $c --version 2>&1',
+                                '        if ("$v" -match "Python 3") { $py = $c; Write-Host "Found: $v" -ForegroundColor Green; break }',
+                                '    } catch {}',
+                                '}',
+                                'if (-not $py) {',
+                                '    Write-Host "Python 3 not found. Trying winget..." -ForegroundColor Yellow',
+                                '    try {',
+                                '        winget install Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null',
+                                '        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")',
+                                '        $py = "python"',
+                                '        Write-Host "Python installed!" -ForegroundColor Green',
+                                '    } catch {',
+                                '        Write-Host "Auto-install failed. Opening Python download page..." -ForegroundColor Yellow',
+                                '        Start-Process "https://www.python.org/downloads/"',
+                                '        Write-Host "Install Python 3, check Add Python to PATH, then run this file again." -ForegroundColor Yellow',
+                                '        Read-Host "Press Enter to exit"',
+                                '        exit 1',
+                                '    }',
+                                '}',
+                                '',
+                                'Write-Host ""',
+                                'Write-Host "Installing Python dependencies..." -ForegroundColor Cyan',
+                                '& $py -m pip install websockets pymssql asyncpg --quiet',
+                                'if ($LASTEXITCODE -ne 0) {',
+                                '    Write-Host "pip install failed. Check internet." -ForegroundColor Red',
+                                '    Read-Host "Press Enter to exit"; exit 1',
+                                '}',
+                                '',
+                                'Write-Host ""',
+                                'Write-Host "Downloading repnex-agent.py..." -ForegroundColor Cyan',
+                                '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12',
+                                `Invoke-WebRequest -Uri "${serverHttp}/v1/agent/download" -OutFile (Join-Path $PSScriptRoot "repnex-agent.py") -UseBasicParsing`,
+                                '',
+                                'Write-Host ""',
+                                'Write-Host "Registering Windows auto-start task..." -ForegroundColor Cyan',
+                                '$pyExe = (Get-Command $py -EA SilentlyContinue).Source; if (-not $pyExe) { $pyExe = $py }',
+                                '$scriptFile = Join-Path $PSScriptRoot "repnex-agent.py"',
+                                `$agentArgs = "--server '${serverWs}' --token '${token}' --agent-name '${agentName}' --db-type '${selectedType}' --db-host '${localDbHost}' --db-port '${port}' --db-user '${localDbUser}' --db-password '${localDbPassword}'"`,
+                                'try { Unregister-ScheduledTask -TaskName "RepnexGatewayAgent" -Confirm:$false -EA SilentlyContinue } catch {}',
+                                '$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$scriptFile $agentArgs" -WorkingDirectory $PSScriptRoot',
+                                '$trigger  = New-ScheduledTaskTrigger -AtStartup',
+                                '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1)',
+                                'Register-ScheduledTask -TaskName "RepnexGatewayAgent" -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null',
+                                'Start-ScheduledTask -TaskName "RepnexGatewayAgent"',
+                                '',
+                                'Write-Host ""',
+                                'Write-Host "SUCCESS! Agent running and will auto-start on reboot." -ForegroundColor Green',
+                                'Write-Host "  Status: Get-ScheduledTask -TaskName RepnexGatewayAgent" -ForegroundColor Gray',
+                                'Write-Host ""',
+                                'Read-Host "Press Enter to close"',
+                              ];
+                              const content = psLines.join('\r\n');
+                              const blob = new Blob([content], { type: 'text/plain' });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url; a.download = 'repnex-setup.bat'; a.click();
@@ -651,57 +675,64 @@ pause
                             onClick={() => {
                               const token = localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN';
                               const port = localDbPort || (selectedType === 'postgres' ? '5432' : '1433');
-                              const shContent = `#!/bin/bash
-echo "============================================"
-echo " Repnex Gateway Agent - Linux/Mac Setup"
-echo "============================================"
-echo
-
-# Check Python3
-if ! command -v python3 &> /dev/null; then
-    echo "Python3 not found. Installing Python3..."
-    if command -v apt-get &> /dev/null; then
-        sudo apt-get update -y && sudo apt-get install -y python3 python3-pip
-    elif command -v yum &> /dev/null; then
-        sudo yum install -y python3 python3-pip
-    else
-        echo "Please install Python3 manually and run this script again."
-        exit 1
-    fi
-fi
-
-# Check pip
-if ! python3 -m pip --version &> /dev/null; then
-    echo "Installing pip..."
-    if command -v apt-get &> /dev/null; then
-        sudo apt-get install -y python3-pip
-    else
-        curl https://bootstrap.pypa.io/get-pip.py | python3
-    fi
-fi
-
-echo "Installing Python dependencies..."
-python3 -m pip install websockets pymssql asyncpg --quiet
-
-echo
-echo "Downloading agent script..."
-curl -L "${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download" -o repnex-agent.py
-chmod +x repnex-agent.py
-
-echo
-echo "Registering as auto-start service..."
-python3 repnex-agent.py --install-service \\
-  --server "${getWsServerUrl()}" \\
-  --token "${token}" \\
-  --agent-name "${agentName}" \\
-  --db-type "${selectedType}" \\
-  --db-host "${localDbHost}" \\
-  --db-port "${port}" \\
-  --db-user "${localDbUser}" \\
-  --db-password "${localDbPassword}"
-echo "Done!"
-`;
-                              const blob = new Blob([shContent], { type: 'text/plain' });
+                              const serverHttp = getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://');
+                              const serverWs = getWsServerUrl();
+                              const shLines = [
+                                '#!/bin/bash',
+                                'set -e',
+                                'echo ""',
+                                'echo "  Repnex Gateway Agent - Linux/Mac Setup"',
+                                'echo "======================================================"',
+                                'echo ""',
+                                '',
+                                '# Find Python 3',
+                                'PY=""',
+                                'for cmd in python3 python; do',
+                                '  if command -v "$cmd" &>/dev/null && "$cmd" --version 2>&1 | grep -q "Python 3"; then',
+                                '    PY="$cmd"; echo "Found: $($cmd --version)"; break',
+                                '  fi',
+                                'done',
+                                '',
+                                'if [ -z "$PY" ]; then',
+                                '  echo "Python 3 not found. Installing..."',
+                                '  if command -v apt-get &>/dev/null; then',
+                                '    sudo apt-get update -y && sudo apt-get install -y python3 python3-pip && PY=python3',
+                                '  elif command -v yum &>/dev/null; then',
+                                '    sudo yum install -y python3 python3-pip && PY=python3',
+                                '  elif command -v brew &>/dev/null; then',
+                                '    brew install python3 && PY=python3',
+                                '  else',
+                                '    echo "Cannot auto-install Python. Visit: https://python.org/downloads"; exit 1',
+                                '  fi',
+                                'fi',
+                                '',
+                                '$PY -m pip --version &>/dev/null || $PY -m ensurepip --upgrade 2>/dev/null || curl -sS https://bootstrap.pypa.io/get-pip.py | $PY',
+                                '',
+                                'echo "Installing Python dependencies..."',
+                                '$PY -m pip install websockets pymssql asyncpg --quiet',
+                                '',
+                                'DIR="$(cd "$(dirname "$0")" && pwd)"',
+                                'echo ""',
+                                'echo "Downloading repnex-agent.py..."',
+                                `curl -fsSL "${serverHttp}/v1/agent/download" -o "$DIR/repnex-agent.py"`,
+                                '',
+                                'echo ""',
+                                'echo "Registering as auto-start service..."',
+                                `$PY "$DIR/repnex-agent.py" --install-service \\`,
+                                `  --server "${serverWs}" \\`,
+                                `  --token "${token}" \\`,
+                                `  --agent-name "${agentName}" \\`,
+                                `  --db-type "${selectedType}" \\`,
+                                `  --db-host "${localDbHost}" \\`,
+                                `  --db-port "${port}" \\`,
+                                `  --db-user "${localDbUser}" \\`,
+                                `  --db-password "${localDbPassword}"`,
+                                '',
+                                'echo ""',
+                                'echo "SUCCESS! Agent running and auto-starts on reboot."',
+                              ];
+                              const content = shLines.join('\n');
+                              const blob = new Blob([content], { type: 'text/plain' });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url; a.download = 'repnex-setup.sh'; a.click();
@@ -711,7 +742,6 @@ echo "Done!"
                           >
                             <Download className="w-4 h-4 text-emerald-500" />
                             Linux/Mac Setup (.sh)
-                          </button>
                         </div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                           ⬆️ Download the installer on your database laptop, double-click (Windows) or run <code className="bg-black/10 dark:bg-white/10 px-1 rounded">bash repnex-setup.sh</code> (Linux). It installs Python deps and registers the agent as a background service that auto-starts on reboot.

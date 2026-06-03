@@ -246,6 +246,15 @@ export const databaseApi = {
   async syncConnection(id) {
     return request(`/connections/${id}/test`, { method: 'POST' });
   },
+
+  async listGatewayAgents() {
+    try {
+      const res = await request('/connections/gateway-agents');
+      return Array.isArray(res) ? res : [];
+    } catch {
+      return [];
+    }
+  },
 };
 
 // ── Query / Chat API (Intent Engine) ──────────────────────────────────

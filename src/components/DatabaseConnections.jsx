@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Database, 
@@ -153,7 +153,25 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [availableDbs, setAvailableDbs] = useState([]);
   const [fetchDbError, setFetchDbError] = useState(null);
 
-  const { testConnection, listDatabases } = useApp();
+  const { testConnection, listDatabases, listGatewayAgents } = useApp();
+
+  // ── Live agent status polling ─────────────────────────────────────────
+  const [agentOnline, setAgentOnline] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || connectionMode !== 'gateway' || !agentName.trim()) {
+      setAgentOnline(false);
+      return;
+    }
+    let cancelled = false;
+    const check = async () => {
+      const agents = await listGatewayAgents();
+      if (!cancelled) setAgentOnline(agents.includes(agentName.trim()));
+    };
+    check();
+    const iv = setInterval(check, 5000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [isOpen, connectionMode, agentName, listGatewayAgents]);
 
   const handleFetchDatabases = async () => {
     setIsFetchingDbs(true);
@@ -468,7 +486,21 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     <motion.div key="gateway" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Agent Name</label>
+                          <label className="text-sm font-medium text-foreground/80 mb-1.5 flex items-center gap-2">
+                            Agent Name
+                            {agentName.trim() && (
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                agentOnline
+                                  ? 'bg-emerald-500/15 text-emerald-500'
+                                  : 'bg-rose-500/15 text-rose-500'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  agentOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                                }`} />
+                                {agentOnline ? 'Online' : 'Offline – run agent on DB laptop'}
+                              </span>
+                            )}
+                          </label>
                           <input
                             type="text"
                             value={agentName}

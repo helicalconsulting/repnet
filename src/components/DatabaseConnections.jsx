@@ -594,6 +594,9 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `Write-Host '=====================================================' -ForegroundColor Cyan`,
                                 `Write-Host ''`,
                                 ``,
+                                `# Fallback to env variable or current working directory since PSScriptRoot is empty in EncodedCommand`,
+                                `$dir = if ($env:REPNEX_DIR) { $env:REPNEX_DIR } else { (Get-Location).Path }`,
+                                ``,
                                 `# Find Python 3 (tries python, python3, py launcher)`,
                                 `$py = $null`,
                                 `foreach ($c in @('python','python3','py')) {`,
@@ -633,7 +636,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `Write-Host ''`,
                                 `Write-Host 'Downloading repnex-agent.py from cloud...' -ForegroundColor Cyan`,
                                 `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12`,
-                                `$agentPath = Join-Path $PSScriptRoot 'repnex-agent.py'`,
+                                `$agentPath = Join-Path $dir 'repnex-agent.py'`,
                                 `Invoke-WebRequest -Uri '${serverHttp}/v1/agent/download' -OutFile $agentPath -UseBasicParsing`,
                                 ``,
                                 `Write-Host ''`,
@@ -642,7 +645,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `if (-not $pyExe) { $pyExe = (Get-Command $py).Source }`,
                                 `$agentArgs = "--server '${serverWs}' --token '${token}' --agent-name '${agentName}' --db-type '${selectedType}' --db-host '${localDbHost}' --db-port '${port}' --db-user '${localDbUser}' --db-password '${localDbPassword}'"`,
                                 `try { Unregister-ScheduledTask -TaskName 'RepnexGatewayAgent' -Confirm:$false -EA SilentlyContinue } catch {}`,
-                                `$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$agentPath $agentArgs" -WorkingDirectory $PSScriptRoot`,
+                                `$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$agentPath $agentArgs" -WorkingDirectory $dir`,
                                 `$trigger  = New-ScheduledTaskTrigger -AtStartup`,
                                 `$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1)`,
                                 `Register-ScheduledTask -TaskName 'RepnexGatewayAgent' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null`,
@@ -681,6 +684,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                               // Simple 3-line .bat — impossible to crash
                               const batContent = [
                                 '@echo off',
+                                'set "REPNEX_DIR=%~dp0"',
                                 `powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`,
                                 'pause',
                               ].join('\r\n');

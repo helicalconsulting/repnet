@@ -742,6 +742,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                           >
                             <Download className="w-4 h-4 text-emerald-500" />
                             Linux/Mac Setup (.sh)
+                          </button>
                         </div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                           ⬆️ Download the installer on your database laptop, double-click (Windows) or run <code className="bg-black/10 dark:bg-white/10 px-1 rounded">bash repnex-setup.sh</code> (Linux). It installs Python deps and registers the agent as a background service that auto-starts on reboot.

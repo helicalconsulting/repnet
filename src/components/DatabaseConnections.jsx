@@ -643,7 +643,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `Write-Host 'Registering Windows Task Scheduler auto-start...' -ForegroundColor Cyan`,
                                 `$pyExe = (Get-Command $py -EA SilentlyContinue).Source`,
                                 `if (-not $pyExe) { $pyExe = (Get-Command $py).Source }`,
-                                `$agentArgs = "--server '${serverWs}' --token '${token}' --agent-name '${agentName}' --db-type '${selectedType}' --db-host '${localDbHost}' --db-port '${port}' --db-user '${localDbUser}' --db-password '${localDbPassword}'"`,
+                                `$agentArgs = "--server \`"${serverWs}\`" --token \`"${token}\`" --agent-name \`"${agentName}\`" --db-type \`"${selectedType}\`" --db-host \`"${localDbHost}\`" --db-port \`"${port}\`" --db-user \`"${localDbUser}\`" --db-password \`"${localDbPassword}\`""`,
                                 `try { Unregister-ScheduledTask -TaskName 'RepnexGatewayAgent' -Confirm:$false -EA SilentlyContinue } catch {}`,
                                 `$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$agentPath $agentArgs" -WorkingDirectory $dir`,
                                 `$trigger  = New-ScheduledTaskTrigger -AtStartup`,

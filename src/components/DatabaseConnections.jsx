@@ -19,7 +19,9 @@ import {
   SlidersHorizontal,
   Copy,
   Terminal,
-  ShieldAlert
+  ShieldAlert,
+  Download,
+  MonitorDown
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
@@ -570,30 +572,112 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                         </div>
                       </div>
 
-                      {/* Instructions & CLI Command Block */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground/80 block">Run Agent on Database Laptop</label>
-                        <div className="relative group bg-[#111] text-zinc-300 p-3 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed border border-white/5">
-                          <pre className="whitespace-pre-wrap select-all">
-                            {`python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
-                          </pre>
+                      {/* Setup & CLI Command Block */}
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium text-foreground/80 block">Setup Agent on Database Laptop</label>
+
+                        {/* One-click installer download buttons */}
+                        <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             onClick={() => {
-                              const cmd = `python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
-                              navigator.clipboard.writeText(cmd);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
+                              const token = localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN';
+                              const port = localDbPort || (selectedType === 'postgres' ? '5432' : '1433');
+                              const batContent = `@echo off
+echo ============================================
+echo  Repnex Gateway Agent - Windows Setup
+echo ============================================
+echo.
+echo Installing Python dependencies...
+pip install websockets pymssql asyncpg --quiet
+echo.
+echo Downloading agent script...
+powershell -Command "Invoke-WebRequest -Uri '${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download' -OutFile 'repnex-agent.py'"
+echo.
+echo Registering as Windows auto-start service...
+python repnex-agent.py --install-service --server "${getWsServerUrl()}" --token "${token}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${port}" --db-user "${localDbUser}" --db-password "${localDbPassword}"
+echo.
+pause
+`;
+                              const blob = new Blob([batContent], { type: 'text/plain' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url; a.download = 'repnex-setup.bat'; a.click();
+                              URL.revokeObjectURL(url);
                             }}
-                            className="absolute top-2.5 right-2.5 p-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-all"
+                            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/50 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-sm font-medium transition-colors"
                           >
-                            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            <MonitorDown className="w-4 h-4 text-blue-500" />
+                            Windows Setup (.bat)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const token = localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN';
+                              const port = localDbPort || (selectedType === 'postgres' ? '5432' : '1433');
+                              const shContent = `#!/bin/bash
+echo "============================================"
+echo " Repnex Gateway Agent - Linux/Mac Setup"
+echo "============================================"
+echo
+echo "Installing Python dependencies..."
+pip3 install websockets pymssql asyncpg --quiet
+echo
+echo "Downloading agent script..."
+curl -L "${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download" -o repnex-agent.py
+chmod +x repnex-agent.py
+echo
+echo "Registering as auto-start service..."
+python3 repnex-agent.py --install-service \\
+  --server "${getWsServerUrl()}" \\
+  --token "${token}" \\
+  --agent-name "${agentName}" \\
+  --db-type "${selectedType}" \\
+  --db-host "${localDbHost}" \\
+  --db-port "${port}" \\
+  --db-user "${localDbUser}" \\
+  --db-password "${localDbPassword}"
+echo "Done!"
+`;
+                              const blob = new Blob([shContent], { type: 'text/plain' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url; a.download = 'repnex-setup.sh'; a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/50 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-sm font-medium transition-colors"
+                          >
+                            <Download className="w-4 h-4 text-emerald-500" />
+                            Linux/Mac Setup (.sh)
                           </button>
                         </div>
-                        <p className="text-[11px] text-muted-foreground leading-normal flex items-start gap-1">
-                          <Terminal className="w-3 h-3 shrink-0 mt-0.5" />
-                          <span>Run this command on your database laptop to tunnel connections without exposing any ports.</span>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          ⬆️ Download the installer on your database laptop, double-click (Windows) or run <code className="bg-black/10 dark:bg-white/10 px-1 rounded">bash repnex-setup.sh</code> (Linux). It installs Python deps and registers the agent as a background service that auto-starts on reboot.
                         </p>
+
+                        {/* Manual CLI fallback */}
+                        <details className="group">
+                          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                            <Terminal className="w-3 h-3" /> Advanced: manual command
+                          </summary>
+                          <div className="mt-2 relative bg-[#111] text-zinc-300 p-3 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed border border-white/5">
+                            <pre className="whitespace-pre-wrap select-all">
+                              {`python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
+                            </pre>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cmd = `python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
+                                navigator.clipboard.writeText(cmd);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                              className="absolute top-2.5 right-2.5 p-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-all"
+                            >
+                              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </details>
                       </div>
                     </motion.div>
                   ) : inputMode === 'string' ? (

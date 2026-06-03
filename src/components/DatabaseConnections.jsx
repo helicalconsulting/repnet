@@ -759,33 +759,53 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
         {/* Footer */}
         {step === 2 && (
-          <div className="flex items-center gap-3 p-5 border-t border-border/50 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
-            {(connectionMode === 'gateway' || inputMode === 'fields') && (
+          <div className="flex flex-col gap-3 p-5 border-t border-border/50 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+            {/* Gateway offline warning */}
+            {connectionMode === 'gateway' && agentName.trim() && !agentOnline && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed">
+                  <span className="font-semibold">Agent '{agentName}' is offline.</span> Run the command below on your database laptop first, then test.
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              {(connectionMode === 'gateway' || inputMode === 'fields') && (
+                <button
+                  onClick={handleTest}
+                  disabled={isTesting || (
+                    connectionMode === 'gateway'
+                      ? (!agentName.trim() || !formData.database || !agentOnline)
+                      : (!formData.host || !formData.database)
+                  )}
+                  title={connectionMode === 'gateway' && !agentOnline ? 'Start the agent on your database laptop first' : ''}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isTesting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  {connectionMode === 'gateway' && !agentOnline ? 'Agent Offline' : 'Test Connection'}
+                </button>
+              )}
               <button
-                onClick={handleTest}
-                disabled={isTesting || (connectionMode === 'gateway' ? (!agentName || !formData.database) : (!formData.host || !formData.database))}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl font-medium transition-colors disabled:opacity-50"
+                onClick={handleAdd}
+                disabled={isAdding || !formData.name || (
+                  connectionMode === 'gateway'
+                    ? (!testResult?.ok)
+                    : (inputMode === 'fields' ? (!testResult?.ok) : !formData.connectionString.trim())
+                )}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-600/90 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
               >
-                {isTesting ? (
+                {isAdding ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Zap className="w-4 h-4" />
+                  <Plus className="w-4 h-4" />
                 )}
-                Test Connection
+                {inputMode === 'string' ? 'Save Connection' : 'Add Connection'}
               </button>
-            )}
-            <button
-              onClick={handleAdd}
-              disabled={isAdding || !formData.name || (connectionMode === 'gateway' ? (!testResult?.ok) : (inputMode === 'fields' ? (!testResult?.ok) : !formData.connectionString.trim()))}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-600/90 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-            >
-              {isAdding ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {inputMode === 'string' ? 'Save Connection' : 'Add Connection'}
-            </button>
+            </div>
           </div>
         )}
       </motion.div>

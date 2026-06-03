@@ -588,11 +588,47 @@ echo ============================================
 echo  Repnex Gateway Agent - Windows Setup
 echo ============================================
 echo.
+
+:: Check if Python is installed
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Python not found. Installing Python 3.11 automatically...
+    echo Downloading Python installer from python.org...
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe' -OutFile 'python_installer.exe'"
+    if not exist python_installer.exe (
+        echo Failed to download Python installer automatically. Please install Python manually.
+        pause
+        exit /b 1
+    )
+    echo Installing Python silently (please wait 1-2 minutes)...
+    start /wait python_installer.exe /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 Include_pip=1
+    del python_installer.exe
+    
+    :: Update PATH temporarily for current session
+    set "PATH=%PATH%;%LocalAppData%\\Programs\\Python\\Python311;%LocalAppData%\\Programs\\Python\\Python311\\Scripts;%ProgramFiles%\\Python311;%ProgramFiles%\\Python311\\Scripts"
+    
+    python --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo.
+        echo Python installation completed. Please close this window and run repnex-setup.bat again to start the service.
+        pause
+        exit /b 0
+    )
+)
+
 echo Installing Python dependencies...
-pip install websockets pymssql asyncpg --quiet
+python -m pip install websockets pymssql asyncpg --quiet
+if %errorlevel% neq 0 (
+    echo.
+    echo Failed to install dependencies. Make sure your internet is working.
+    pause
+    exit /b 1
+)
+
 echo.
 echo Downloading agent script...
-powershell -Command "Invoke-WebRequest -Uri '${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download' -OutFile 'repnex-agent.py'"
+powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download' -OutFile 'repnex-agent.py'"
+
 echo.
 echo Registering as Windows auto-start service...
 python repnex-agent.py --install-service --server "${getWsServerUrl()}" --token "${token}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${port}" --db-user "${localDbUser}" --db-password "${localDbPassword}"
@@ -620,12 +656,38 @@ echo "============================================"
 echo " Repnex Gateway Agent - Linux/Mac Setup"
 echo "============================================"
 echo
+
+# Check Python3
+if ! command -v python3 &> /dev/null; then
+    echo "Python3 not found. Installing Python3..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update -y && sudo apt-get install -y python3 python3-pip
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y python3 python3-pip
+    else
+        echo "Please install Python3 manually and run this script again."
+        exit 1
+    fi
+fi
+
+# Check pip
+if ! python3 -m pip --version &> /dev/null; then
+    echo "Installing pip..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get install -y python3-pip
+    else
+        curl https://bootstrap.pypa.io/get-pip.py | python3
+    fi
+fi
+
 echo "Installing Python dependencies..."
-pip3 install websockets pymssql asyncpg --quiet
+python3 -m pip install websockets pymssql asyncpg --quiet
+
 echo
 echo "Downloading agent script..."
 curl -L "${getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://')}/v1/agent/download" -o repnex-agent.py
 chmod +x repnex-agent.py
+
 echo
 echo "Registering as auto-start service..."
 python3 repnex-agent.py --install-service \\

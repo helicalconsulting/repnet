@@ -586,16 +586,15 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                               const serverHttp = getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://');
                               const serverWs = getWsServerUrl();
 
-                              // Pure batch file — writes a temp .ps1 and runs it
-                              // No polyglot needed, works on all Windows versions
-                              const ps1Body = [
-                                `$ErrorActionPreference = 'Continue'`,
+                              // Build PowerShell setup script
+                              const ps1 = [
+                                `$ErrorActionPreference = 'Stop'`,
                                 `Write-Host ''`,
                                 `Write-Host '  Repnex Gateway Agent - Windows Setup' -ForegroundColor Cyan`,
                                 `Write-Host '=====================================================' -ForegroundColor Cyan`,
                                 `Write-Host ''`,
                                 ``,
-                                `# Find Python 3`,
+                                `# Find Python 3 (tries python, python3, py launcher)`,
                                 `$py = $null`,
                                 `foreach ($c in @('python','python3','py')) {`,
                                 `    try {`,
@@ -609,72 +608,84 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `        winget install Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null`,
                                 `        $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')`,
                                 `        $py = 'python'`,
-                                `        Write-Host 'Python installed!' -ForegroundColor Green`,
+                                `        Write-Host 'Python installed via winget!' -ForegroundColor Green`,
                                 `    } catch {`,
-                                `        Write-Host 'Auto-install failed. Opening python.org...' -ForegroundColor Yellow`,
+                                `        Write-Host 'winget failed. Opening python.org in browser...' -ForegroundColor Yellow`,
                                 `        Start-Process 'https://www.python.org/downloads/'`,
-                                `        Write-Host 'Install Python 3, CHECK Add Python to PATH, then run this file again.' -ForegroundColor Yellow`,
+                                `        Write-Host '' `,
+                                `        Write-Host 'ACTION REQUIRED:' -ForegroundColor Yellow`,
+                                `        Write-Host '  1. Install Python 3 from the opened browser page.' -ForegroundColor White`,
+                                `        Write-Host '  2. CHECK "Add Python to PATH" during install.' -ForegroundColor White`,
+                                `        Write-Host '  3. Run this file again after install.' -ForegroundColor White`,
                                 `        Read-Host 'Press Enter to exit'`,
                                 `        exit 1`,
                                 `    }`,
                                 `}`,
                                 ``,
                                 `Write-Host ''`,
-                                `Write-Host 'Installing Python dependencies...' -ForegroundColor Cyan`,
-                                `& $py -m pip install websockets pymssql asyncpg --quiet`,
+                                `Write-Host 'Installing Python packages...' -ForegroundColor Cyan`,
+                                `& $py -m pip install --upgrade websockets pymssql asyncpg --quiet`,
                                 `if ($LASTEXITCODE -ne 0) {`,
-                                `    Write-Host 'pip install failed. Check internet.' -ForegroundColor Red`,
+                                `    Write-Host 'pip install failed. Check internet connection.' -ForegroundColor Red`,
                                 `    Read-Host 'Press Enter to exit'; exit 1`,
                                 `}`,
                                 ``,
                                 `Write-Host ''`,
-                                `Write-Host 'Downloading repnex-agent.py...' -ForegroundColor Cyan`,
+                                `Write-Host 'Downloading repnex-agent.py from cloud...' -ForegroundColor Cyan`,
                                 `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12`,
-                                `Invoke-WebRequest -Uri '${serverHttp}/v1/agent/download' -OutFile (Join-Path $PSScriptRoot 'repnex-agent.py') -UseBasicParsing`,
+                                `$agentPath = Join-Path $PSScriptRoot 'repnex-agent.py'`,
+                                `Invoke-WebRequest -Uri '${serverHttp}/v1/agent/download' -OutFile $agentPath -UseBasicParsing`,
                                 ``,
                                 `Write-Host ''`,
-                                `Write-Host 'Registering Windows auto-start task...' -ForegroundColor Cyan`,
-                                `$pyExe = (Get-Command $py -EA SilentlyContinue).Source; if (-not $pyExe) { $pyExe = $py }`,
-                                `$scriptFile = Join-Path $PSScriptRoot 'repnex-agent.py'`,
+                                `Write-Host 'Registering Windows Task Scheduler auto-start...' -ForegroundColor Cyan`,
+                                `$pyExe = (Get-Command $py -EA SilentlyContinue).Source`,
+                                `if (-not $pyExe) { $pyExe = (Get-Command $py).Source }`,
                                 `$agentArgs = "--server '${serverWs}' --token '${token}' --agent-name '${agentName}' --db-type '${selectedType}' --db-host '${localDbHost}' --db-port '${port}' --db-user '${localDbUser}' --db-password '${localDbPassword}'"`,
                                 `try { Unregister-ScheduledTask -TaskName 'RepnexGatewayAgent' -Confirm:$false -EA SilentlyContinue } catch {}`,
-                                `$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$scriptFile $agentArgs" -WorkingDirectory $PSScriptRoot`,
+                                `$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$agentPath $agentArgs" -WorkingDirectory $PSScriptRoot`,
                                 `$trigger  = New-ScheduledTaskTrigger -AtStartup`,
-                                `$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1)`,
+                                `$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1)`,
                                 `Register-ScheduledTask -TaskName 'RepnexGatewayAgent' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null`,
                                 `Start-ScheduledTask -TaskName 'RepnexGatewayAgent'`,
                                 ``,
                                 `Write-Host ''`,
-                                `Write-Host 'SUCCESS! Agent is running and will auto-start on reboot.' -ForegroundColor Green`,
-                                `Write-Host '  Status : Get-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
+                                `Write-Host '=====================================================' -ForegroundColor Green`,
+                                `Write-Host '  SUCCESS! Repnex Agent is running.' -ForegroundColor Green`,
+                                `Write-Host '  It will auto-start every time Windows boots.' -ForegroundColor Green`,
+                                `Write-Host '=====================================================' -ForegroundColor Green`,
                                 `Write-Host ''`,
-                                `Read-Host 'Press Enter to close'`,
+                                `Write-Host '  To check status : Get-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
+                                `Write-Host '  To stop         : Stop-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
+                                `Write-Host '  To uninstall    : Unregister-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
+                                `Write-Host ''`,
+                                `Read-Host 'Done! Press Enter to close'`,
                               ].join('\r\n');
 
-                              // The .bat extracts the PS1 content (everything after PSEOF line) to a temp file and runs it
-                              const batLines = [
+                              // Encode as UTF-16LE base64 (PowerShell -EncodedCommand format)
+                              // This produces a clean .bat with NO special-char issues — works on all Windows
+                              function toUtf16LeBase64(str) {
+                                const bytes = [];
+                                for (let i = 0; i < str.length; i++) {
+                                  const code = str.charCodeAt(i);
+                                  bytes.push(code & 0xff);
+                                  bytes.push((code >> 8) & 0xff);
+                                }
+                                let binary = '';
+                                for (let i = 0; i < bytes.length; i++) {
+                                  binary += String.fromCharCode(bytes[i]);
+                                }
+                                return btoa(binary);
+                              }
+
+                              const encoded = toUtf16LeBase64(ps1);
+                              // Simple 3-line .bat — impossible to crash
+                              const batContent = [
                                 '@echo off',
-                                'setlocal',
-                                'echo.',
-                                'echo   Repnex Gateway Agent - Windows Setup',
-                                'echo =====================================================',
-                                'echo.',
-                                '',
-                                ':: Write PowerShell script to a temp file',
-                                'set "TMPPS=%TEMP%\\repnex_setup_%RANDOM%.ps1"',
-                                `powershell -NoProfile -ExecutionPolicy Bypass -Command "[IO.File]::WriteAllText($env:TMPPS, @'` + '\r\n' +
-                                ps1Body + '\r\n' +
-                                `'@)"`,
-                                '',
-                                ':: Run the temp script',
-                                'powershell -NoProfile -ExecutionPolicy Bypass -File "%TMPPS%"',
-                                '',
-                                ':: Cleanup',
-                                'del "%TMPPS%" 2>nul',
+                                `powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`,
                                 'pause',
-                              ];
-                              const content = batLines.join('\r\n');
-                              const blob = new Blob([content], { type: 'text/plain' });
+                              ].join('\r\n');
+
+                              const blob = new Blob([batContent], { type: 'text/plain' });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url; a.download = 'repnex-setup.bat'; a.click();

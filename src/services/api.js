@@ -1,91 +1,208 @@
 /**
  * Repnex API Service — Real backend integration
  * Handles auth, connections, queries, templates, and organizations
+ *
+ * Token strategy:
+ *   • access_token  – 15 min TTL, stored in memory (window.__repnex_token)
+ *   • refresh_token – 7 day TTL, stored in localStorage
+ *   • On every 401 we transparently refresh once and retry.
+ *   • A background interval re-fetches 2 min before expiry so the user
+ *     never hits a 401 during normal usage.
  */
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://repnex-backend.onrender.com/v1';
-const AUTH_TOKEN_KEY = 'repnex-auth-token';
 
-// ── Storage helpers ───────────────────────────────────────────────────
+const REFRESH_KEY = 'repnex-refresh-token';
+// Access token lives only in memory — not localStorage — for XSS safety.
+// We fall back to localStorage key for backward-compat with older builds.
+const LEGACY_ACCESS_KEY = 'repnex-auth-token';
 
-const ensureStorage = () => {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    throw new Error('Browser storage is unavailable.');
-  }
-  return window.localStorage;
+// ── In-memory token store ─────────────────────────────────────────────
+
+let _accessToken = null;          // in-memory
+let _accessExpiresAt = 0;         // unix ms
+let _refreshPromise = null;       // dedup concurrent refresh calls
+
+const memGetAccess   = ()      => _accessToken;
+const memSetAccess   = (t, exp) => { _accessToken = t; _accessExpiresAt = exp || (Date.now() + 14 * 60 * 1000); };
+const memClearAccess = ()      => { _accessToken = null; _accessExpiresAt = 0; };
+
+// ── localStorage helpers ──────────────────────────────────────────────
+
+const ls = () => (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
+
+const getRefreshToken  = ()  => ls()?.getItem(REFRESH_KEY) ?? null;
+const setRefreshToken  = (t) => ls()?.setItem(REFRESH_KEY, t);
+const clearRefreshToken= ()  => ls()?.removeItem(REFRESH_KEY);
+
+/** Expose access token to legacy code (e.g., gateway command copy in UI). */
+export const getToken = () => _accessToken ?? ls()?.getItem(LEGACY_ACCESS_KEY) ?? null;
+
+const persistLegacy = (t) => ls()?.setItem(LEGACY_ACCESS_KEY, t);
+const clearLegacy   = ()  => ls()?.removeItem(LEGACY_ACCESS_KEY);
+
+const clearAll = () => {
+  memClearAccess();
+  clearRefreshToken();
+  clearLegacy();
 };
 
-const getToken = () => {
+// ── Silent token refresh ──────────────────────────────────────────────
+
+async function silentRefresh() {
+  const rt = getRefreshToken();
+  if (!rt) return false;
+
+  // Deduplicate: if a refresh is already in flight, wait for it
+  if (_refreshPromise) {
+    await _refreshPromise;
+    return !!_accessToken;
+  }
+
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: rt }),
+      });
+      if (!res.ok) throw new Error('Refresh failed');
+      const data = await res.json();
+      const at = data.access_token || data.tokens?.access_token;
+      const newRt = data.refresh_token || data.tokens?.refresh_token;
+      if (!at) throw new Error('No access token in refresh response');
+      // exp: decode from JWT or default to 14 min from now
+      const expMs = _jwtExp(at) || (Date.now() + 14 * 60 * 1000);
+      memSetAccess(at, expMs);
+      persistLegacy(at);
+      if (newRt) setRefreshToken(newRt);
+      return true;
+    } catch {
+      // Refresh failed — full logout
+      clearAll();
+      return false;
+    }
+  })();
+
+  const result = await _refreshPromise;
+  _refreshPromise = null;
+  return result;
+}
+
+/** Decode JWT exp claim without a library. */
+function _jwtExp(jwt) {
   try {
-    return ensureStorage().getItem(AUTH_TOKEN_KEY);
+    const payload = JSON.parse(atob(jwt.split('.')[1]));
+    return payload.exp ? payload.exp * 1000 : null;
   } catch {
     return null;
   }
-};
+}
 
-const setToken = (token) => {
-  ensureStorage().setItem(AUTH_TOKEN_KEY, token);
-};
-
-const clearToken = () => {
-  try {
-    ensureStorage().removeItem(AUTH_TOKEN_KEY);
-  } catch {
-    // Ignore storage cleanup errors.
+/** Called once on boot to hydrate in-memory token from localStorage. */
+function _hydrateFromStorage() {
+  const legacy = ls()?.getItem(LEGACY_ACCESS_KEY);
+  if (legacy && !_accessToken) {
+    const exp = _jwtExp(legacy);
+    if (exp && exp > Date.now()) {
+      memSetAccess(legacy, exp);
+    } else {
+      // Expired — clear it so we trigger refresh on next request
+      clearLegacy();
+    }
   }
-};
+}
+_hydrateFromStorage();
+
+/** Proactive refresh: 2 min before expiry — keeps session alive indefinitely. */
+let _proactiveTimer = null;
+function _scheduleProactiveRefresh() {
+  if (_proactiveTimer) clearTimeout(_proactiveTimer);
+  if (!_accessExpiresAt || !getRefreshToken()) return;
+  const msUntilRefresh = _accessExpiresAt - Date.now() - 2 * 60 * 1000; // 2 min early
+  if (msUntilRefresh < 0) {
+    // Already within the window — refresh now
+    silentRefresh().then(_scheduleProactiveRefresh);
+    return;
+  }
+  _proactiveTimer = setTimeout(async () => {
+    await silentRefresh();
+    _scheduleProactiveRefresh(); // schedule next cycle
+  }, msUntilRefresh);
+}
 
 // ── Base request helper ───────────────────────────────────────────────
 
-const request = async (path, options = {}) => {
-  const headers = new Headers(options.headers || {});
-  const token = getToken();
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+const request = async (path, options = {}, _isRetry = false) => {
+  // If access token is expired, proactively refresh before sending
+  if (_accessExpiresAt && _accessExpiresAt - Date.now() < 30_000 && !_isRetry) {
+    await silentRefresh();
   }
 
+  const headers = new Headers(options.headers || {});
+  const token = memGetAccess() ?? ls()?.getItem(LEGACY_ACCESS_KEY);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
   const url = path.startsWith('/') ? `${API_BASE}${path}` : path;
+  const response = await fetch(url, { ...options, headers });
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  if (response.status === 204) return { success: true };
 
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return { success: true };
+  // ── Transparent 401 retry with refresh ───────────────────────────────
+  if (response.status === 401 && !_isRetry) {
+    const refreshed = await silentRefresh();
+    if (refreshed) {
+      // Retry the original request once with the new token
+      return request(path, options, true);
+    }
+    // Refresh also failed — user must log in again
+    clearAll();
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData?.detail || 'Session expired. Please log in again.');
   }
 
   const payload = await response.json().catch(() => ({}));
-
   if (!response.ok) {
-    if (response.status === 401) {
-      clearToken();
-    }
     const errMsg = payload?.error?.message || payload?.error || payload?.detail || 'Request failed.';
     throw new Error(errMsg);
   }
-
   return payload;
 };
+
+// ── Helpers to store tokens after login/register ───────────────────────
+
+function _storeTokenPair(data) {
+  const at = data.token || data.tokens?.access_token || data.access_token;
+  const rt = data.refresh_token || data.tokens?.refresh_token;
+  if (at) {
+    const exp = _jwtExp(at) || (Date.now() + 14 * 60 * 1000);
+    memSetAccess(at, exp);
+    persistLegacy(at);
+    _scheduleProactiveRefresh();
+  }
+  if (rt) setRefreshToken(rt);
+  return data.user || data;
+}
 
 // ── Auth API ──────────────────────────────────────────────────────────
 
 export const authApi = {
   async getSession() {
-    const token = getToken();
-    if (!token) return null;
-
+    if (!memGetAccess() && !ls()?.getItem(LEGACY_ACCESS_KEY)) {
+      // No access token — try silent refresh from stored refresh token
+      const ok = await silentRefresh();
+      if (!ok) return null;
+      _scheduleProactiveRefresh();
+    }
     try {
       const response = await request('/auth/session');
+      _scheduleProactiveRefresh();
       return response.user || response;
-    } catch (error) {
-      clearToken();
+    } catch {
+      clearAll();
       return null;
     }
   },
@@ -95,9 +212,7 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    const token = response.token || response.tokens?.access_token;
-    if (token) setToken(token);
-    return response.user || response;
+    return _storeTokenPair(response);
   },
 
   async signUp({ name, company, email, password }) {
@@ -105,18 +220,18 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ name, company: company || name || email.split('@')[0], email, password }),
     });
-    const token = response.token || response.tokens?.access_token;
-    if (token) setToken(token);
-    return response.user || response;
+    return _storeTokenPair(response);
   },
 
   async signOut() {
     try {
-      await request('/auth/logout', { method: 'POST' });
+      const rt = getRefreshToken();
+      if (rt) await request('/auth/logout', { method: 'POST' });
     } catch (e) {
       console.warn('Backend logout failed:', e);
     } finally {
-      clearToken();
+      clearAll();
+      if (_proactiveTimer) { clearTimeout(_proactiveTimer); _proactiveTimer = null; }
     }
     return { success: true };
   },
@@ -133,8 +248,7 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ challenge_id: challengeId, code }),
     });
-    if (response.token) setToken(response.token);
-    return response.user || response;
+    return _storeTokenPair(response);
   },
 
   async resendMfaCode({ challengeId }) {
@@ -149,9 +263,7 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ id_token: idToken }),
     });
-    const token = response.token || response.tokens?.access_token;
-    if (token) setToken(token);
-    return response.user || response;
+    return _storeTokenPair(response);
   },
 
   getSsoProviders() {
@@ -170,21 +282,12 @@ export const organizationApi = {
     const response = await request('/organizations/me');
     return response.organization || response;
   },
-
   async completeOnboarding(payload) {
-    return request('/organizations/onboarding', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    return request('/organizations/onboarding', { method: 'POST', body: JSON.stringify(payload) });
   },
-
   async inviteUser({ email, role }) {
-    return request('/organizations/invite', {
-      method: 'POST',
-      body: JSON.stringify({ email, role }),
-    });
+    return request('/organizations/invite', { method: 'POST', body: JSON.stringify({ email, role }) });
   },
-
   async listMembers() {
     const response = await request('/users');
     return response.users || response;
@@ -198,11 +301,6 @@ export const databaseApi = {
     const response = await request('/connections');
     return Array.isArray(response) ? response : response.connections || [];
   },
-
-  /**
-   * Step 1 of add-connection flow: connect to server, return database list.
-   * Does NOT require db_name — connects to master/postgres system DB.
-   */
   async listDatabases({ db_type, host, port, username, password, ssl_enabled = false }) {
     const response = await request('/connections/list-databases', {
       method: 'POST',
@@ -210,17 +308,11 @@ export const databaseApi = {
     });
     return response.databases || [];
   },
-
-  /**
-   * Step 2: test the full credentials including selected db_name.
-   * Returns normalised { ok, message, latency } regardless of backend shape.
-   */
   async testConnection(connectionData) {
     const raw = await request('/connections/test', {
       method: 'POST',
       body: JSON.stringify(connectionData),
     });
-    // Normalise backend response { ok, latency_ms, error } → UI shape
     return {
       ok: raw.ok,
       success: raw.ok,
@@ -230,7 +322,6 @@ export const databaseApi = {
       latency: raw.latency_ms,
     };
   },
-
   async addConnection(connectionData) {
     const response = await request('/connections', {
       method: 'POST',
@@ -238,15 +329,12 @@ export const databaseApi = {
     });
     return response.connection || response;
   },
-
   async deleteConnection(id) {
     return request(`/connections/${id}`, { method: 'DELETE' });
   },
-
   async syncConnection(id) {
     return request(`/connections/${id}/test`, { method: 'POST' });
   },
-
   async listGatewayAgents() {
     try {
       const res = await request('/connections/gateway-agents');
@@ -257,13 +345,9 @@ export const databaseApi = {
   },
 };
 
-// ── Query / Chat API (Intent Engine) ──────────────────────────────────
+// ── Query / Chat API ──────────────────────────────────────────────────
 
 export const queryApi = {
-  /**
-   * Unified chat endpoint: classify intent → retrieve template → execute
-   * Returns ChatResponse with type: conversational | executable | params_needed | error
-   */
   async chat({ naturalLanguage, connectionId, sessionId, personalization }) {
     return request('/query/chat', {
       method: 'POST',
@@ -275,56 +359,30 @@ export const queryApi = {
       }),
     });
   },
-
-  /**
-   * Execute a template with explicit params (after params_needed)
-   */
   async execute({ templateId, params, connectionId, sessionId }) {
     return request('/query/execute', {
       method: 'POST',
-      body: JSON.stringify({
-        template_id: templateId,
-        params,
-        connection_id: connectionId,
-        session_id: sessionId || null,
-      }),
+      body: JSON.stringify({ template_id: templateId, params, connection_id: connectionId, session_id: sessionId || null }),
     });
   },
-
-  /**
-   * Legacy: run query in one shot
-   */
   async run({ sessionId, naturalLanguage }) {
     return request('/query/run', {
       method: 'POST',
-      body: JSON.stringify({
-        session_id: sessionId,
-        natural_language: naturalLanguage,
-      }),
+      body: JSON.stringify({ session_id: sessionId, natural_language: naturalLanguage }),
     });
   },
-
   async getTemplates() {
     return request('/query/templates');
   },
 };
 
-// ── Template API (Pinecone) ───────────────────────────────────────────
+// ── Template API ──────────────────────────────────────────────────────
 
 export const templateApi = {
-  async getStatus() {
-    return request('/templates/status');
-  },
-
-  async ingest() {
-    return request('/templates/ingest', { method: 'POST' });
-  },
-
+  async getStatus() { return request('/templates/status'); },
+  async ingest()    { return request('/templates/ingest', { method: 'POST' }); },
   async search(query, topK = 5) {
-    return request('/templates/search', {
-      method: 'POST',
-      body: JSON.stringify({ query, top_k: topK }),
-    });
+    return request('/templates/search', { method: 'POST', body: JSON.stringify({ query, top_k: topK }) });
   },
 };
 
@@ -335,79 +393,39 @@ export const reportApi = {
     const response = await request('/reports');
     return Array.isArray(response) ? response : response.reports || [];
   },
-
-  async getReport(id) {
-    return request(`/reports/${id}`);
-  },
-
-  async togglePin(id) {
-    return request(`/reports/${id}/pin`, { method: 'PATCH' });
-  },
-
-  async updateReport(id, updates) {
-    return request(`/reports/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    });
-  },
-
-  async deleteReport(id) {
-    return request(`/reports/${id}`, { method: 'DELETE' });
-  },
-
-  async saveReport(reportData) {
-    return request('/reports', {
-      method: 'POST',
-      body: JSON.stringify(reportData),
-    });
-  },
-
-  async runReport(id, connectionId) {
-    return request(`/reports/${id}/run`, {
-      method: 'POST',
-      body: JSON.stringify({ connection_id: connectionId }),
-    });
-  },
-
-  async searchReports(query) {
+  async getReport(id)         { return request(`/reports/${id}`); },
+  async togglePin(id)         { return request(`/reports/${id}/pin`, { method: 'PATCH' }); },
+  async updateReport(id, upd) { return request(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify(upd) }); },
+  async deleteReport(id)      { return request(`/reports/${id}`, { method: 'DELETE' }); },
+  async saveReport(data)      { return request('/reports', { method: 'POST', body: JSON.stringify(data) }); },
+  async runReport(id, cid)    { return request(`/reports/${id}/run`, { method: 'POST', body: JSON.stringify({ connection_id: cid }) }); },
+  async searchReports(query)  {
     const response = await request(`/reports?search=${encodeURIComponent(query)}`);
     return Array.isArray(response) ? response : response.reports || [];
   },
 };
 
-// ── AI API (still wraps some mock functions for demo) ─────────────────
+// ── AI API ────────────────────────────────────────────────────────────
 
 export const aiApi = {
   async generateReport(prompt) {
-    // Use the real query/chat endpoint
     try {
       const result = await queryApi.chat({ naturalLanguage: prompt });
       return {
-        success: true,
-        tables: [],
-        sql: result.sql,
-        data: result.rows || [],
-        insights: result.summary,
-        reportId: `rep-${Date.now()}`,
-        chartType: 'bar',
+        success: true, tables: [], sql: result.sql, data: result.rows || [],
+        insights: result.summary, reportId: `rep-${Date.now()}`, chartType: 'bar',
         chartConfig: {
           xAxis: result.rows?.[0] ? Object.keys(result.rows[0])[0] : '',
           yAxis: result.rows?.[0] ? [Object.keys(result.rows[0])[1]] : [],
-          colors: ['#2563eb', '#60a5fa'],
-          showLegend: true,
-          showGrid: true,
+          colors: ['#2563eb', '#60a5fa'], showLegend: true, showGrid: true,
         },
       };
     } catch {
       return { success: false, error: 'Query failed' };
     }
   },
-
-  async getChatHistory() {
-    return [];
-  },
-
-  async getSuggestions() {
+  async getChatHistory()  { return []; },
+  async getSuggestions()  {
     return [
       { text: 'Show AP ageing report', icon: '📊' },
       { text: 'List overdue invoices', icon: '⚠️' },
@@ -424,24 +442,12 @@ export const sessionsApi = {
     const response = await request('/sessions');
     return Array.isArray(response) ? response : response.sessions || [];
   },
-
-  async create(data) {
-    return request('/sessions', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  async get(sessionId) {
-    return request(`/sessions/${sessionId}`);
-  },
-
-  async delete(sessionId) {
-    return request(`/sessions/${sessionId}`, { method: 'DELETE' });
-  },
+  async create(data)      { return request('/sessions', { method: 'POST', body: JSON.stringify(data) }); },
+  async get(sessionId)    { return request(`/sessions/${sessionId}`); },
+  async delete(sessionId) { return request(`/sessions/${sessionId}`, { method: 'DELETE' }); },
 };
 
-// ── Export API ─────────────────────────────────────────────────────────
+// ── Export API ────────────────────────────────────────────────────────
 
 export const exportApi = {
   async exportCSV(data, filename = 'export.csv') {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AIChatArea from '../components/AIChatArea';
 import ChatConversation from '../components/ChatConversation';
@@ -11,68 +11,60 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const [chatState, setChatState]               = useState('landing');
-  const [activeQuery, setActiveQuery]           = useState('');
+  const [chatState, setChatState]                 = useState('landing');
+  const [activeQuery, setActiveQuery]             = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState(null);
 
   /**
-   * conversationKey drives ChatConversation's React key:
-   *  - Set to a unique timestamp   → fresh mount (new chat from landing)
-   *  - Set to the session UUID     → fresh mount (loading existing session)
-   *  - NOT changed on session-create navigation → component stays alive mid-query
+   * conversationKey is the React key for <ChatConversation>.
+   * Changing it forces an unmount + fresh mount (new isolated conversation).
+   * Rules:
+   *   - Set to a unique timestamp on new query  → fresh component every time
+   *   - Set to session UUID when opening history → loads that session cleanly
+   *   - NEVER changes during an active query    → no disruption mid-execution
    */
   const [conversationKey, setConversationKey] = useState(null);
 
-  /**
-   * justCreatedSessionRef is set to true immediately before we navigate to
-   * /chat/:newId after creating a session. The useEffect below checks this flag
-   * and skips remounting the component, so the in-progress query can finish.
-   */
-  const justCreatedSessionRef = useRef(false);
-
-  // ── Route-driven initialisation ──────────────────────────────────────
+  // ── Route-driven init ────────────────────────────────────────────────
   useEffect(() => {
     if (id && isValidUuid(id)) {
-      if (justCreatedSessionRef.current) {
-        // We just created this session; the URL was updated via navigate({ replace })
-        // Do NOT change conversationKey — keep the component alive so the query finishes
-        justCreatedSessionRef.current = false;
-        setSelectedSessionId(id);
-        return;
-      }
-      // User navigated to an existing session (sidebar, direct URL, bookmark)
-      // Force a clean mount so the history loader runs fresh
+      // User opened /chat/:id intentionally (sidebar, bookmark, direct URL)
+      // → load history of that specific session
       setSelectedSessionId(id);
       setChatState('conversation');
       setActiveQuery('');
       setConversationKey(id);
     } else {
-      // /chat with no id → show landing
+      // /chat with no id → always show a clean fresh landing
       setSelectedSessionId(null);
       setChatState('landing');
       setActiveQuery('');
       setConversationKey(null);
     }
-  }, [id]); // Only id matters — location.state was causing spurious re-runs
+  }, [id]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────
 
-  /** User submits a query from the landing page → always a brand-new isolated chat */
+  /**
+   * Landing page search → always spawn a completely isolated fresh chat.
+   * URL stays as /chat — no session ID ever leaks into the address bar.
+   */
   const handleSearch = (query) => {
     setActiveQuery(query);
     setSelectedSessionId(null);
     setChatState('conversation');
-    setConversationKey(`new-${Date.now()}`); // unique key forces a fresh ChatConversation
+    setConversationKey(`new-${Date.now()}`);
   };
 
   /**
-   * ChatConversation calls this once the backend session is created.
-   * We set the ref BEFORE navigate so the useEffect knows to skip remounting.
+   * Called by ChatConversation when the backend creates a session.
+   * We only sync selectedSessionId in React state so the current query
+   * can attach its turns to the session — we do NOT navigate / change the URL.
+   * This is a report generation tool; the URL stays clean at /chat.
    */
   const handleSessionCreated = (newId) => {
-    justCreatedSessionRef.current = true;   // ← critical: prevents remount
     setSelectedSessionId(newId);
-    navigate(`/chat/${newId}`, { replace: true }); // URL = shareable link
+    // ← No navigate() call. URL stays /chat. No redirect. No disruption.
   };
 
   /** "View Interactive Report" button inside chat */
@@ -80,7 +72,7 @@ export default function ChatPage() {
     navigate('/report/new', { state: { query, data } });
   };
 
-  // ── Render ────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex w-full h-full relative overflow-hidden">
       <AnimatePresence mode="wait">
@@ -106,7 +98,7 @@ export default function ChatPage() {
             className="flex-1 flex flex-col h-full w-full overflow-hidden"
           >
             <ChatConversation
-              key={conversationKey}           // fresh mount only when key changes
+              key={conversationKey}
               initialQuery={activeQuery}
               onOpenReport={handleOpenReport}
               sessionId={selectedSessionId}

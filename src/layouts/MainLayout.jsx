@@ -73,7 +73,7 @@ export default function MainLayout({ user, onSignOut }) {
   };
 
   const handleNewChat = () => {
-    navigate('/chat', { state: { createNew: true } });
+    navigate('/chat');
   };
 
   return (

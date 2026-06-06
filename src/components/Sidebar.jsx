@@ -145,7 +145,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
           {/* New Chat Button */}
           <button
-            onClick={() => navigate('/chat', { state: { createNew: true } })}
+            onClick={() => navigate('/chat')}
             className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
           >
             <span className="flex items-center gap-2.5 text-sm">

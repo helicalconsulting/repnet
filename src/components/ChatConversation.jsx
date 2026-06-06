@@ -294,10 +294,18 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             templateId: turn.template_id || turn.templateId || null,
             templateDescription: turn.template_description || turn.templateDescription || "",
             extractedParams: turn.extracted_params || turn.extractedParams || {},
+            suggestions: turn.suggestions || [],
             showReportBtn: turn.type === "executable",
           }));
           setMessages(loaded);
           setCurrentSessionId(sessionId);
+
+          // Restore suggestions from the last AI message in history
+          const lastAiMsg = [...loaded].reverse().find(m => m.role === "ai");
+          if (lastAiMsg?.suggestions?.length > 0) {
+            setCurrentSuggestions(lastAiMsg.suggestions);
+            setShowSuggestions(true);
+          }
         } catch (err) {
           console.error("Failed to load session history:", err);
           addNotification("error", "Failed to load session chat history.");
@@ -314,17 +322,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }
   }, [sessionId, currentSessionId, addNotification]);
 
-  // Process initial query
+  // Process initial query on fresh mount (new chat from landing page)
   useEffect(() => {
     if (initialQuery && !sessionId) {
       processQuery(initialQuery);
-    } else if (location.state?.triggerQuery) {
-      processQuery(location.state.triggerQuery);
-      // Clear triggerQuery so it doesn't run again on reload/re-render
-      navigate(location.pathname, { replace: true, state: {} });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
+  }, []);
 
   // Auto-scroll
   useEffect(() => {

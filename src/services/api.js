@@ -343,6 +343,10 @@ export const databaseApi = {
       return [];
     }
   },
+  async getAgentToken() {
+    const res = await request('/agent/token', { method: 'POST' });
+    return res.token;
+  },
 };
 
 // ── Query / Chat API ──────────────────────────────────────────────────

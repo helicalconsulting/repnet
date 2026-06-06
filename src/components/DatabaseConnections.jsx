@@ -24,6 +24,7 @@ import {
   MonitorDown
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { databaseApi } from "../services/api";
 
 const dbTypes = [
   { id: "postgres", name: "PostgreSQL", icon: "🐘", color: "#336791", port: "5432" },
@@ -129,6 +130,15 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [localDbUser, setLocalDbUser] = useState('');
   const [localDbPassword, setLocalDbPassword] = useState('');
   const [copied, setCopied] = useState(false);
+  const [agentToken, setAgentToken] = useState('');
+
+  useEffect(() => {
+    if (isOpen && connectionMode === 'gateway' && !agentToken) {
+      databaseApi.getAgentToken()
+        .then(token => setAgentToken(token))
+        .catch(err => console.error("Failed to generate agent token:", err));
+    }
+  }, [isOpen, connectionMode, agentToken]);
 
   const getWsServerUrl = () => {
     const apiBase = import.meta.env.VITE_API_BASE || 'https://repnex-backend.onrender.com/v1';
@@ -301,6 +311,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setLocalDbUser('');
     setLocalDbPassword('');
     setCopied(false);
+    setAgentToken('');
     setFormData({ name: '', host: '', port: '', database: '', username: '', password: '', connectionString: '' });
     setTestResult(null);
     setAvailableDbs([]);
@@ -581,7 +592,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                           <button
                             type="button"
                             onClick={() => {
-                              const token = localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN';
+                              const token = agentToken || 'YOUR_AGENT_TOKEN';
                               const port = localDbPort || (selectedType === 'postgres' ? '5432' : '1433');
                               const serverHttp = getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://');
                               const serverWs = getWsServerUrl();
@@ -711,7 +722,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                           <button
                             type="button"
                             onClick={() => {
-                              const token = localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN';
+                              const token = agentToken || 'YOUR_AGENT_TOKEN';
                               const port = localDbPort || (selectedType === 'postgres' ? '5432' : '1433');
                               const serverHttp = getWsServerUrl().replace('wss://', 'https://').replace('ws://', 'http://');
                               const serverWs = getWsServerUrl();
@@ -793,12 +804,12 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                           </summary>
                           <div className="mt-2 relative bg-[#111] text-zinc-300 p-3 rounded-xl font-mono text-xs overflow-x-auto leading-relaxed border border-white/5">
                             <pre className="whitespace-pre-wrap select-all">
-                              {`python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || 'YOUR_JWT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
+                              {`python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${agentToken || 'YOUR_AGENT_TOKEN'}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`}
                             </pre>
                             <button
                               type="button"
                               onClick={() => {
-                                const cmd = `python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${localStorage.getItem('repnex-auth-token') || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
+                                const cmd = `python3 repnex-agent.py --server "${getWsServerUrl()}" --token "${agentToken || ''}" --agent-name "${agentName}" --db-type "${selectedType}" --db-host "${localDbHost}" --db-port "${localDbPort}" --db-user "${localDbUser}" --db-password "${localDbPassword}"`;
                                 navigator.clipboard.writeText(cmd);
                                 setCopied(true);
                                 setTimeout(() => setCopied(false), 2000);

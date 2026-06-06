@@ -95,7 +95,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       setMessages((prev) => [...prev, userMsg]);
 
       try {
-        let activeSessionId = currentSessionId;
+        const isValidUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+        let activeSessionId = (sessionId && isValidUuid(sessionId)) ? sessionId : null;
+
         if (!activeSessionId) {
           try {
             const newSession = await sessionsApi.create({
@@ -262,7 +264,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setIsProcessing(false);
       }
     },
-    [activeConnection, currentSessionId, addNotification, profile]
+    [activeConnection, sessionId, addNotification, profile]
   );
 
   // ── Load session history ───────────────────────────────────────────
@@ -342,11 +344,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       setCompletedSteps(["classify", "search", "extract"]);
 
       try {
+        const isValidUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+        const activeSessionId = (sessionId && isValidUuid(sessionId)) ? sessionId : null;
+
         const response = await queryApi.execute({
           templateId,
           params,
           connectionId: activeConnection,
-          sessionId: currentSessionId || null,
+          sessionId: activeSessionId,
         });
 
         setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
@@ -398,7 +403,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setIsProcessing(false);
       }
     },
-    [activeConnection, currentSessionId, addNotification]
+    [activeConnection, sessionId, addNotification]
   );
 
   // ── Handlers ────────────────────────────────────────────────────────

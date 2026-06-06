@@ -513,14 +513,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           
           <div className="hidden sm:block h-6 w-px bg-border/50"></div>
           
-          <button 
-            onClick={onToggleInsights}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-lg text-sm text-foreground transition-all"
-            title="Toggle Insights Panel"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="hidden lg:inline">Insights</span>
-          </button>
+
           
           <button 
             onClick={() => setShowSQLModal(true)}

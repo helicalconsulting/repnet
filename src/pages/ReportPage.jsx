@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportBuilder from '../components/ReportBuilder';
-import RightPanel from '../components/RightPanel';
 import { reportApi } from '../services/api';
 import { useApp } from '../context/AppContext';
 
@@ -12,7 +11,6 @@ export default function ReportPage() {
   const navigate = useNavigate();
   const { activeConnection, connections } = useApp();
 
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [reportData, setReportData] = useState(location.state?.data || null);
   const [query, setQuery] = useState(location.state?.query || 'Database Analytics');
   const [loading, setLoading] = useState(!!id && !location.state?.data);
@@ -93,14 +91,8 @@ export default function ReportPage() {
           query={query}
           reportData={reportData}
           onClose={() => navigate('/report')}
-          onToggleInsights={() => setIsRightPanelOpen(prev => !prev)}
         />
       </div>
-
-      <RightPanel
-        isOpen={isRightPanelOpen}
-        onClose={() => setIsRightPanelOpen(false)}
-      />
     </div>
   );
 }

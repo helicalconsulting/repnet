@@ -48,12 +48,18 @@ export default function ChatPage() {
       setChatState('conversation');
       setActiveQuery('');
     } else {
-      setSelectedSessionId(null);
-      setChatState('landing');
-      setActiveQuery('');
-      if (location.state?.createNew) {
-        setBypassChoice(true);
-        navigate('/chat', { replace: true, state: {} });
+      if (location.state?.triggerQuery) {
+        setSelectedSessionId(null);
+        setChatState('conversation');
+        setActiveQuery('');
+      } else {
+        setSelectedSessionId(null);
+        setChatState('landing');
+        setActiveQuery('');
+        if (location.state?.createNew) {
+          setBypassChoice(true);
+          navigate('/chat', { replace: true, state: {} });
+        }
       }
     }
   }, [id, location.state, navigate]);
@@ -144,10 +150,10 @@ export default function ChatPage() {
                 <button
                   onClick={() => {
                     setSelectedSessionId(null);
-                    setActiveQuery(pendingQuery);
+                    setActiveQuery('');
                     setChatState("conversation");
                     setShowSessionChoiceModal(false);
-                    navigate(`/chat`);
+                    navigate(`/chat`, { state: { triggerQuery: pendingQuery } });
                   }}
                   className="w-full flex items-center justify-between p-4 bg-black/5 dark:bg-white/5 border border-border/50 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-all text-left group"
                 >

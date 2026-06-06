@@ -33,7 +33,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [copiedId, setCopiedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentSuggestions, setCurrentSuggestions] = useState([]);
-  const [currentSessionId, setCurrentSessionId] = useState(sessionId || null);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const bottomRef = useRef(null);
 
@@ -41,22 +41,29 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [visualTabs, setVisualTabs] = useState({});
 
   const getKeysForVisuals = (rows) => {
-    if (!rows || rows.length === 0) return { xAxisKey: '', yAxisKey: '' };
-    const keys = Object.keys(rows[0]).filter(k => k !== 'id' && k !== '__rowId');
-    let xAxisKey = '';
-    let yAxisKey = '';
-
-    for (const key of keys) {
-      const val = rows[0][key];
-      if (typeof val === 'string' && !xAxisKey) {
-        xAxisKey = key;
-      } else if (typeof val === 'number' && !yAxisKey) {
-        yAxisKey = key;
+    try {
+      if (!Array.isArray(rows) || rows.length === 0 || !rows[0]) {
+        return { xAxisKey: '', yAxisKey: '' };
       }
+      const keys = Object.keys(rows[0]).filter(k => k !== 'id' && k !== '__rowId');
+      let xAxisKey = '';
+      let yAxisKey = '';
+
+      for (const key of keys) {
+        const val = rows[0][key];
+        if (typeof val === 'string' && !xAxisKey) {
+          xAxisKey = key;
+        } else if (typeof val === 'number' && !yAxisKey) {
+          yAxisKey = key;
+        }
+      }
+      if (!xAxisKey) xAxisKey = keys[0] || '';
+      if (!yAxisKey) yAxisKey = keys.find(k => typeof rows[0][k] === 'number') || keys[1] || keys[0] || '';
+      return { xAxisKey, yAxisKey };
+    } catch (e) {
+      console.error("Error in getKeysForVisuals:", e);
+      return { xAxisKey: '', yAxisKey: '' };
     }
-    if (!xAxisKey) xAxisKey = keys[0];
-    if (!yAxisKey) yAxisKey = keys.find(k => typeof rows[0][k] === 'number') || keys[1] || keys[0];
-    return { xAxisKey, yAxisKey };
   };
 
   // ── Process a user query ────────────────────────────────────────────
@@ -270,7 +277,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           const details = await sessionsApi.get(sessionId);
           // Map backend context window turns to frontend messages format preserving rich fields
           const loaded = (details.context_window || []).map((turn, idx) => ({
-            id: `history-${idx}-${Date.now()}`,
+            id: `history-${idx}-${details.id}`,
             role: turn.role === "user" ? "user" : "ai",
             content: turn.content,
             type: turn.type || "conversational",

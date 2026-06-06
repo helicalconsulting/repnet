@@ -36,6 +36,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const bottomRef = useRef(null);
+  const loadedSessionIdRef = useRef(null);
 
   const activeConn = connections.find((c) => c.id === activeConnection);
   const [visualTabs, setVisualTabs] = useState({});
@@ -106,6 +107,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             console.log('[Chat] Session created:', newSession);
             if (newSession?.id) {
               activeSessionId = newSession.id;
+              loadedSessionIdRef.current = activeSessionId;
               setCurrentSessionId(activeSessionId);
               window.dispatchEvent(new Event("repnex-sessions-updated"));
               if (onSessionCreated) {
@@ -274,8 +276,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     };
 
     if (sessionId && isValidUuid(sessionId)) {
-      if (sessionId === currentSessionId) {
-        return;
+      if (sessionId === loadedSessionIdRef.current) {
+        return; // Already loaded or just created this session, do nothing!
       }
       const loadHistory = async () => {
         setLoadingHistory(true);
@@ -298,6 +300,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             showReportBtn: turn.type === "executable",
           }));
           setMessages(loaded);
+          loadedSessionIdRef.current = sessionId;
           setCurrentSessionId(sessionId);
 
           // Restore suggestions from the last AI message in history
@@ -315,12 +318,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       };
       loadHistory();
     } else {
-      if (currentSessionId !== null) {
+      // Clear messages if we had a session loaded before and navigated away
+      if (loadedSessionIdRef.current !== null) {
         setMessages([]);
+        loadedSessionIdRef.current = null;
         setCurrentSessionId(null);
       }
     }
-  }, [sessionId, currentSessionId, addNotification]);
+  }, [sessionId, addNotification]);
 
   // Process initial query on fresh mount (new chat from landing page)
   useEffect(() => {

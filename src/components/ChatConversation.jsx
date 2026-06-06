@@ -4,17 +4,27 @@ import {
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi, sessionsApi } from "../services/api";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, addNotification } = useApp();
   const { getCasualResponse, profile } = usePersonalization();
   const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,6 +38,26 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const bottomRef = useRef(null);
 
   const activeConn = connections.find((c) => c.id === activeConnection);
+  const [visualTabs, setVisualTabs] = useState({});
+
+  const getKeysForVisuals = (rows) => {
+    if (!rows || rows.length === 0) return { xAxisKey: '', yAxisKey: '' };
+    const keys = Object.keys(rows[0]).filter(k => k !== 'id' && k !== '__rowId');
+    let xAxisKey = '';
+    let yAxisKey = '';
+
+    for (const key of keys) {
+      const val = rows[0][key];
+      if (typeof val === 'string' && !xAxisKey) {
+        xAxisKey = key;
+      } else if (typeof val === 'number' && !yAxisKey) {
+        yAxisKey = key;
+      }
+    }
+    if (!xAxisKey) xAxisKey = keys[0];
+    if (!yAxisKey) yAxisKey = keys.find(k => typeof rows[0][k] === 'number') || keys[1] || keys[0];
+    return { xAxisKey, yAxisKey };
+  };
 
   // ── Process a user query ────────────────────────────────────────────
   const processQuery = useCallback(
@@ -275,9 +305,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   useEffect(() => {
     if (initialQuery && !sessionId) {
       processQuery(initialQuery);
+    } else if (location.state?.triggerQuery) {
+      processQuery(location.state.triggerQuery);
+      // Clear triggerQuery so it doesn't run again on reload/re-render
+      navigate(location.pathname, { replace: true, state: {} });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.state]);
 
   // Auto-scroll
   useEffect(() => {
@@ -498,6 +532,103 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       <Clock className="w-3.5 h-3.5" />
                       {msg.executionTime}ms
                     </span>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Visuals & Data Table Preview */}
+              {msg.type === "executable" && msg.rows && msg.rows.length > 0 && (
+                <div className="mt-4 bg-slate-900/40 dark:bg-black/30 border border-slate-800/60 dark:border-white/5 rounded-2xl p-4 overflow-hidden">
+                  <div className="flex items-center justify-between mb-4 border-b border-slate-800/60 dark:border-white/5 pb-2">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Quick Visuals
+                    </span>
+                    <div className="flex gap-1 bg-black/20 dark:bg-white/5 p-1 rounded-lg">
+                      <button
+                        onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'chart' }))}
+                        className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
+                          (visualTabs[msg.id] || 'chart') === 'chart'
+                            ? 'bg-primary text-primary-foreground shadow'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Chart
+                      </button>
+                      <button
+                        onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'table' }))}
+                        className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
+                          visualTabs[msg.id] === 'table'
+                            ? 'bg-primary text-primary-foreground shadow'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Table
+                      </button>
+                    </div>
+                  </div>
+
+                  {(visualTabs[msg.id] || 'chart') === 'chart' ? (
+                    <div className="h-48 w-full mt-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={msg.rows.slice(0, 8)}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                          <XAxis 
+                            dataKey={getKeysForVisuals(msg.rows).xAxisKey} 
+                            stroke="rgba(255,255,255,0.4)" 
+                            fontSize={10}
+                            tickLine={false}
+                          />
+                          <YAxis 
+                            stroke="rgba(255,255,255,0.4)" 
+                            fontSize={10}
+                            tickLine={false}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: '#1E293B', 
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              color: '#fff'
+                            }} 
+                          />
+                          <Bar 
+                            dataKey={getKeysForVisuals(msg.rows).yAxisKey} 
+                            fill="url(#primaryGradient)" 
+                            radius={[4, 4, 0, 0]} 
+                          />
+                          <defs>
+                            <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0.3}/>
+                            </linearGradient>
+                          </defs>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto w-full border border-slate-800/60 dark:border-white/5 rounded-xl mt-2 max-h-48 overflow-y-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-black/20 dark:bg-white/5 border-b border-slate-800/60 dark:border-white/5 text-muted-foreground font-medium">
+                            {Object.keys(msg.rows[0] || {}).filter(k => k !== 'id' && k !== '__rowId').map(col => (
+                              <th key={col} className="px-3 py-2 uppercase tracking-wider">{col}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {msg.rows.slice(0, 5).map((row, idx) => (
+                            <tr key={idx} className="border-b border-slate-800/40 dark:border-white/5 hover:bg-white/5 transition-colors">
+                              {Object.keys(row).filter(k => k !== 'id' && k !== '__rowId').map((col, colIdx) => (
+                                <td key={colIdx} className="px-3 py-2 text-slate-300 font-mono">
+                                  {typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col] ?? '')}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               )}

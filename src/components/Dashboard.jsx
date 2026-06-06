@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useApp } from "../context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -217,12 +218,29 @@ function SortableReportCard({ report, onUnpin, onOpen }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { reports: contextReports, togglePinReport } = useApp();
   const [reports, setReports] = useState([]);
   const [allReports, setAllReports] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid"); // grid | list
   const [filterType, setFilterType] = useState("all"); // all | bar | line | pie | table
   const [showAllReports, setShowAllReports] = useState(false);
+
+  useEffect(() => {
+    if (contextReports) {
+      const mapped = contextReports.map(r => ({
+        ...r,
+        title: r.title || r.name,
+        query: r.query || r.query_template_id,
+        createdAt: r.createdAt || r.created_at,
+        isPinned: r.isPinned !== undefined ? r.isPinned : r.is_pinned,
+        chartType: r.chartType || (r.parameters?.chartType) || 'bar',
+        data: r.data || (r.parameters?.data) || [],
+      }));
+      setAllReports(mapped);
+      setReports(mapped.filter(r => r.isPinned));
+    }
+  }, [contextReports]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -242,15 +260,19 @@ export default function Dashboard() {
     }
   };
 
-  const handleUnpin = (reportId) => {
-    setReports(prev => prev.filter(r => r.id !== reportId));
-    setAllReports(prev => prev.map(r => r.id === reportId ? { ...r, isPinned: false } : r));
+  const handleUnpin = async (reportId) => {
+    try {
+      await togglePinReport(reportId);
+    } catch (err) {
+      console.error("Failed to unpin:", err);
+    }
   };
 
-  const handlePin = (report) => {
-    if (!reports.find(r => r.id === report.id)) {
-      setReports(prev => [...prev, { ...report, isPinned: true }]);
-      setAllReports(prev => prev.map(r => r.id === report.id ? { ...r, isPinned: true } : r));
+  const handlePin = async (report) => {
+    try {
+      await togglePinReport(report.id);
+    } catch (err) {
+      console.error("Failed to pin:", err);
     }
   };
 

@@ -166,7 +166,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [showChartPicker, setShowChartPicker] = useState(false);
   const [showSQLModal, setShowSQLModal] = useState(false);
   const [isPinned, setIsPinned] = useState(() => {
-    if (reportData?.isPinned) return true;
+    if (reportData?.isPinned || reportData?.is_pinned) return true;
     if (reportData?.id && pinnedReports) {
       return pinnedReports.some(r => r.id === reportData.id);
     }
@@ -235,7 +235,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
 
     // 2. Update pinning status
-    setIsPinned(reportData.isPinned || (pinnedReports && pinnedReports.some(r => r.id === reportData.id)) || false);
+    setIsPinned(reportData.isPinned || reportData.is_pinned || (pinnedReports && pinnedReports.some(r => r.id === reportData.id)) || false);
 
     // 3. Update report rows and columns
     const rawRows = reportData.rows || reportData.data || [];

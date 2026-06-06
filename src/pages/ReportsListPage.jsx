@@ -83,7 +83,7 @@ export default function ReportsListPage() {
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
-            onClick={() => navigate('/chat', { state: { createNew: true } })}
+                onClick={() => navigate('/chat')}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-blue-600 text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/25 hover:from-primary/90 hover:to-blue-600/90 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -139,7 +139,7 @@ export default function ReportsListPage() {
             </div>
             {!search && (
               <button
-                onClick={() => navigate('/chat', { state: { createNew: true } })}
+                    onClick={() => navigate('/chat')}
                 className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-semibold hover:bg-primary/15 transition-colors"
               >
                 <Plus className="w-4 h-4" />

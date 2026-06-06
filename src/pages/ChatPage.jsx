@@ -58,7 +58,6 @@ export default function ChatPage() {
 
   const handleSessionCreated = (newId) => {
     setSelectedSessionId(newId);
-    navigate(`/chat/${newId}`, { replace: true });
   };
 
   return (

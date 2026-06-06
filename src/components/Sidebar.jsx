@@ -240,7 +240,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.04 }}
-                        onClick={() => navigate('/chat', { state: { sessionId: session.id } })}
+                        onClick={() => navigate(`/chat/${session.id}`)}
                         className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
                       >
                         <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">

@@ -144,7 +144,7 @@ function SortableRow({ rowId, row, columns }) {
 
 export default function ReportBuilder({ query, onClose, reportData, onToggleInsights }) {
   const navigate = useNavigate();
-  const { togglePinReport, saveReport, addNotification } = useApp();
+  const { togglePinReport, saveReport, addNotification, pinnedReports } = useApp();
   
   const [activeTab, setActiveTab] = useState("chart");
   const [isMobile, setIsMobile] = useState(() =>
@@ -165,7 +165,13 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showChartPicker, setShowChartPicker] = useState(false);
   const [showSQLModal, setShowSQLModal] = useState(false);
-  const [isPinned, setIsPinned] = useState(false);
+  const [isPinned, setIsPinned] = useState(() => {
+    if (reportData?.isPinned) return true;
+    if (reportData?.id && pinnedReports) {
+      return pinnedReports.some(r => r.id === reportData.id);
+    }
+    return false;
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedDataKeys, setSelectedDataKeys] = useState(["revenue", "margin"]);
   const [xAxisKey, setXAxisKey] = useState("product");
@@ -211,11 +217,12 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
   }, [columns]);
 
+  // Keep all internal states synchronized when reportData or pinnedReports changes
   useEffect(() => {
     if (!reportData) return;
 
+    // 1. Update charting config
     setChartType(reportData.chartType || "bar");
-
     const reportColors = reportData.chartConfig?.colors;
     if (Array.isArray(reportColors) && reportColors.length > 0) {
       const matchedPalette = chartColors.find(palette => (
@@ -226,7 +233,33 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     } else {
       setSelectedColors(chartColors[0]);
     }
-  }, [reportData]);
+
+    // 2. Update pinning status
+    setIsPinned(reportData.isPinned || (pinnedReports && pinnedReports.some(r => r.id === reportData.id)) || false);
+
+    // 3. Update report rows and columns
+    const rawRows = reportData.rows || reportData.data || [];
+    if (rawRows.length > 0) {
+      const ensured = ensureRowIds(rawRows);
+      setData(ensured);
+      setColumns(Object.keys(rawRows[0]).filter(k => k !== 'id' && k !== '__rowId'));
+    }
+
+    // 4. Update save name / description
+    if (reportData.name) {
+      setSaveName(reportData.name);
+    }
+    if (reportData.description) {
+      setSaveDescription(reportData.description);
+    }
+  }, [reportData, pinnedReports]);
+
+  // Keep saveName synced when query prop changes on new report
+  useEffect(() => {
+    if (isNewReport && query) {
+      setSaveName(query);
+    }
+  }, [query, isNewReport]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -260,9 +293,17 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handlePinToggle = () => {
-    setIsPinned(!isPinned);
-    addNotification('success', isPinned ? 'Report unpinned' : 'Report pinned to dashboard');
+  const handlePinToggle = async () => {
+    if (isNewReport) {
+      addNotification('info', 'Please save the report first before pinning it.');
+      return;
+    }
+    try {
+      await togglePinReport(reportData.id);
+      setIsPinned(!isPinned);
+    } catch (err) {
+      addNotification('error', err.message || 'Failed to pin/unpin report.');
+    }
   };
 
   const handleSaveReport = async () => {

@@ -16,22 +16,27 @@ export default function ChatPage() {
   const [reportData, setReportData] = useState(null);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
-  // If navigated from New Chat button or Recent Chats
+  const { id } = useParams();
+
+  // If navigated from New Chat button or URL has session ID
   useEffect(() => {
-    if (location.state?.createNew) {
-      setChatState('landing');
-      setActiveQuery('');
-      setSelectedSessionId(null);
-      setReportData(null);
-      setIsRightPanelOpen(false);
-      navigate('/chat', { replace: true, state: {} });
-    } else if (location.state?.sessionId) {
-      setSelectedSessionId(location.state.sessionId);
+    if (id) {
+      setSelectedSessionId(id);
       setChatState('conversation');
       setActiveQuery('');
-      navigate('/chat', { replace: true, state: {} });
+    } else {
+      if (location.state?.createNew) {
+        setSelectedSessionId(null);
+        setChatState('landing');
+        setActiveQuery('');
+        navigate('/chat', { replace: true, state: {} });
+      } else if (chatState !== 'conversation') {
+        setSelectedSessionId(null);
+        setChatState('landing');
+        setActiveQuery('');
+      }
     }
-  }, [location.state, navigate]);
+  }, [id, location.state, navigate]);
 
   const handleSearch = (query) => {
     setActiveQuery(query);
@@ -47,6 +52,11 @@ export default function ChatPage() {
     navigate('/report/new', { state: { query, data } });
   };
 
+  const handleSessionCreated = (newId) => {
+    setSelectedSessionId(newId);
+    navigate(`/chat/${newId}`, { replace: true });
+  };
+
   return (
     <div className="flex-1 flex w-full h-full relative overflow-hidden">
       <AnimatePresence mode="wait">
@@ -59,10 +69,11 @@ export default function ChatPage() {
         {chatState === 'conversation' && (
           <Motion.div key="conv" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col h-full w-full overflow-hidden">
             <ChatConversation 
-              key={selectedSessionId || 'new-chat'} 
+              key="chat-conversation"
               initialQuery={activeQuery} 
               onOpenReport={handleOpenReport} 
               sessionId={selectedSessionId} 
+              onSessionCreated={handleSessionCreated}
             />
           </Motion.div>
         )}

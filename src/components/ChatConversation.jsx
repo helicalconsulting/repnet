@@ -4,15 +4,17 @@ import {
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi, sessionsApi } from "../services/api";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 
-export default function ChatConversation({ initialQuery, onOpenReport, sessionId }) {
+export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, addNotification } = useApp();
   const { getCasualResponse, profile } = usePersonalization();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -67,6 +69,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               activeSessionId = newSession.id;
               setCurrentSessionId(activeSessionId);
               window.dispatchEvent(new Event("repnex-sessions-updated"));
+              if (onSessionCreated) {
+                onSessionCreated(activeSessionId);
+              }
             } else {
               console.warn('[Chat] Session created but no ID returned:', newSession);
             }
@@ -226,6 +231,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Load session history ───────────────────────────────────────────
   useEffect(() => {
     if (sessionId) {
+      if (sessionId === currentSessionId && messages.length > 0) {
+        return;
+      }
       const loadHistory = async () => {
         setLoadingHistory(true);
         try {
@@ -259,7 +267,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       setMessages([]);
       setCurrentSessionId(null);
     }
-  }, [sessionId, addNotification]);
+  }, [sessionId, addNotification, currentSessionId, messages.length]);
 
   // Process initial query
   useEffect(() => {

@@ -18,6 +18,16 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(!!id && !location.state?.data);
   const [error, setError] = useState(null);
 
+  // Sync state if location.state changes (e.g. after save report redirect)
+  useEffect(() => {
+    if (location.state?.data) {
+      setReportData(location.state.data);
+    }
+    if (location.state?.query) {
+      setQuery(location.state.query);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     if (id && id !== 'new' && !location.state?.data) {
       setLoading(true);

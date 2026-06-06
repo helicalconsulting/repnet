@@ -267,7 +267,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
   // ── Load session history ───────────────────────────────────────────
   useEffect(() => {
-    if (sessionId) {
+    const isValidUuid = (str) => {
+      return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+    };
+
+    if (sessionId && isValidUuid(sessionId)) {
       if (sessionId === currentSessionId) {
         return;
       }

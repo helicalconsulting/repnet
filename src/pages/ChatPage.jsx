@@ -43,7 +43,11 @@ export default function ChatPage() {
 
   // If navigated from New Chat button or URL has session ID
   useEffect(() => {
-    if (id) {
+    const isValidUuid = (str) => {
+      return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
+    };
+
+    if (id && isValidUuid(id)) {
       setSelectedSessionId(id);
       setChatState('conversation');
       setActiveQuery('');

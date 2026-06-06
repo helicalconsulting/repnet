@@ -3,6 +3,24 @@ import { databaseApi, reportApi, aiApi, queryApi, templateApi } from '../service
 
 const AppContext = createContext(null);
 
+// Normalise a report from the backend (snake_case) to the frontend shape (camelCase).
+// Keeps original fields too so nothing breaks.
+function normaliseReport(r) {
+  if (!r) return r;
+  const isPinned = r.is_pinned ?? r.isPinned ?? false;
+  return {
+    ...r,
+    // camelCase aliases used throughout the UI
+    isPinned,
+    is_pinned: isPinned,                          // keep both so nothing breaks
+    title: r.title || r.name || '',
+    query: r.query || r.query_template_id || '',
+    createdAt: r.createdAt || r.created_at || null,
+    chartType: r.chartType || r.parameters?.chartType || 'bar',
+    data: r.data || r.parameters?.data || [],
+  };
+}
+
 export function AppProvider({ children }) {
   // Database connections state
   const [connections, setConnections] = useState([]);
@@ -33,8 +51,8 @@ export function AppProvider({ children }) {
       database: conn.db_name || conn.database || '',
       status: conn.is_active ? 'connected' : 'disconnected',
       tables: conn.tables || 0,
-      lastSync: conn.last_tested_at 
-        ? new Date(conn.last_tested_at).toLocaleDateString() 
+      lastSync: conn.last_tested_at
+        ? new Date(conn.last_tested_at).toLocaleDateString()
         : 'Never'
     };
   }, []);
@@ -49,9 +67,11 @@ export function AppProvider({ children }) {
         ]);
         const formatted = conns.map(formatConnection).filter(Boolean);
         setConnections(formatted);
-        setReports(reps);
-        setPinnedReports(reps.filter(r => r.isPinned));
-        
+
+        const normReps = reps.map(normaliseReport);
+        setReports(normReps);
+        setPinnedReports(normReps.filter(r => r.isPinned));
+
         // Set first connected database as active
         const firstConnected = formatted.find(c => c.status === 'connected');
         if (firstConnected) {
@@ -117,19 +137,42 @@ export function AppProvider({ children }) {
 
   // Report functions
   const togglePinReport = useCallback(async (reportId) => {
-    const updated = await reportApi.togglePin(reportId);
-    setReports(prev => prev.map(r => r.id === reportId ? updated : r));
-    setPinnedReports(prev => {
-      if (updated.isPinned) {
-        return [...prev, updated];
-      }
-      return prev.filter(r => r.id !== reportId);
-    });
-    addNotification('success', updated.isPinned ? 'Report pinned to dashboard' : 'Report unpinned');
+    // Optimistic update: flip the local isPinned immediately
+    setReports(prev => prev.map(r =>
+      r.id === reportId ? { ...r, isPinned: !r.isPinned, is_pinned: !r.isPinned } : r
+    ));
+
+    try {
+      // Confirm with backend and use the authoritative response
+      const raw = await reportApi.togglePin(reportId);
+      const updated = normaliseReport(raw);
+
+      setReports(prev => prev.map(r => r.id === reportId ? updated : r));
+      setPinnedReports(prev => {
+        if (updated.isPinned) {
+          // Replace if already in list, otherwise append
+          if (prev.some(r => r.id === reportId)) {
+            return prev.map(r => r.id === reportId ? updated : r);
+          }
+          return [...prev, updated];
+        }
+        return prev.filter(r => r.id !== reportId);
+      });
+      addNotification('success', updated.isPinned ? 'Report pinned to dashboard' : 'Report unpinned');
+      return updated;
+    } catch (err) {
+      // Rollback optimistic update on failure
+      setReports(prev => prev.map(r =>
+        r.id === reportId ? { ...r, isPinned: !r.isPinned, is_pinned: !r.isPinned } : r
+      ));
+      addNotification('error', 'Failed to update pin status');
+      throw err;
+    }
   }, []);
 
   const updateReport = useCallback(async (reportId, updates) => {
-    const updated = await reportApi.updateReport(reportId, updates);
+    const raw = await reportApi.updateReport(reportId, updates);
+    const updated = normaliseReport(raw);
     setReports(prev => prev.map(r => r.id === reportId ? updated : r));
     if (currentReport?.id === reportId) {
       setCurrentReport(updated);
@@ -138,7 +181,8 @@ export function AppProvider({ children }) {
   }, [currentReport]);
 
   const saveReport = useCallback(async (reportData) => {
-    const newReport = await reportApi.saveReport(reportData);
+    const raw = await reportApi.saveReport(reportData);
+    const newReport = normaliseReport(raw);
     setReports(prev => [newReport, ...prev]);
     addNotification('success', 'Report saved successfully');
     return newReport;
@@ -155,7 +199,8 @@ export function AppProvider({ children }) {
     if (!query.trim()) {
       return reports;
     }
-    return await reportApi.searchReports(query);
+    const raw = await reportApi.searchReports(query);
+    return raw.map(normaliseReport);
   }, [reports]);
 
   // AI/Chat functions
@@ -172,7 +217,8 @@ export function AppProvider({ children }) {
       sql: result.sql,
       insights: result.insights,
       createdAt: new Date().toISOString(),
-      isPinned: false
+      isPinned: false,
+      is_pinned: false,
     };
     setCurrentReport(newReport);
     return newReport;

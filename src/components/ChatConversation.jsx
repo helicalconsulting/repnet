@@ -230,12 +230,20 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setLoadingHistory(true);
         try {
           const details = await sessionsApi.get(sessionId);
-          // Map backend context window turns to frontend messages format
+          // Map backend context window turns to frontend messages format preserving rich fields
           const loaded = (details.context_window || []).map((turn, idx) => ({
             id: `history-${idx}-${Date.now()}`,
             role: turn.role === "user" ? "user" : "ai",
             content: turn.content,
-            type: "conversational",
+            type: turn.type || "conversational",
+            sql: turn.sql || null,
+            rows: turn.rows || null,
+            rowsReturned: turn.rows_returned || turn.rowsReturned || null,
+            executionTime: turn.execution_time_ms || turn.executionTime || null,
+            templateId: turn.template_id || turn.templateId || null,
+            templateDescription: turn.template_description || turn.templateDescription || "",
+            extractedParams: turn.extracted_params || turn.extractedParams || {},
+            showReportBtn: turn.type === "executable",
           }));
           setMessages(loaded);
           setCurrentSessionId(sessionId);

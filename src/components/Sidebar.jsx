@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  BarChart3, 
-  Bookmark, 
-  Settings, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  BarChart3,
+  Bookmark,
+  Settings,
   UserCircle,
   PanelLeftClose,
   Plus,
@@ -104,9 +104,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           />
         )}
       </AnimatePresence>
-      <motion.aside 
+      <motion.aside
         initial={{ width: 280, x: 0 }}
-        animate={{ 
+        animate={{
           width: isOpen ? 300 : 0,
           x: isOpen ? 0 : -300,
           opacity: isOpen ? 1 : 0
@@ -117,17 +117,17 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         <div className="p-5 flex flex-col h-full min-w-[300px]">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <div 
-              onClick={() => navigate('/')} 
+            <div
+              onClick={() => navigate('/')}
               className="flex items-center gap-3 cursor-pointer group"
             >
               <div className="flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border group-hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] transition-shadow">
                 <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
               </div>
               <div>
-                <motion.h1 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
+                <motion.h1
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors"
                 >
                   Repnex
@@ -135,7 +135,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                 <p className="text-[10px] text-muted-foreground">AI-Powered ERP Reports</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsOpen(false)}
               className="p-2 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground rounded-lg transition-colors"
             >
@@ -144,17 +144,17 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           </div>
 
           {/* New Chat Button */}
-          <button 
+          <button
             onClick={() => navigate('/chat', { state: { createNew: true } })}
             className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
           >
-             <span className="flex items-center gap-2.5 text-sm">
-               <div className="bg-white/20 p-1.5 rounded-lg">
-                 <Plus className="w-4 h-4" />
-               </div>
-               New Report Chat
-             </span>
-             <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">⌘N</span>
+            <span className="flex items-center gap-2.5 text-sm">
+              <div className="bg-white/20 p-1.5 rounded-lg">
+                <Plus className="w-4 h-4" />
+              </div>
+              New Report Chat
+            </span>
+            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">⌘N</span>
           </button>
 
           {/* Navigation */}
@@ -172,7 +172,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                   )}
                 >
                   {isActive && (
-                    <motion.div 
+                    <motion.div
                       layoutId="active-navLine"
                       className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-full"
                       initial={false}
@@ -190,7 +190,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
           {/* Recent Chats */}
           <div className="mt-6 flex-1 overflow-hidden flex flex-col">
-            <button 
+            <button
               onClick={() => setShowHistory(!showHistory)}
               className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
             >
@@ -205,7 +205,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               </span>
               <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showHistory && "rotate-90")} />
             </button>
-            
+
             <AnimatePresence>
               {showHistory && (
                 <motion.div
@@ -277,7 +277,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               <UserCircle className="w-5 h-5" strokeWidth={2} />
               <span className="font-medium text-sm">Profile</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/settings')}
               className={clsx(
                 "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all",

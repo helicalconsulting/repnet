@@ -231,7 +231,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Load session history ───────────────────────────────────────────
   useEffect(() => {
     if (sessionId) {
-      if (sessionId === currentSessionId && messages.length > 0) {
+      if (sessionId === currentSessionId) {
         return;
       }
       const loadHistory = async () => {
@@ -264,10 +264,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       };
       loadHistory();
     } else {
-      setMessages([]);
-      setCurrentSessionId(null);
+      if (currentSessionId !== null) {
+        setMessages([]);
+        setCurrentSessionId(null);
+      }
     }
-  }, [sessionId, addNotification, currentSessionId, messages.length]);
+  }, [sessionId, currentSessionId, addNotification]);
 
   // Process initial query
   useEffect(() => {

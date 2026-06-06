@@ -73,10 +73,10 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     return () => window.removeEventListener('repnex-sessions-updated', handleUpdate);
   }, [fetchSessions]);
 
-  // Refetch on every route change so sidebar stays in sync
+  // Refetch when sidebar opens (covers returning from other pages)
   useEffect(() => {
-    fetchSessions();
-  }, [location.pathname, fetchSessions]);
+    if (isOpen) fetchSessions();
+  }, [isOpen, fetchSessions]);
 
   const handleDeleteSession = async (e, sessionId) => {
     e.stopPropagation();

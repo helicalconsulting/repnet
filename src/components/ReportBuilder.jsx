@@ -79,19 +79,8 @@ const dummyData = [
   { id: "8", product: "Memory Matrix", revenue: 19000, margin: 33, quantity: 189, category: "Memory" }
 ];
 
-const mockSQL = `SELECT 
-  p.name as product,
-  SUM(s.amount) as revenue,
-  ((SUM(s.amount) - SUM(p.cost * s.quantity)) / SUM(s.amount) * 100) as margin,
-  SUM(s.quantity) as quantity,
-  p.category
-FROM products p
-JOIN sales_transactions s ON p.id = s.product_id
-WHERE s.date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY p.id, p.name, p.category
-HAVING margin > 10
-ORDER BY revenue DESC
-LIMIT 10;`;
+const fallbackSQL = `-- No SQL available for this report.
+-- Connect a database and run a query to see generated SQL.`;
 
 function SortableColumn({ id, title }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `col-${id}` });
@@ -188,10 +177,16 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
   const isNewReport = !reportData?.id || String(reportData.id).startsWith('rep-');
   
-  const [data, setData] = useState(() => reportData?.rows || reportData?.data || dummyData);
+  // Ensure each row has a stable `__rowId` for drag-and-drop
+  const ensureRowIds = (rows) => rows.map((row, idx) => ({
+    ...row,
+    __rowId: row.id ?? row.__rowId ?? `row-${idx}`,
+  }));
+
+  const [data, setData] = useState(() => ensureRowIds(reportData?.rows || reportData?.data || dummyData));
   const [columns, setColumns] = useState(() => {
     const initData = reportData?.rows || reportData?.data || dummyData;
-    return initData.length > 0 ? Object.keys(initData[0]).filter(k => k !== 'id') : [];
+    return initData.length > 0 ? Object.keys(initData[0]).filter(k => k !== 'id' && k !== '__rowId') : [];
   });
   
   const availableKeys = columns.filter(k => data.length > 0 && typeof data[0][k] === 'number');
@@ -249,8 +244,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         setColumns(arrayMove(columns, oldIndex, newIndex));
       } 
       else if (active.id.toString().startsWith('row-') && over.id.toString().startsWith('row-')) {
-        const oldIndex = data.findIndex(r => `row-${r.id}` === active.id);
-        const newIndex = data.findIndex(r => `row-${r.id}` === over.id);
+        const oldIndex = data.findIndex(r => `row-${r.__rowId}` === active.id);
+        const newIndex = data.findIndex(r => `row-${r.__rowId}` === over.id);
         setData(arrayMove(data, oldIndex, newIndex));
       }
     }
@@ -277,7 +272,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
     setIsSaving(true);
     try {
-      const columnsPayload = columns.map((colName, idx) => ({
+      const columnsPayload = columns.filter(c => c !== '__rowId').map((colName, idx) => ({
         column_name: colName,
         display_name: colName.charAt(0).toUpperCase() + colName.slice(1),
         position: idx,
@@ -309,7 +304,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   };
 
   const handleExportCSV = () => {
-    const headers = Object.keys(data[0]);
+    const headers = Object.keys(data[0]).filter(k => k !== '__rowId');
     const csvContent = [
       headers.join(','),
       ...data.map(row => headers.map(h => row[h]).join(','))
@@ -324,8 +319,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     addNotification('success', 'CSV exported successfully');
   };
 
+  const actualSQL = reportData?.sql || fallbackSQL;
+
   const handleCopySQL = () => {
-    navigator.clipboard.writeText(mockSQL);
+    navigator.clipboard.writeText(actualSQL);
     addNotification('success', 'SQL copied to clipboard');
   };
 
@@ -730,10 +727,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                         </SortableContext>
                       </tr>
                     </thead>
-                    <SortableContext items={data.map(r => `row-${r.id}`)} strategy={verticalListSortingStrategy}>
+                    <SortableContext items={data.map(r => `row-${r.__rowId}`)} strategy={verticalListSortingStrategy}>
                       <tbody>
                         {data.map(row => (
-                          <SortableRow key={`row-${row.id}`} rowId={row.id} row={row} columns={columns} />
+                          <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
                         ))}
                       </tbody>
                     </SortableContext>
@@ -808,11 +805,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               </div>
               <div className="p-4">
                 <pre className="bg-black/5 dark:bg-black/40 p-4 rounded-xl overflow-x-auto text-sm font-mono text-foreground/80">
-                  {mockSQL}
+                  {actualSQL}
                 </pre>
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="w-4 h-4" />
-                  <span>Tables queried: products, sales_transactions</span>
+                  <span>Template: {reportData?.templateId || 'N/A'} • {data.length} rows loaded</span>
                 </div>
               </div>
             </motion.div>

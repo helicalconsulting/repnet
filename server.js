@@ -522,6 +522,69 @@ app.post('/api/organizations/onboarding', requireAuth, async (req, res, next) =>
         teamSize: organization.teamSize || '',
       },
     });
+
+    // Fire-and-forget: send welcome email to user + notification to admins
+    try {
+      const transporter = createTransporter();
+      const userName = updatedUser.name || updatedUser.email.split('@')[0];
+
+      // Welcome email to user
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: updatedUser.email,
+        subject: `🎉 Welcome to Repnex — ${organization.name} is ready!`,
+        html: `
+          <div style="font-family:'Segoe UI',Roboto,sans-serif;max-width:520px;margin:40px auto;
+                      background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#2563eb,#3b82f6);padding:32px 24px;text-align:center;">
+              <h1 style="margin:0;color:#fff;font-size:22px;">Welcome to Repnex! 🎉</h1>
+              <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">AI-Powered ERP Intelligence</p>
+            </div>
+            <div style="padding:32px 24px;">
+              <p style="color:#374151;font-size:15px;line-height:1.6;">Hi <strong>${userName}</strong>,</p>
+              <p style="color:#6b7280;font-size:14px;line-height:1.6;">
+                Your organization <strong>${organization.name}</strong> is all set up! You can now:
+              </p>
+              <ul style="color:#6b7280;font-size:14px;line-height:2;">
+                <li>Connect your ERP databases</li>
+                <li>Ask questions in plain English</li>
+                <li>Generate instant reports & dashboards</li>
+              </ul>
+              <div style="text-align:center;margin:28px 0;">
+                <a href="https://repnex.ai/dashboard"
+                   style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);
+                          color:#fff;text-decoration:none;padding:14px 36px;border-radius:12px;
+                          font-size:15px;font-weight:600;">
+                  Go to Dashboard →
+                </a>
+              </div>
+            </div>
+          </div>
+        `,
+      });
+
+      // Admin notification
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: SMTP_TO,
+        subject: `🏢 New Organization Onboarded — ${organization.name}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;border:1px solid #eee;padding:20px;border-radius:10px;">
+            <h2 style="color:#0055FF;">New Organization Onboarded</h2>
+            <hr />
+            <p><strong>Organization:</strong> ${organization.name}</p>
+            <p><strong>Industry:</strong> ${organization.industry || 'N/A'}</p>
+            <p><strong>ERP System:</strong> ${organization.erpSystem || 'N/A'}</p>
+            <p><strong>Team Size:</strong> ${organization.teamSize || 'N/A'}</p>
+            <p><strong>User:</strong> ${updatedUser.email}</p>
+            <br />
+            <p style="font-size:12px;color:#666;">Automated notification from Repnex.</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error('Onboarding email error (non-fatal):', emailError.message);
+    }
   } catch (error) {
     next(error);
   }

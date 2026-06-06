@@ -302,7 +302,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               rowsReturned: response.rows_returned,
               executionTime: response.execution_time_ms,
               templateId: response.template_id,
-              templateDescription: response.template_description || msg?.templateDescription || "",
+              templateDescription: response.template_description || "",
               extractedParams: params || {},
               showReportBtn: true,
             },

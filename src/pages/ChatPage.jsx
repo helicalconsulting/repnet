@@ -1,85 +1,120 @@
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import AIChatArea from '../components/AIChatArea';
 import ChatConversation from '../components/ChatConversation';
-import ReportBuilder from '../components/ReportBuilder';
-import RightPanel from '../components/RightPanel';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
-import { sessionsApi } from '../services/api';
 
 const isValidUuid = (str) =>
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
 
 export default function ChatPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { id } = useParams();
 
-  const [chatState, setChatState] = useState('landing');
-  const [activeQuery, setActiveQuery] = useState('');
+  const [chatState, setChatState]               = useState('landing');
+  const [activeQuery, setActiveQuery]           = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState(null);
-  const [reportData, setReportData] = useState(null);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
-  // Route-driven state: URL has session ID → load that session
-  // URL is /chat with triggerQuery → start new chat with that query
-  // URL is /chat plain → show landing
+  /**
+   * conversationKey drives ChatConversation's React key:
+   *  - Set to a unique timestamp   → fresh mount (new chat from landing)
+   *  - Set to the session UUID     → fresh mount (loading existing session)
+   *  - NOT changed on session-create navigation → component stays alive mid-query
+   */
+  const [conversationKey, setConversationKey] = useState(null);
+
+  /**
+   * justCreatedSessionRef is set to true immediately before we navigate to
+   * /chat/:newId after creating a session. The useEffect below checks this flag
+   * and skips remounting the component, so the in-progress query can finish.
+   */
+  const justCreatedSessionRef = useRef(false);
+
+  // ── Route-driven initialisation ──────────────────────────────────────
   useEffect(() => {
     if (id && isValidUuid(id)) {
+      if (justCreatedSessionRef.current) {
+        // We just created this session; the URL was updated via navigate({ replace })
+        // Do NOT change conversationKey — keep the component alive so the query finishes
+        justCreatedSessionRef.current = false;
+        setSelectedSessionId(id);
+        return;
+      }
+      // User navigated to an existing session (sidebar, direct URL, bookmark)
+      // Force a clean mount so the history loader runs fresh
       setSelectedSessionId(id);
       setChatState('conversation');
       setActiveQuery('');
-    } else if (location.state?.triggerQuery) {
-      // New chat triggered from elsewhere
-      setSelectedSessionId(null);
-      setChatState('conversation');
-      setActiveQuery(location.state.triggerQuery);
+      setConversationKey(id);
     } else {
+      // /chat with no id → show landing
       setSelectedSessionId(null);
       setChatState('landing');
       setActiveQuery('');
+      setConversationKey(null);
     }
-  }, [id, location.state]);
+  }, [id]); // Only id matters — location.state was causing spurious re-runs
 
-  // Landing page search → always start a new chat (clean, simple UX like ChatGPT)
+  // ── Handlers ─────────────────────────────────────────────────────────
+
+  /** User submits a query from the landing page → always a brand-new isolated chat */
   const handleSearch = (query) => {
     setActiveQuery(query);
     setSelectedSessionId(null);
     setChatState('conversation');
+    setConversationKey(`new-${Date.now()}`); // unique key forces a fresh ChatConversation
   };
 
+  /**
+   * ChatConversation calls this once the backend session is created.
+   * We set the ref BEFORE navigate so the useEffect knows to skip remounting.
+   */
+  const handleSessionCreated = (newId) => {
+    justCreatedSessionRef.current = true;   // ← critical: prevents remount
+    setSelectedSessionId(newId);
+    navigate(`/chat/${newId}`, { replace: true }); // URL = shareable link
+  };
+
+  /** "View Interactive Report" button inside chat */
   const handleOpenReport = (query, data = null) => {
-    setActiveQuery(query);
-    setReportData(data);
-    setChatState('report');
-    setIsRightPanelOpen(true);
     navigate('/report/new', { state: { query, data } });
   };
 
-  const handleSessionCreated = (newId) => {
-    setSelectedSessionId(newId);
-  };
-
+  // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex w-full h-full relative overflow-hidden">
       <AnimatePresence mode="wait">
+
         {chatState === 'landing' && (
-          <Motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col h-full overflow-y-auto w-full">
+          <Motion.div
+            key="landing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col h-full overflow-y-auto w-full"
+          >
             <AIChatArea onSearch={handleSearch} />
           </Motion.div>
         )}
 
-        {chatState === 'conversation' && (
-          <Motion.div key="conv" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col h-full w-full overflow-hidden">
-            <ChatConversation 
-              key="chat-conversation"
-              initialQuery={activeQuery} 
-              onOpenReport={handleOpenReport} 
-              sessionId={selectedSessionId} 
+        {chatState === 'conversation' && conversationKey && (
+          <Motion.div
+            key="conv"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col h-full w-full overflow-hidden"
+          >
+            <ChatConversation
+              key={conversationKey}           // fresh mount only when key changes
+              initialQuery={activeQuery}
+              onOpenReport={handleOpenReport}
+              sessionId={selectedSessionId}
               onSessionCreated={handleSessionCreated}
             />
           </Motion.div>
         )}
+
       </AnimatePresence>
     </div>
   );

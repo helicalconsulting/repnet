@@ -53,6 +53,8 @@ export default function AuthPage({ onAuthSuccess }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState(null);
   const [mfaCode, setMfaCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   const isSignIn = mode === 'signin';
   const isMfaStep = Boolean(mfaChallenge);
   const hasGoogleClient = Boolean(GOOGLE_CLIENT_ID);
@@ -84,12 +86,15 @@ export default function AuthPage({ onAuthSuccess }) {
     setErrorMessage('');
     setShowPassword(false);
     resetMfaStep();
+    setOtpSent(false);
+    setOtpCode('');
     setFormData((prev) => ({
       ...prev,
       password: '',
       confirmPassword: '',
     }));
   };
+
 
   const validateForm = () => {
     if (!formData.email.trim() || !formData.password.trim()) {
@@ -144,26 +149,39 @@ export default function AuthPage({ onAuthSuccess }) {
     setIsSubmitting(true);
 
     try {
-      const authResponse = isSignIn
-        ? await authApi.signIn({
-            email: formData.email,
-            password: formData.password,
-          })
-        : await authApi.signUp({
+      if (isSignIn) {
+        const authResponse = await authApi.signIn({
+          email: formData.email,
+          password: formData.password,
+        });
+        handleAuthResponse(authResponse);
+      } else {
+        if (!otpSent) {
+          await authApi.sendOtp({ email: formData.email });
+          setOtpSent(true);
+        } else {
+          if (!otpCode.trim() || otpCode.trim().length !== 6) {
+            setErrorMessage('Please enter the 6-digit verification code.');
+            setIsSubmitting(false);
+            return;
+          }
+          const authResponse = await authApi.signUp({
             name: formData.name.trim(),
             company: formData.company.trim(),
             email: formData.email,
             password: formData.password,
-            mfaEnabled: true,
+            otp: otpCode.trim(),
           });
-
-      handleAuthResponse(authResponse);
+          handleAuthResponse(authResponse);
+        }
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Authentication failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleSsoSignIn = async (providerId) => {
     setErrorMessage('');
@@ -370,125 +388,179 @@ export default function AuthPage({ onAuthSuccess }) {
 
             {!isMfaStep ? (
               <>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <AnimatePresence mode="wait" initial={false}>
-                    {!isSignIn && (
-                      <Motion.div
-                        key="signup-fields"
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        className="space-y-4"
-                      >
-                        <div>
-                          <label htmlFor="full-name" className="mb-1.5 block text-sm font-medium text-foreground/85">
-                            Full name
-                          </label>
-                          <input
-                            id="full-name"
-                            type="text"
-                            value={formData.name}
-                            onChange={(event) => updateField('name', event.target.value)}
-                            placeholder="Keshav Sharma"
-                            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="company" className="mb-1.5 block text-sm font-medium text-foreground/85">
-                            Company (optional)
-                          </label>
-                          <input
-                            id="company"
-                            type="text"
-                            value={formData.company}
-                            onChange={(event) => updateField('company', event.target.value)}
-                            placeholder="Repnex Labs"
-                            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                          />
-                        </div>
-                      </Motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div>
-                    <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground/85">
-                      Work email
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(event) => updateField('email', event.target.value)}
-                      placeholder="you@company.com"
-                      className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                      autoComplete="email"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <label htmlFor="password" className="block text-sm font-medium text-foreground/85">
-                        Password
-                      </label>
-                      {isSignIn && (
-                        <a href="/forgot-password" className="text-xs font-medium text-primary hover:text-primary/80">
-                          Forgot password?
-                        </a>
-                      )}
+                {otpSent && !isSignIn ? (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                      <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-primary">
+                        <KeyRound className="h-4 w-4" />
+                        Verify your email
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        We sent a 6-digit verification code to <span className="font-semibold text-foreground">{formData.email}</span>.
+                      </p>
                     </div>
-                    <div className="relative">
-                      <input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(event) => updateField('password', event.target.value)}
-                        placeholder="Minimum 8 characters"
-                        className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 pr-12 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                        autoComplete={isSignIn ? 'current-password' : 'new-password'}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors dark:hover:bg-white/10"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
 
-                  {!isSignIn && (
                     <div>
-                      <label htmlFor="confirm-password" className="mb-1.5 block text-sm font-medium text-foreground/85">
-                        Confirm password
+                      <label htmlFor="otp-code" className="mb-1.5 block text-sm font-medium text-foreground/85">
+                        Verification Code (OTP)
                       </label>
                       <input
-                        id="confirm-password"
-                        type="password"
-                        value={formData.confirmPassword}
-                        onChange={(event) => updateField('confirmPassword', event.target.value)}
-                        placeholder="Re-enter your password"
-                        className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                        autoComplete="new-password"
+                        id="otp-code"
+                        type="text"
+                        maxLength={6}
+                        inputMode="numeric"
+                        value={otpCode}
+                        onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ''))}
+                        placeholder="123456"
+                        className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-3 text-center text-xl font-bold tracking-[8px] outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                        autoFocus
                       />
                     </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        {isSignIn ? 'Sign in' : 'Create account'}
-                        <ArrowRight className="h-4 w-4" />
-                      </>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          Verify &amp; Create Account
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setOtpSent(false)}
+                      className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+                    >
+                      ← Back to details
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <AnimatePresence mode="wait" initial={false}>
+                      {!isSignIn && (
+                        <Motion.div
+                          key="signup-fields"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          className="space-y-4"
+                        >
+                          <div>
+                            <label htmlFor="full-name" className="mb-1.5 block text-sm font-medium text-foreground/85">
+                              Full name
+                            </label>
+                            <input
+                              id="full-name"
+                              type="text"
+                              value={formData.name}
+                              onChange={(event) => updateField('name', event.target.value)}
+                              placeholder="Keshav Sharma"
+                              className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="company" className="mb-1.5 block text-sm font-medium text-foreground/85">
+                              Company (optional)
+                            </label>
+                            <input
+                              id="company"
+                              type="text"
+                              value={formData.company}
+                              onChange={(event) => updateField('company', event.target.value)}
+                              placeholder="Repnex Labs"
+                              className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                            />
+                          </div>
+                        </Motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div>
+                      <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground/85">
+                        Work email
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(event) => updateField('email', event.target.value)}
+                        placeholder="you@company.com"
+                        className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                        autoComplete="email"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <label htmlFor="password" className="block text-sm font-medium text-foreground/85">
+                          Password
+                        </label>
+                        {isSignIn && (
+                          <a href="/forgot-password" className="text-xs font-medium text-primary hover:text-primary/80">
+                            Forgot password?
+                          </a>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={formData.password}
+                          onChange={(event) => updateField('password', event.target.value)}
+                          placeholder="Minimum 8 characters"
+                          className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 pr-12 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                          autoComplete={isSignIn ? 'current-password' : 'new-password'}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors dark:hover:bg-white/10"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {!isSignIn && (
+                      <div>
+                        <label htmlFor="confirm-password" className="mb-1.5 block text-sm font-medium text-foreground/85">
+                          Confirm password
+                        </label>
+                        <input
+                          id="confirm-password"
+                          type="password"
+                          value={formData.confirmPassword}
+                          onChange={(event) => updateField('confirmPassword', event.target.value)}
+                          placeholder="Re-enter your password"
+                          className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                          autoComplete="new-password"
+                        />
+                      </div>
                     )}
-                  </button>
-                </form>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          {isSignIn ? 'Sign in' : 'Create account'}
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
 
                 {/* Google Sign-In */}
                 <div className="mt-4">

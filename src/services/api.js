@@ -215,13 +215,21 @@ export const authApi = {
     return _storeTokenPair(response);
   },
 
-  async signUp({ name, company, email, password }) {
+  async signUp({ name, company, email, password, otp }) {
     const response = await request('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ name, company: company || name || email.split('@')[0], email, password }),
+      body: JSON.stringify({ name, company: company || name || email.split('@')[0], email, password, otp }),
     });
     return _storeTokenPair(response);
   },
+
+  async sendOtp({ email }) {
+    return request('/auth/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
 
   async getInvite(token) {
     return request(`/auth/invite?token=${encodeURIComponent(token)}`);

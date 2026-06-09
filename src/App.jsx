@@ -14,6 +14,9 @@ import ConnectionsPage from './pages/ConnectionsPage';
 import LandingPage from './pages/LandingPage';
 import OnboardingPage from './pages/OnboardingPage';
 import SettingsPage from './pages/SettingsPage';
+import AcceptInvitePage from './pages/AcceptInvitePage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
@@ -128,6 +131,8 @@ function App() {
             />
           }
         />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
           path="/onboarding"
           element={
@@ -136,6 +141,11 @@ function App() {
               onOnboardingComplete={handleOnboardingComplete}
             />
           }
+        />
+        {/* Invitation accept — public route, no auth required */}
+        <Route
+          path="/accept-invite"
+          element={<AcceptInvitePage onAuthSuccess={handleAuthSuccess} />}
         />
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
           <Route path="/dashboard" element={<DashboardPage />} />

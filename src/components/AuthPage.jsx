@@ -21,7 +21,7 @@ const defaultFormData = {
   confirmPassword: '',
 };
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = '437812984712-ab7d6f7a8e9c10b11c12d13e14f15g16.apps.googleusercontent.com';
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const THEME_STORAGE_KEY = 'repnex-theme';
 const ssoProviders = [];
@@ -105,6 +105,10 @@ export default function AuthPage({ onAuthSuccess }) {
     }
 
     if (!isSignIn) {
+      if (!/[A-Z]/.test(formData.password) || !/[a-z]/.test(formData.password) || !/\d/.test(formData.password)) {
+        return 'Password must include uppercase, lowercase, and a number.';
+      }
+
       if (formData.name.trim().length < 2) {
         return 'Full name must be at least 2 characters.';
       }
@@ -194,7 +198,7 @@ export default function AuthPage({ onAuthSuccess }) {
     setErrorMessage('');
 
     if (!GOOGLE_CLIENT_ID) {
-      setErrorMessage('Google Sign-In is not configured (missing VITE_GOOGLE_CLIENT_ID).');
+      setErrorMessage('Google Sign-In is not configured.');
       setGoogleLoading(false);
       return;
     }
@@ -422,9 +426,16 @@ export default function AuthPage({ onAuthSuccess }) {
                   </div>
 
                   <div>
-                    <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground/85">
-                      Password
-                    </label>
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <label htmlFor="password" className="block text-sm font-medium text-foreground/85">
+                        Password
+                      </label>
+                      {isSignIn && (
+                        <a href="/forgot-password" className="text-xs font-medium text-primary hover:text-primary/80">
+                          Forgot password?
+                        </a>
+                      )}
+                    </div>
                     <div className="relative">
                       <input
                         id="password"

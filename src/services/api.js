@@ -223,6 +223,10 @@ export const authApi = {
     return _storeTokenPair(response);
   },
 
+  async getInvite(token) {
+    return request(`/auth/invite?token=${encodeURIComponent(token)}`);
+  },
+
   async signOut() {
     try {
       const rt = getRefreshToken();
@@ -264,6 +268,40 @@ export const authApi = {
       body: JSON.stringify({ id_token: idToken }),
     });
     return _storeTokenPair(response);
+  },
+
+  /**
+   * Accept an organization invitation and activate the account.
+   * Token comes from the invite email link (?token=…).
+   * On success, the user is automatically signed in (tokens stored).
+   */
+  async acceptInvite({ token, password }) {
+    const response = await request('/auth/accept-invite', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+    return _storeTokenPair(response);
+  },
+
+  async forgotPassword({ email }) {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async resetPassword({ token, password }) {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
+
+  async changePassword({ currentPassword, newPassword }) {
+    return request('/users/me/password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
   },
 
   getSsoProviders() {

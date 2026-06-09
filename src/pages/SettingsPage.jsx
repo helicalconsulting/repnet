@@ -452,24 +452,11 @@ function SecurityTab({ showToast }) {
     }
     setSaving(true);
     try {
-      // POST /v1/users/me/password
-      const { authApi: localAuthApi } = await import('../services/api');
-      // call the password change endpoint via raw request
-      const token = localStorage.getItem('repnex-auth-token');
-      const res = await fetch('/v1/users/me/password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-      });
-      if (res.status === 204 || res.ok) {
-        showToast('Password changed successfully', 'success');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d?.error?.message || 'Failed to change password');
-      }
+      await authApi.changePassword({ currentPassword, newPassword });
+      showToast('Password changed successfully', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {

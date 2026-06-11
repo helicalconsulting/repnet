@@ -145,7 +145,10 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
           {/* New Chat Button */}
           <button
-            onClick={() => navigate('/chat')}
+            onClick={() => {
+              navigate('/chat');
+              window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+            }}
             className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
           >
             <span className="flex items-center gap-2.5 text-sm">
@@ -165,7 +168,12 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               return (
                 <button
                   key={item.id}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => {
+                    navigate(item.path);
+                    if (item.id === 'chat') {
+                      window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+                    }
+                  }}
                   className={clsx(
                     "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
                     isActive ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"

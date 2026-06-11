@@ -74,6 +74,7 @@ export default function MainLayout({ user, onSignOut }) {
 
   const handleNewChat = () => {
     navigate('/chat');
+    window.dispatchEvent(new CustomEvent('repnex-new-chat'));
   };
 
   return (

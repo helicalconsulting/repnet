@@ -43,6 +43,17 @@ export default function ChatPage() {
     }
   }, [id]);
 
+  useEffect(() => {
+    const handleNewChat = () => {
+      setSelectedSessionId(null);
+      setChatState('landing');
+      setActiveQuery('');
+      setConversationKey(null);
+    };
+    window.addEventListener('repnex-new-chat', handleNewChat);
+    return () => window.removeEventListener('repnex-new-chat', handleNewChat);
+  }, []);
+
   // ── Handlers ──────────────────────────────────────────────────────────
 
   /**

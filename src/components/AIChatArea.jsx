@@ -1,43 +1,43 @@
-import { Paperclip, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, ChevronRight } from "lucide-react";
+import { Paperclip, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, Users, BookOpen, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
 
 const suggestions = [
   {
-    category: "Accounts Payable",
+    category: "AP & Suppliers",
     prompts: [
       { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
       { text: "List overdue supplier invoices as of today", icon: "⚠️" },
-      { text: "Top suppliers by outstanding amount", icon: "🏆" },
-      { text: "Invoices missing purchase order", icon: "🔍" },
+      { text: "Top 10 suppliers by outstanding amount", icon: "🏆" },
+      { text: "Supplier payment history last 3 months", icon: "💳" },
+    ],
+  },
+  {
+    category: "AR & Customers",
+    prompts: [
+      { text: "Customer ageing report with overdue buckets", icon: "📋" },
+      { text: "Top 10 customers by outstanding receivables", icon: "📈" },
+      { text: "Overdue customer invoices older than 60 days", icon: "⚠️" },
+      { text: "Customer payment collection trend this quarter", icon: "💰" },
+    ],
+  },
+  {
+    category: "Cashbook & GL",
+    prompts: [
+      { text: "Cashbook summary for current month", icon: "💵" },
+      { text: "GL journal entries posted today", icon: "📝" },
+      { text: "Trial balance for current period", icon: "📑" },
+      { text: "Bank reconciliation status report", icon: "🏦" },
     ],
   },
   {
     category: "Sales & Revenue",
     prompts: [
-      { text: "Sales orders by customer this month", icon: "💰" },
-      { text: "Top 10 customers by revenue", icon: "📈" },
-      { text: "Backorder analysis by stock code", icon: "📦" },
-      { text: "Outstanding sales orders summary", icon: "📋" },
-    ],
-  },
-  {
-    category: "Inventory & Stock",
-    prompts: [
-      { text: "Stock on hand valuation summary", icon: "🏭" },
-      { text: "Slow moving inventory last 6 months", icon: "🐌" },
-      { text: "Negative stock items report", icon: "⚠️" },
-      { text: "Purchase order receipts this month", icon: "📥" },
-    ],
-  },
-  {
-    category: "Finance & GL",
-    prompts: [
-      { text: "Trial balance for current period", icon: "📑" },
-      { text: "GL journal entries today", icon: "📝" },
-      { text: "P&L summary this month", icon: "💹" },
-      { text: "Cash flow projection next 30 days", icon: "💵" },
+      { text: "Sales orders by customer this month", icon: "🛒" },
+      { text: "Top 10 customers by revenue", icon: "🏆" },
+      { text: "Monthly revenue trend last 6 months", icon: "📈" },
+      { text: "Outstanding sales orders summary", icon: "📦" },
     ],
   },
 ];
@@ -54,10 +54,10 @@ export default function AIChatArea({ onSearch }) {
   const activeConn = connections.find(c => c.id === activeConnection);
 
   const categoryIcons = {
-    "Accounts Payable": <DollarSign className="w-4 h-4" />,
+    "AP & Suppliers": <DollarSign className="w-4 h-4" />,
+    "AR & Customers": <Users className="w-4 h-4" />,
+    "Cashbook & GL": <BookOpen className="w-4 h-4" />,
     "Sales & Revenue": <TrendingUp className="w-4 h-4" />,
-    "Inventory & Stock": <Package className="w-4 h-4" />,
-    "Finance & GL": <Zap className="w-4 h-4" />,
   };
 
   // ── Handlers ────────────────────────────────────────────────────────

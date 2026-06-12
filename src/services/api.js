@@ -453,6 +453,34 @@ export const reportApi = {
     const response = await request(`/reports?search=${encodeURIComponent(query)}`);
     return Array.isArray(response) ? response : response.reports || [];
   },
+
+  // ── Scheduled Refresh ────────────────────────────────────────────────
+  /** Set or clear auto-refresh schedule. intervalDays: 0/null=off, 1/2/3=days */
+  async setSchedule(id, { intervalDays, connectionId }) {
+    return request(`/reports/${id}/schedule`, {
+      method: 'PATCH',
+      body: JSON.stringify({ interval_days: intervalDays ?? null, connection_id: connectionId ?? null }),
+    });
+  },
+
+  /** Manually trigger a refresh, save result as a snapshot. Returns SnapshotDetailRead */
+  async refreshReport(id, connectionId) {
+    return request(`/reports/${id}/refresh`, {
+      method: 'POST',
+      body: JSON.stringify({ connection_id: connectionId }),
+    });
+  },
+
+  /** List past snapshots (metadata only, no row data). Returns SnapshotRead[] */
+  async getSnapshots(id, limit = 20) {
+    const res = await request(`/reports/${id}/snapshots?limit=${limit}`);
+    return Array.isArray(res) ? res : [];
+  },
+
+  /** Get a single snapshot including full row data. Returns SnapshotDetailRead */
+  async getSnapshotDetail(reportId, snapshotId) {
+    return request(`/reports/${reportId}/snapshots/${snapshotId}`);
+  },
 };
 
 // ── AI API ────────────────────────────────────────────────────────────

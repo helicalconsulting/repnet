@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import ScheduleModal from "./ScheduleModal";
 import {
   DndContext,
   closestCenter,
@@ -47,6 +48,8 @@ import {
   FileText,
   Zap,
   Calendar,
+  CalendarClock,
+  RefreshCw,
 } from "lucide-react";
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -107,7 +110,7 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 
 // ── Report Card ──────────────────────────────────────────────────────────────
 
-function SortableReportCard({ report, onUnpin, onOpen }) {
+function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: report.id });
   const [copied, setCopied] = useState(false);
@@ -185,6 +188,17 @@ function SortableReportCard({ report, onUnpin, onOpen }) {
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
           <button
+            onClick={() => onSchedule?.(report)}
+            title="Schedule auto-refresh"
+            className={`p-1.5 rounded-lg transition-colors ${
+              report.refresh_interval_days > 0
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
+            }`}
+          >
+            <CalendarClock className="w-3.5 h-3.5" />
+          </button>
+          <button
             onClick={() => onUnpin?.(report.id)}
             title="Unpin from dashboard"
             className="p-1.5 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-lg transition-colors"
@@ -248,9 +262,28 @@ function SortableReportCard({ report, onUnpin, onOpen }) {
         className="px-4 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground cursor-pointer"
         onClick={() => onOpen?.(report)}
       >
-        <div className="flex items-center gap-1.5">
-          <Clock className="w-3 h-3 shrink-0" />
-          <span>{fmtDate(report.createdAt || report.created_at)}</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3 h-3 shrink-0" />
+            <span>{fmtDate(report.createdAt || report.created_at)}</span>
+          </div>
+          {/* Schedule badge */}
+          {report.refresh_interval_days > 0 && (
+            <div className="flex items-center gap-1 text-primary/70">
+              <CalendarClock className="w-3 h-3 shrink-0" />
+              <span>
+                {report.refresh_interval_days === 1 ? "Daily" : `Every ${report.refresh_interval_days}d`}
+                {report.next_refresh_at && (
+                  <span className="text-muted-foreground/50 ml-1">
+                    · next {new Date(report.next_refresh_at) > new Date()
+                      ? `in ${Math.ceil((new Date(report.next_refresh_at) - Date.now()) / 86400000)}d`
+                      : "soon"
+                    }
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-primary/80 font-medium hover:text-primary">
           <ExternalLink className="w-3 h-3" />
@@ -274,6 +307,7 @@ export default function Dashboard() {
   const [filterType, setFilterType] = useState("all");
   const [showAllReports, setShowAllReports] = useState(false);
   const [statDays, setStatDays] = useState(30); // 7 | 10 | 30 | 90
+  const [scheduleReport, setScheduleReport] = useState(null); // report to schedule
 
   // Sync from context whenever reports change
   useEffect(() => {
@@ -340,6 +374,17 @@ export default function Dashboard() {
 
   const handleOpen = (report) => {
     navigate(`/report/${report.id}`);
+  };
+
+  const handleScheduleSaved = (updatedReport) => {
+    // Update local state with new schedule fields
+    setAllReports((prev) =>
+      prev.map((r) => (r.id === updatedReport.id ? { ...r, ...updatedReport } : r))
+    );
+    setReports((prev) =>
+      prev.map((r) => (r.id === updatedReport.id ? { ...r, ...updatedReport } : r))
+    );
+    setScheduleReport(null);
   };
 
   // ── Filtered list ─────────────────────────────────────────────────────────
@@ -545,6 +590,7 @@ export default function Dashboard() {
                       report={report}
                       onUnpin={handleUnpin}
                       onOpen={handleOpen}
+                      onSchedule={(r) => setScheduleReport(r)}
                     />
                   ))}
                 </AnimatePresence>
@@ -608,6 +654,15 @@ export default function Dashboard() {
           </DndContext>
         )}
       </div>
+
+      {/* Schedule Modal */}
+      {scheduleReport && (
+        <ScheduleModal
+          report={scheduleReport}
+          onClose={() => setScheduleReport(null)}
+          onSaved={handleScheduleSaved}
+        />
+      )}
     </div>
   );
 }

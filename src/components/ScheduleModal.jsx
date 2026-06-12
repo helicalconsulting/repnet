@@ -11,55 +11,22 @@ import {
   Loader2,
   ChevronDown,
   Zap,
+  CalendarClock,
+  Ban,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { reportApi, databaseApi } from "../services/api";
 
-// ── Interval option definitions ───────────────────────────────────────────────
-const INTERVAL_OPTIONS = [
-  {
-    value: 0,
-    label: "Manual Only",
-    desc: "Refresh only when you click the button",
-    icon: "🖱️",
-    color: "text-muted-foreground",
-    bg: "bg-muted/40",
-    border: "border-border",
-    activeBg: "bg-muted/80",
-    activeBorder: "border-foreground/30",
-  },
-  {
-    value: 1,
-    label: "Daily",
-    desc: "Auto-refresh every 24 hours",
-    icon: "⚡",
-    color: "text-amber-500",
-    bg: "bg-amber-500/5",
-    border: "border-amber-500/20",
-    activeBg: "bg-amber-500/15",
-    activeBorder: "border-amber-500",
-  },
-  {
-    value: 2,
-    label: "Every 2 Days",
-    desc: "Auto-refresh every 48 hours",
-    icon: "📅",
-    color: "text-blue-500",
-    bg: "bg-blue-500/5",
-    border: "border-blue-500/20",
-    activeBg: "bg-blue-500/15",
-    activeBorder: "border-blue-500",
-  },
-  {
-    value: 3,
-    label: "Every 3 Days",
-    desc: "Auto-refresh every 72 hours",
-    icon: "🗓️",
-    color: "text-violet-500",
-    bg: "bg-violet-500/5",
-    border: "border-violet-500/20",
-    activeBg: "bg-violet-500/15",
-    activeBorder: "border-violet-500",
-  },
+// ── Quick preset pills ─────────────────────────────────────────────────────────
+const PRESETS = [
+  { label: "Off", value: 0, icon: Ban },
+  { label: "1d", value: 1, icon: CalendarClock },
+  { label: "2d", value: 2, icon: CalendarClock },
+  { label: "3d", value: 3, icon: CalendarClock },
+  { label: "7d", value: 7, icon: CalendarClock },
+  { label: "14d", value: 14, icon: CalendarClock },
+  { label: "30d", value: 30, icon: CalendarClock },
 ];
 
 function fmtDateTime(dateStr) {
@@ -73,69 +40,105 @@ function fmtDateTime(dateStr) {
   });
 }
 
-function fmtRelative(dateStr) {
-  if (!dateStr) return null;
-  const diff = new Date(dateStr).getTime() - Date.now();
+function fmtRelative(date) {
+  if (!date) return null;
+  const diff = new Date(date).getTime() - Date.now();
   const absDiff = Math.abs(diff);
-  const mins = Math.floor(absDiff / 60000);
-  const hrs = Math.floor(absDiff / 3600000);
   const days = Math.floor(absDiff / 86400000);
-
+  const hrs = Math.floor(absDiff / 3600000);
+  const mins = Math.floor(absDiff / 60000);
   if (days > 0) return diff > 0 ? `in ${days}d` : `${days}d ago`;
   if (hrs > 0) return diff > 0 ? `in ${hrs}h` : `${hrs}h ago`;
-  return diff > 0 ? `in ${mins}m` : `${mins}m ago`;
+  return diff > 0 ? `in ${mins}m` : `just now`;
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export default function ScheduleModal({ report, onClose, onSaved }) {
-  const [intervalDays, setIntervalDays] = useState(report?.refresh_interval_days ?? 0);
-  const [connectionId, setConnectionId] = useState(report?.auto_refresh_connection_id ?? "");
+  const initial = report?.refresh_interval_days ?? 0;
+  const [intervalDays, setIntervalDays] = useState(initial);
+  const [customInput, setCustomInput] = useState(
+    initial > 0 && !PRESETS.some((p) => p.value === initial) ? String(initial) : ""
+  );
+  const [useCustom, setUseCustom] = useState(
+    initial > 0 && !PRESETS.some((p) => p.value === initial)
+  );
+
+  const [connectionId, setConnectionId] = useState(
+    report?.auto_refresh_connection_id ?? ""
+  );
   const [connections, setConnections] = useState([]);
   const [loadingConns, setLoadingConns] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(null); // null | "success" | "error"
+  const [saveStatus, setSaveStatus] = useState(null);
   const [connDropOpen, setConnDropOpen] = useState(false);
 
-  // Load connections
+  // Effective interval days value
+  const effectiveDays = useCustom
+    ? Math.max(0, Math.min(365, parseInt(customInput) || 0))
+    : intervalDays;
+
   useEffect(() => {
-    databaseApi.getConnections().then((data) => {
-      setConnections(data || []);
-      setLoadingConns(false);
-    }).catch(() => setLoadingConns(false));
+    databaseApi
+      .getConnections()
+      .then((d) => setConnections(d || []))
+      .catch(() => {})
+      .finally(() => setLoadingConns(false));
   }, []);
 
   const selectedConn = connections.find((c) => c.id === connectionId);
+
+  const handlePresetClick = (val) => {
+    setUseCustom(false);
+    setCustomInput("");
+    setIntervalDays(val);
+  };
+
+  const handleCustomChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    setCustomInput(raw);
+    setUseCustom(true);
+    setIntervalDays(0); // deselect preset
+  };
+
+  const handleStepper = (delta) => {
+    const current = effectiveDays;
+    const next = Math.max(0, Math.min(365, current + delta));
+    setUseCustom(true);
+    setCustomInput(String(next));
+    setIntervalDays(0);
+  };
 
   const handleSave = async () => {
     setSaving(true);
     setSaveStatus(null);
     try {
       const updated = await reportApi.setSchedule(report.id, {
-        intervalDays: intervalDays || null,
+        intervalDays: effectiveDays || null,
         connectionId: connectionId || null,
       });
       setSaveStatus("success");
       onSaved?.(updated);
-      setTimeout(() => onClose(), 1200);
-    } catch (err) {
-      console.error(err);
+      setTimeout(() => onClose(), 1000);
+    } catch {
       setSaveStatus("error");
     } finally {
       setSaving(false);
     }
   };
 
-  // Compute next refresh preview
   const nextPreview =
-    intervalDays > 0 && connectionId
-      ? new Date(Date.now() + intervalDays * 86400000)
+    effectiveDays > 0 && connectionId
+      ? new Date(Date.now() + effectiveDays * 86400000)
       : null;
+
+  const isOff = effectiveDays === 0;
+  const canSave = isOff || (effectiveDays > 0 && !!connectionId);
 
   return (
     <AnimatePresence>
       {/* Backdrop */}
       <motion.div
-        key="backdrop"
+        key="bd"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -146,24 +149,26 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
       {/* Modal */}
       <motion.div
         key="modal"
-        initial={{ opacity: 0, scale: 0.94, y: 12 }}
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 12 }}
-        transition={{ type: "spring", duration: 0.35 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        transition={{ type: "spring", duration: 0.3 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
       >
         <div
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
         >
-          {/* Header */}
+          {/* ── Header ─────────────────────────────────────────────────── */}
           <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-violet-500/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-primary" />
+                <CalendarClock className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-foreground">Schedule Auto-Refresh</h2>
+                <h2 className="text-base font-bold text-foreground">
+                  Schedule Auto-Refresh
+                </h2>
                 <p className="text-xs text-muted-foreground truncate max-w-[220px]">
                   {report?.name || "Report"}
                 </p>
@@ -177,53 +182,92 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
             </button>
           </div>
 
-          {/* Body */}
-          <div className="p-6 space-y-6">
+          {/* ── Body ───────────────────────────────────────────────────── */}
+          <div className="p-6 space-y-5">
 
-            {/* Interval selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {/* Refresh Interval */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5" />
                 Refresh Interval
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {INTERVAL_OPTIONS.map((opt) => {
-                  const isActive = intervalDays === opt.value;
+
+              {/* Quick presets */}
+              <div className="flex flex-wrap gap-1.5">
+                {PRESETS.map((p) => {
+                  const Icon = p.icon;
+                  const isActive = !useCustom && intervalDays === p.value;
                   return (
                     <button
-                      key={opt.value}
-                      onClick={() => setIntervalDays(opt.value)}
-                      className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border-2 text-left transition-all duration-150 ${
+                      key={p.value}
+                      onClick={() => handlePresetClick(p.value)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                         isActive
-                          ? `${opt.activeBg} ${opt.activeBorder}`
-                          : `${opt.bg} ${opt.border} hover:bg-muted/60`
+                          ? p.value === 0
+                            ? "bg-rose-500/10 border-rose-500/40 text-rose-500"
+                            : "bg-primary/10 border-primary/40 text-primary"
+                          : "bg-muted/30 border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-base leading-none">{opt.icon}</span>
-                        <span className={`text-sm font-semibold ${isActive ? opt.color : "text-foreground"}`}>
-                          {opt.label}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground leading-tight">
-                        {opt.desc}
-                      </p>
-                      {isActive && (
-                        <motion.div
-                          layoutId="interval-check"
-                          className="absolute top-2 right-2"
-                        >
-                          <CheckCircle2 className={`w-4 h-4 ${opt.color}`} />
-                        </motion.div>
-                      )}
+                      <Icon className="w-3 h-3" />
+                      {p.label}
                     </button>
                   );
                 })}
               </div>
+
+              {/* Custom days input */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">
+                  Or enter a custom interval:
+                </p>
+                <div className={`flex items-center gap-0 border rounded-xl overflow-hidden transition-colors ${
+                  useCustom && effectiveDays > 0
+                    ? "border-primary/50 bg-primary/3"
+                    : "border-border bg-background"
+                }`}>
+                  {/* Minus */}
+                  <button
+                    onClick={() => handleStepper(-1)}
+                    disabled={effectiveDays <= 0}
+                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Input */}
+                  <div className="flex-1 flex items-center justify-center gap-1.5 px-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={useCustom ? customInput : intervalDays > 0 ? String(intervalDays) : ""}
+                      onChange={handleCustomChange}
+                      placeholder="e.g. 5"
+                      className="w-16 text-center text-sm font-semibold bg-transparent outline-none text-foreground placeholder:text-muted-foreground/40"
+                    />
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {effectiveDays === 1 ? "day" : "days"}
+                    </span>
+                  </div>
+
+                  {/* Plus */}
+                  <button
+                    onClick={() => handleStepper(1)}
+                    disabled={effectiveDays >= 365}
+                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground/60">
+                  Min: 1 day · Max: 365 days
+                </p>
+              </div>
             </div>
 
-            {/* Connection selector — only shown if interval > 0 */}
+            {/* Connection selector — only when interval > 0 */}
             <AnimatePresence>
-              {intervalDays > 0 && (
+              {effectiveDays > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -244,7 +288,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                   ) : connections.length === 0 ? (
                     <div className="px-4 py-3 bg-rose-500/5 border border-rose-500/20 rounded-xl text-sm text-rose-500 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0" />
-                      No database connections found. Add one in Connections.
+                      No database connections found.
                     </div>
                   ) : (
                     <div className="relative">
@@ -257,9 +301,17 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                         } hover:border-primary/60`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${connectionId ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+                          <div
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              connectionId
+                                ? "bg-emerald-500"
+                                : "bg-muted-foreground/30"
+                            }`}
+                          />
                           <span className="truncate">
-                            {selectedConn ? selectedConn.name : "Select a connection…"}
+                            {selectedConn
+                              ? selectedConn.name
+                              : "Select a connection…"}
                           </span>
                           {selectedConn && (
                             <span className="shrink-0 text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
@@ -267,7 +319,11 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                             </span>
                           )}
                         </div>
-                        <ChevronDown className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${connDropOpen ? "rotate-180" : ""}`} />
+                        <ChevronDown
+                          className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${
+                            connDropOpen ? "rotate-180" : ""
+                          }`}
+                        />
                       </button>
 
                       <AnimatePresence>
@@ -276,7 +332,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                             initial={{ opacity: 0, y: -4 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -4 }}
-                            className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden max-h-48 overflow-y-auto"
+                            className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden max-h-44 overflow-y-auto"
                           >
                             {connections.map((conn) => (
                               <button
@@ -286,11 +342,21 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                                   setConnDropOpen(false);
                                 }}
                                 className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm hover:bg-muted/60 transition-colors ${
-                                  connectionId === conn.id ? "bg-primary/5 text-primary" : "text-foreground"
+                                  connectionId === conn.id
+                                    ? "bg-primary/5 text-primary"
+                                    : "text-foreground"
                                 }`}
                               >
-                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${conn.is_active ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
-                                <span className="truncate flex-1">{conn.name}</span>
+                                <div
+                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    conn.is_active
+                                      ? "bg-emerald-500"
+                                      : "bg-muted-foreground/30"
+                                  }`}
+                                />
+                                <span className="truncate flex-1">
+                                  {conn.name}
+                                </span>
                                 <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md shrink-0">
                                   {conn.db_type?.toUpperCase()}
                                 </span>
@@ -309,13 +375,17 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
             </AnimatePresence>
 
             {/* Info box */}
-            <div className="rounded-xl bg-muted/30 border border-border p-3.5 space-y-2.5">
+            <div className="rounded-xl bg-muted/30 border border-border p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Zap className="w-3.5 h-3.5" />
-                  <span>Next scheduled refresh</span>
+                  Next scheduled refresh
                 </div>
-                <span className={`font-medium ${nextPreview ? "text-foreground" : "text-muted-foreground/50"}`}>
+                <span
+                  className={`font-medium ${
+                    nextPreview ? "text-foreground" : "text-muted-foreground/40"
+                  }`}
+                >
                   {nextPreview
                     ? `${fmtRelative(nextPreview)} · ${fmtDateTime(nextPreview)}`
                     : "—"}
@@ -324,28 +394,30 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Last refreshed</span>
+                  Last refreshed
                 </div>
                 <span className="font-medium text-foreground">
-                  {report?.last_refreshed_at ? fmtDateTime(report.last_refreshed_at) : "Never"}
+                  {report?.last_refreshed_at
+                    ? fmtDateTime(report.last_refreshed_at)
+                    : "Never"}
                 </span>
               </div>
             </div>
 
             {/* Validation warning */}
-            {intervalDays > 0 && !connectionId && (
+            {effectiveDays > 0 && !connectionId && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-2 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-sm text-amber-600 dark:text-amber-400"
               >
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                Please select a database connection to enable auto-refresh
+                Select a database connection to enable auto-refresh
               </motion.div>
             )}
           </div>
 
-          {/* Footer */}
+          {/* ── Footer ─────────────────────────────────────────────────── */}
           <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
             <button
               onClick={onClose}
@@ -356,9 +428,9 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
 
             <button
               onClick={handleSave}
-              disabled={saving || (intervalDays > 0 && !connectionId)}
+              disabled={saving || !canSave}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-                saving || (intervalDays > 0 && !connectionId)
+                saving || !canSave
                   ? "bg-primary/40 text-primary-foreground/60 cursor-not-allowed"
                   : saveStatus === "success"
                   ? "bg-emerald-500 text-white"
@@ -385,7 +457,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4" />
-                  Save Schedule
+                  {isOff ? "Disable Schedule" : "Save Schedule"}
                 </>
               )}
             </button>

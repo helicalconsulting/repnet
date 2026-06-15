@@ -153,15 +153,18 @@ const request = async (path, options = {}, _isRetry = false) => {
 
   // ── Transparent 401 retry with refresh ───────────────────────────────
   if (response.status === 401 && !_isRetry) {
-    const refreshed = await silentRefresh();
-    if (refreshed) {
-      // Retry the original request once with the new token
-      return request(path, options, true);
+    const isAuthPath = ['/auth/login', '/auth/register', '/auth/signup', '/auth/accept-invite', '/auth/reset-password', '/auth/mfa/verify', '/auth/google'].includes(path);
+    if (!isAuthPath) {
+      const refreshed = await silentRefresh();
+      if (refreshed) {
+        // Retry the original request once with the new token
+        return request(path, options, true);
+      }
+      // Refresh also failed — user must log in again
+      clearAll();
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData?.detail || errData?.error?.message || 'Session expired. Please log in again.');
     }
-    // Refresh also failed — user must log in again
-    clearAll();
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData?.detail || 'Session expired. Please log in again.');
   }
 
   const payload = await response.json().catch(() => ({}));

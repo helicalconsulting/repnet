@@ -535,9 +535,9 @@ export default function SettingsPage({ user }) {
   const [activeTab, setActiveTab] = useState('profile');
   const [toast, setToast] = useState(null);
 
-  const isViewer = user?.role === 'viewer';
+  const isAdmin = user?.role === 'admin';
   const filteredTabs = TABS.filter(tab => {
-    if (isViewer && (tab.id === 'organization' || tab.id === 'members')) {
+    if (!isAdmin && (tab.id === 'organization' || tab.id === 'members')) {
       return false;
     }
     return true;
@@ -613,8 +613,8 @@ export default function SettingsPage({ user }) {
           transition={{ duration: 0.15 }}
         >
           {activeTab === 'profile' && <ProfileTab showToast={showToast} />}
-          {activeTab === 'organization' && !isViewer && <OrganizationTab user={user} showToast={showToast} />}
-          {activeTab === 'members' && !isViewer && <MembersTab user={user} showToast={showToast} />}
+          {activeTab === 'organization' && isAdmin && <OrganizationTab user={user} showToast={showToast} />}
+          {activeTab === 'members' && isAdmin && <MembersTab user={user} showToast={showToast} />}
           {activeTab === 'security' && <SecurityTab showToast={showToast} />}
         </motion.div>
       </AnimatePresence>

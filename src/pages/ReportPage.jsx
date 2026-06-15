@@ -26,7 +26,8 @@ export default function ReportPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { activeConnection, connections } = useApp();
+  const { activeConnection, connections, user } = useApp();
+  const isViewer = user?.role === 'viewer';
 
   const [reportConfig, setReportConfig] = useState(null);  // raw config from API
   const [reportData, setReportData] = useState(location.state?.data || null);
@@ -89,6 +90,7 @@ export default function ReportPage() {
   const connId = activeConnection || connections?.[0]?.id || connections2?.[0]?.id;
 
   const handleManualRefresh = async () => {
+    if (isViewer) return;
     if (!connId || !id) return;
     setRefreshing(true);
     setRefreshError(null);
@@ -181,43 +183,45 @@ export default function ReportPage() {
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-2">
-            {/* Schedule badge/info */}
-            {reportConfig?.refresh_interval_days > 0 && (
-              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded-xl text-xs text-primary font-medium">
+          {!isViewer && (
+            <div className="flex items-center gap-2">
+              {/* Schedule badge/info */}
+              {reportConfig?.refresh_interval_days > 0 && (
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded-xl text-xs text-primary font-medium">
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  {reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`}
+                </div>
+              )}
+
+              {/* Schedule button */}
+              <button
+                onClick={() => setShowSchedule(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                  reportConfig?.refresh_interval_days > 0
+                    ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }`}
+              >
                 <CalendarClock className="w-3.5 h-3.5" />
-                {reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`}
-              </div>
-            )}
+                Schedule
+              </button>
 
-            {/* Schedule button */}
-            <button
-              onClick={() => setShowSchedule(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                reportConfig?.refresh_interval_days > 0
-                  ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                  : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-            >
-              <CalendarClock className="w-3.5 h-3.5" />
-              Schedule
-            </button>
-
-            {/* Refresh Now */}
-            <button
-              onClick={handleManualRefresh}
-              disabled={refreshing || !connId}
-              title={!connId ? 'No database connection available' : 'Refresh data now and save snapshot'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                refreshError
-                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
-              } disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
-            </button>
-          </div>
+              {/* Refresh Now */}
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing || !connId}
+                title={!connId ? 'No database connection available' : 'Refresh data now and save snapshot'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  refreshError
+                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

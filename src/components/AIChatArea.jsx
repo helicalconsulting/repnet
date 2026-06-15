@@ -45,13 +45,14 @@ const suggestions = [
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatArea({ onSearch }) {
-  const { connections, activeConnection } = useApp();
+  const { connections, activeConnection, user } = useApp();
   const { getGreeting, getDisplayName } = usePersonalization();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState(0);
   const [showConnectionBadge, setShowConnectionBadge] = useState(true);
 
   const activeConn = connections.find(c => c.id === activeConnection);
+  const isViewer = user?.role === 'viewer';
 
   const categoryIcons = {
     "AP & Suppliers": <DollarSign className="w-4 h-4" />,
@@ -63,6 +64,7 @@ export default function AIChatArea({ onSearch }) {
   // ── Handlers ────────────────────────────────────────────────────────
   const handleSearch = (e) => {
     e?.preventDefault();
+    if (isViewer) return;
     if (query.trim() && onSearch) {
       onSearch(query.replace('\n', ' '));
     }
@@ -102,7 +104,7 @@ export default function AIChatArea({ onSearch }) {
             {getGreeting()}, {getDisplayName()}
           </h2>
           <p className="text-xs text-muted-foreground/70 w-72 mx-auto leading-relaxed">
-            What report would you like to create today?
+            {isViewer ? "You have view-only access to reports" : "What report would you like to create today?"}
           </p>
         </motion.div>
 
@@ -163,8 +165,9 @@ export default function AIChatArea({ onSearch }) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 * i }}
-              onClick={() => { setQuery(sug.text); if(onSearch) onSearch(sug.text); }}
-              className="px-5 py-3.5 text-left rounded-xl bg-card hover:bg-muted transition-all text-[13px] font-medium text-foreground/80 flex items-center justify-between leading-relaxed border border-border hover:border-primary/30 group shadow-sm"
+              onClick={() => { if (!isViewer && onSearch) { setQuery(sug.text); onSearch(sug.text); } }}
+              disabled={isViewer}
+              className={`px-5 py-3.5 text-left rounded-xl bg-card hover:bg-muted transition-all text-[13px] font-medium text-foreground/80 flex items-center justify-between leading-relaxed border border-border hover:border-primary/30 group shadow-sm ${isViewer ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span className="flex items-center gap-2 flex-1">
                 <span className="text-base shrink-0">{sug.icon}</span>
@@ -191,9 +194,11 @@ export default function AIChatArea({ onSearch }) {
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Describe the report you need..."
+              placeholder={isViewer ? "Viewer role: Chat input is disabled" : "Describe the report you need..."}
+              disabled={isViewer}
               className="w-full bg-transparent border-none outline-none text-foreground text-base p-4 resize-none placeholder:text-muted-foreground/60 min-h-[60px]"
               onKeyDown={(e) => {
+                if (isViewer) return;
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSearch();
@@ -213,12 +218,12 @@ export default function AIChatArea({ onSearch }) {
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
-                <button type="button" className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">
+                <button type="button" disabled={isViewer} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-30">
                   <Paperclip className="w-4 h-4" />
                 </button>
                 <button 
                   type="submit" 
-                  disabled={!query.trim()}
+                  disabled={isViewer || !query.trim()}
                   className="w-9 h-9 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-30 disabled:bg-muted-foreground rounded-full transition-all shadow-lg shadow-primary/30 disabled:shadow-none group"
                 >
                   <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />

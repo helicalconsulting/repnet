@@ -47,7 +47,7 @@ function ProtectedLayout({ sessionUser, onSignOut }) {
   }
 
   return (
-    <AppProvider>
+    <AppProvider user={sessionUser}>
       <PersonalizationProvider user={sessionUser}>
         <MainLayout user={sessionUser} onSignOut={onSignOut} settingsPage={<SettingsPage user={sessionUser} />} />
       </PersonalizationProvider>
@@ -154,7 +154,16 @@ function App() {
           <Route path="/report" element={<ReportsListPage />} />
           <Route path="/report/:id" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />
-          <Route path="/connections" element={<ConnectionsPage />} />
+          <Route
+            path="/connections"
+            element={
+              sessionUser?.role === 'admin' ? (
+                <ConnectionsPage />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
           <Route path="/settings" element={<SettingsPage user={sessionUser} />} />
           {/* Fallback for other sidebar items like /saved */}
           <Route path="*" element={

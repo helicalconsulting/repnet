@@ -18,6 +18,7 @@ import clsx from "clsx";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sessionsApi } from "../services/api";
+import { useApp } from "../context/AppContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", path: "/dashboard" },
@@ -38,6 +39,7 @@ function timeAgo(dateStr) {
 }
 
 export default function Sidebar({ isOpen, setIsOpen }) {
+  const { user } = useApp();
   const [showHistory, setShowHistory] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -46,6 +48,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+
+  const isAdmin = user?.role === 'admin';
+  const isViewer = user?.role === 'viewer';
 
   const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -144,56 +149,60 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           </div>
 
           {/* New Chat Button */}
-          <button
-            onClick={() => {
-              navigate('/chat');
-              window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-            }}
-            className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
-          >
-            <span className="flex items-center gap-2.5 text-sm">
-              <div className="bg-white/20 p-1.5 rounded-lg">
-                <Plus className="w-4 h-4" />
-              </div>
-              New Report Chat
-            </span>
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">⌘N</span>
-          </button>
+          {!isViewer && (
+            <button
+              onClick={() => {
+                navigate('/chat');
+                window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+              }}
+              className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
+            >
+              <span className="flex items-center gap-2.5 text-sm">
+                <div className="bg-white/20 p-1.5 rounded-lg">
+                  <Plus className="w-4 h-4" />
+                </div>
+                New Report Chat
+              </span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">⌘N</span>
+            </button>
+          )}
 
           {/* Navigation */}
           <nav className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    navigate(item.path);
-                    if (item.id === 'chat') {
-                      window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-                    }
-                  }}
-                  className={clsx(
-                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
-                    isActive ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
-                  )}
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-navLine"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-full"
-                      initial={false}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                  <Icon className={clsx("w-5 h-5 flex-shrink-0 relative z-10", isActive && "text-primary")} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className={clsx("text-sm relative z-10", isActive ? "font-semibold" : "font-medium")}>
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
+            {navItems
+              .filter((item) => item.id !== 'connections' || isAdmin)
+              .map((item) => {
+                const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      navigate(item.path);
+                      if (item.id === 'chat') {
+                        window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+                      }
+                    }}
+                    className={clsx(
+                      "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
+                      isActive ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-navLine"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-full"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    <Icon className={clsx("w-5 h-5 flex-shrink-0 relative z-10", isActive && "text-primary")} strokeWidth={isActive ? 2.5 : 2} />
+                    <span className={clsx("text-sm relative z-10", isActive ? "font-semibold" : "font-medium")}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
           </nav>
 
           {/* Recent Chats */}
@@ -259,17 +268,19 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                           <span className="text-[10px] text-muted-foreground hidden group-hover:hidden">
                             {timeAgo(session.created_at)}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteSession(e, session.id)}
-                            disabled={deletingId === session.id}
-                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
-                          >
-                            {deletingId === session.id
-                              ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-                              : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
-                            }
-                          </button>
+                          {!isViewer && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteSession(e, session.id)}
+                              disabled={deletingId === session.id}
+                              className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
+                            >
+                              {deletingId === session.id
+                                ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                                : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
+                              }
+                            </button>
+                          )}
                         </div>
                       </motion.button>
                     ))

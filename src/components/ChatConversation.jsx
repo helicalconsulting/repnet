@@ -21,7 +21,7 @@ import {
 } from 'recharts';
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
-  const { connections, activeConnection, addNotification } = useApp();
+  const { connections, activeConnection, addNotification, user } = useApp();
   const { getCasualResponse, profile } = usePersonalization();
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,6 +40,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
   const activeConn = connections.find((c) => c.id === activeConnection);
   const [visualTabs, setVisualTabs] = useState({});
+  const isViewer = user?.role === 'viewer';
 
   const getKeysForVisuals = (rows) => {
     try {
@@ -70,6 +71,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Process a user query ────────────────────────────────────────────
   const processQuery = useCallback(
     async (query) => {
+      if (isViewer) return;
       setIsProcessing(true);
       setShowSuggestions(false);
 
@@ -343,6 +345,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Execute with user-provided params ───────────────────────────────
   const handleParamSubmit = useCallback(
     async (templateId, params) => {
+      if (isViewer) return;
       if (!activeConnection) {
         addNotification("error", "Please select a database connection first.");
         return;
@@ -418,6 +421,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Handlers ────────────────────────────────────────────────────────
   const handleSubmit = (e) => {
     e?.preventDefault();
+    if (isViewer) return;
     if (!inputValue.trim() || isProcessing) return;
     const query = inputValue.trim();
     setInputValue("");
@@ -753,11 +757,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               {currentSuggestions.map((sug, i) => (
                 <button
                   key={i}
+                  disabled={isViewer}
                   onClick={() => {
+                    if (isViewer) return;
                     setShowSuggestions(false);
                     processQuery(typeof sug === "string" ? sug : sug.text || sug);
                   }}
-                  className="px-3 py-1.5 text-xs font-medium bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 hover:border-primary/50 rounded-lg transition-colors"
+                  className={`px-3 py-1.5 text-xs font-medium bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 hover:border-primary/50 rounded-lg transition-colors ${isViewer ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {typeof sug === "string" ? sug : sug.text || sug}
                 </button>
@@ -778,9 +784,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask a follow-up question..."
+            placeholder={isViewer ? "Viewer role: Chat input is disabled" : "Ask a follow-up question..."}
+            disabled={isViewer}
             className="w-full bg-transparent border-none outline-none text-foreground text-[15px] p-3 resize-none placeholder:text-muted-foreground/60 min-h-[44px] max-h-[200px] overflow-y-auto"
             onKeyDown={(e) => {
+              if (isViewer) return;
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSubmit();
@@ -798,13 +806,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                disabled={isViewer}
+                className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-30"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
                 type="submit"
-                disabled={!inputValue.trim() || isProcessing}
+                disabled={isViewer || !inputValue.trim() || isProcessing}
                 className="w-8 h-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-30 disabled:bg-muted-foreground rounded-full transition-all shadow-lg shadow-primary/30 disabled:shadow-none group"
               >
                 <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />

@@ -34,7 +34,7 @@ const dbTypes = [
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
 ];
 
-function ConnectionCard({ connection, onSync, onDelete }) {
+function ConnectionCard({ connection, onSync, onDelete, isAdmin }) {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSync = async () => {
@@ -92,29 +92,31 @@ function ConnectionCard({ connection, onSync, onDelete }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 pt-3 border-t border-border/50 dark:border-white/5">
-        <button
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {isSyncing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-          {isSyncing ? 'Syncing...' : 'Sync Now'}
-        </button>
-        <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
-          <ExternalLink className="w-4 h-4" />
-        </button>
-        <button 
-          onClick={() => onDelete(connection.id)}
-          className="p-2 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="flex items-center gap-2 pt-3 border-t border-border/50 dark:border-white/5">
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {isSyncing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            {isSyncing ? 'Syncing...' : 'Sync Now'}
+          </button>
+          <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+            <ExternalLink className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onDelete(connection.id)}
+            className="p-2 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -1040,9 +1042,11 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 }
 
 export default function DatabaseConnections() {
-  const { connections, addConnection, removeConnection, syncConnection } = useApp();
+  const { connections, addConnection, removeConnection, syncConnection, user } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
+
+  const isAdmin = user?.role === 'admin';
 
   const handleSync = async (connectionId) => {
     setSyncingId(connectionId);
@@ -1064,13 +1068,15 @@ export default function DatabaseConnections() {
               Connect your ERP and SQL databases to generate AI-powered reports
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-5 h-5" />
-            Add Connection
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-5 h-5" />
+              Add Connection
+            </button>
+          )}
         </div>
 
         {/* Info Cards */}
@@ -1118,13 +1124,15 @@ export default function DatabaseConnections() {
             <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
               Connect your first database to start generating AI-powered reports and analytics
             </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Add Your First Connection
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Add Your First Connection
+              </button>
+            )}
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1135,6 +1143,7 @@ export default function DatabaseConnections() {
                   connection={connection}
                   onSync={handleSync}
                   onDelete={removeConnection}
+                  isAdmin={isAdmin}
                 />
               ))}
             </AnimatePresence>

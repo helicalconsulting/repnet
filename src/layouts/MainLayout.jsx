@@ -29,6 +29,8 @@ export default function MainLayout({ user, onSignOut }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  const isViewer = user?.role === 'viewer';
 
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
   
@@ -124,7 +126,7 @@ export default function MainLayout({ user, onSignOut }) {
          
          {/* Right Side */}
          <div className="pointer-events-auto flex items-center gap-3">
-            {!isReportView && location.pathname.includes('/chat') && (
+            {!isViewer && !isReportView && location.pathname.includes('/chat') && (
               <Motion.button 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

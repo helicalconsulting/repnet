@@ -144,7 +144,8 @@ function SortableRow({ rowId, row, columns }) {
 
 export default function ReportBuilder({ query, onClose, reportData, onToggleInsights }) {
   const navigate = useNavigate();
-  const { togglePinReport, saveReport, addNotification, pinnedReports } = useApp();
+  const { togglePinReport, saveReport, addNotification, pinnedReports, user } = useApp();
+  const isViewer = user?.role === 'viewer';
   
   const [activeTab, setActiveTab] = useState("chart");
   const [isMobile, setIsMobile] = useState(() =>
@@ -294,6 +295,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   }, []);
 
   const handlePinToggle = async () => {
+    if (isViewer) return;
     if (isNewReport) {
       addNotification('info', 'Please save the report first before pinning it.');
       return;
@@ -307,6 +309,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   };
 
   const handleSaveReport = async () => {
+    if (isViewer) return;
     if (!saveName.trim()) {
       addNotification("error", "Report name is required");
       return;
@@ -523,17 +526,19 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             <span className="hidden md:inline">SQL</span>
           </button>
           
-          <button 
-            onClick={handlePinToggle}
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-all ${
-              isPinned 
-                ? 'bg-primary/10 text-primary border border-primary/20' 
-                : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 text-foreground'
-            }`}
-          >
-            {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-            <span className="hidden md:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
-          </button>
+          {!isViewer && (
+            <button 
+              onClick={handlePinToggle}
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-all ${
+                isPinned 
+                  ? 'bg-primary/10 text-primary border border-primary/20' 
+                  : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 text-foreground'
+              }`}
+            >
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+              <span className="hidden md:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
+            </button>
+          )}
           
           <button 
             onClick={() => setIsFullscreen(!isFullscreen)}
@@ -542,7 +547,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
           
-          {isNewReport && (
+          {isNewReport && !isViewer && (
             <button 
               onClick={() => setShowSaveModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md shadow-emerald-600/25 shrink-0"

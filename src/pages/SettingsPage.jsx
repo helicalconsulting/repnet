@@ -191,11 +191,13 @@ function ProfileTab({ showToast }) {
 
 
 // ─── Organization Tab ─────────────────────────────────────────────────────────
-function OrganizationTab({ showToast }) {
+function OrganizationTab({ user, showToast }) {
   const [org, setOrg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
+
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     organizationApi.getOrganization().then((o) => {
@@ -206,6 +208,7 @@ function OrganizationTab({ showToast }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!name.trim() || name.trim() === org?.name) return;
     setSaving(true);
     try {
@@ -244,8 +247,9 @@ function OrganizationTab({ showToast }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={!isAdmin}
             placeholder="Acme Corp"
-            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5 disabled:opacity-60"
           />
         </div>
         <div>
@@ -257,14 +261,16 @@ function OrganizationTab({ showToast }) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={saving || !name.trim() || name.trim() === org?.name}
-        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:opacity-50"
-      >
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-        Save Changes
-      </button>
+      {isAdmin && (
+        <button
+          type="submit"
+          disabled={saving || !name.trim() || name.trim() === org?.name}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          Save Changes
+        </button>
+      )}
     </form>
   );
 }
@@ -312,6 +318,7 @@ function MembersTab({ user, showToast }) {
   };
 
   const handleRoleChange = async (memberId, newRole) => {
+    if (!isAdmin) return;
     try {
       // Optimistic update
       setMembers((prev) => prev.map((m) => m.id === memberId ? { ...m, role: newRole } : m));
@@ -598,7 +605,7 @@ export default function SettingsPage({ user }) {
           transition={{ duration: 0.15 }}
         >
           {activeTab === 'profile' && <ProfileTab showToast={showToast} />}
-          {activeTab === 'organization' && <OrganizationTab showToast={showToast} />}
+          {activeTab === 'organization' && <OrganizationTab user={user} showToast={showToast} />}
           {activeTab === 'members' && <MembersTab user={user} showToast={showToast} />}
           {activeTab === 'security' && <SecurityTab showToast={showToast} />}
         </motion.div>

@@ -21,7 +21,7 @@ function normaliseReport(r) {
   };
 }
 
-export function AppProvider({ children }) {
+export function AppProvider({ children, user }) {
   // Database connections state
   const [connections, setConnections] = useState([]);
   const [activeConnection, setActiveConnection] = useState(null);
@@ -234,6 +234,9 @@ export function AppProvider({ children }) {
   }, []);
 
   const value = {
+    // Current logged-in user
+    user,
+
     // Database state
     connections,
     activeConnection,

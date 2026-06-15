@@ -149,15 +149,33 @@ function App() {
         />
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/chat/:id" element={<ChatPage />} />
+          <Route
+            path="/chat"
+            element={
+              sessionUser?.role !== 'viewer' ? (
+                <ChatPage />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/chat/:id"
+            element={
+              sessionUser?.role !== 'viewer' ? (
+                <ChatPage />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
           <Route path="/report" element={<ReportsListPage />} />
           <Route path="/report/:id" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />
           <Route
             path="/connections"
             element={
-              sessionUser?.role === 'admin' ? (
+              sessionUser?.role !== 'viewer' ? (
                 <ConnectionsPage />
               ) : (
                 <Navigate to="/dashboard" replace />

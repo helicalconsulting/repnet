@@ -34,7 +34,7 @@ const dbTypes = [
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
 ];
 
-function ConnectionCard({ connection, onSync, onDelete, isAdmin }) {
+function ConnectionCard({ connection, onSync, onDelete, isAdmin, isViewer }) {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSync = async () => {
@@ -92,7 +92,7 @@ function ConnectionCard({ connection, onSync, onDelete, isAdmin }) {
         </div>
       </div>
 
-      {isAdmin && (
+      {!isViewer && (
         <div className="flex items-center gap-2 pt-3 border-t border-border/50 dark:border-white/5">
           <button
             onClick={handleSync}
@@ -109,12 +109,14 @@ function ConnectionCard({ connection, onSync, onDelete, isAdmin }) {
           <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
             <ExternalLink className="w-4 h-4" />
           </button>
-          <button 
-            onClick={() => onDelete(connection.id)}
-            className="p-2 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => onDelete(connection.id)}
+              className="p-2 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
     </motion.div>
@@ -1047,6 +1049,7 @@ export default function DatabaseConnections() {
   const [syncingId, setSyncingId] = useState(null);
 
   const isAdmin = user?.role === 'admin';
+  const isViewer = user?.role === 'viewer';
 
   const handleSync = async (connectionId) => {
     setSyncingId(connectionId);
@@ -1068,7 +1071,7 @@ export default function DatabaseConnections() {
               Connect your ERP and SQL databases to generate AI-powered reports
             </p>
           </div>
-          {isAdmin && (
+          {!isViewer && (
             <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors shadow-lg shadow-primary/20"
@@ -1124,7 +1127,7 @@ export default function DatabaseConnections() {
             <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
               Connect your first database to start generating AI-powered reports and analytics
             </p>
-            {isAdmin && (
+            {!isViewer && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
@@ -1144,6 +1147,7 @@ export default function DatabaseConnections() {
                   onSync={handleSync}
                   onDelete={removeConnection}
                   isAdmin={isAdmin}
+                  isViewer={isViewer}
                 />
               ))}
             </AnimatePresence>

@@ -170,7 +170,11 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           {/* Navigation */}
           <nav className="space-y-1">
             {navItems
-              .filter((item) => item.id !== 'connections' || isAdmin)
+              .filter((item) => {
+                if (item.id === 'connections' && isViewer) return false;
+                if (item.id === 'chat' && isViewer) return false;
+                return true;
+              })
               .map((item) => {
                 const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
                 const Icon = item.icon;
@@ -206,89 +210,91 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           </nav>
 
           {/* Recent Chats */}
-          <div className="mt-6 flex-1 overflow-hidden flex flex-col">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <History className="w-3.5 h-3.5" />
-                Recent Chats
-                {sessions.length > 0 && (
-                  <span className="bg-primary/15 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-medium">
-                    {sessions.length}
-                  </span>
-                )}
-              </span>
-              <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showHistory && "rotate-90")} />
-            </button>
-
-            <AnimatePresence>
-              {showHistory && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-y-auto flex-1 space-y-0.5 pr-1 custom-scrollbar"
-                >
-                  {loadingSessions ? (
-                    <div className="flex items-center justify-center py-6">
-                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : sessionsError ? (
-                    <div className="px-3 py-4 text-center">
-                      <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
-                      <button
-                        onClick={fetchSessions}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  ) : sessions.length === 0 ? (
-                    <div className="px-3 py-4 text-center">
-                      <MessageSquare className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">No chats yet. Start a new report chat above.</p>
-                    </div>
-                  ) : (
-                    sessions.map((session, i) => (
-                      <motion.button
-                        key={session.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        onClick={() => navigate(`/chat/${session.id}`)}
-                        className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
-                          <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate text-xs">{session.title || 'Untitled Chat'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                          <span className="text-[10px] text-muted-foreground hidden group-hover:hidden">
-                            {timeAgo(session.created_at)}
-                          </span>
-                          {!isViewer && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteSession(e, session.id)}
-                              disabled={deletingId === session.id}
-                              className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
-                            >
-                              {deletingId === session.id
-                                ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-                                : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
-                              }
-                            </button>
-                          )}
-                        </div>
-                      </motion.button>
-                    ))
+          {!isViewer && (
+            <div className="mt-6 flex-1 overflow-hidden flex flex-col">
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <History className="w-3.5 h-3.5" />
+                  Recent Chats
+                  {sessions.length > 0 && (
+                    <span className="bg-primary/15 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-medium">
+                      {sessions.length}
+                    </span>
                   )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                </span>
+                <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showHistory && "rotate-90")} />
+              </button>
+
+              <AnimatePresence>
+                {showHistory && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-y-auto flex-1 space-y-0.5 pr-1 custom-scrollbar"
+                  >
+                    {loadingSessions ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : sessionsError ? (
+                      <div className="px-3 py-4 text-center">
+                        <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
+                        <button
+                          onClick={fetchSessions}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : sessions.length === 0 ? (
+                      <div className="px-3 py-4 text-center">
+                        <MessageSquare className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">No chats yet. Start a new report chat above.</p>
+                      </div>
+                    ) : (
+                      sessions.map((session, i) => (
+                        <motion.button
+                          key={session.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04 }}
+                          onClick={() => navigate(`/chat/${session.id}`)}
+                          className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
+                            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-xs">{session.title || 'Untitled Chat'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span className="text-[10px] text-muted-foreground hidden group-hover:hidden">
+                              {timeAgo(session.created_at)}
+                            </span>
+                            {!isViewer && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteSession(e, session.id)}
+                                disabled={deletingId === session.id}
+                                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
+                              >
+                                {deletingId === session.id
+                                  ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                                  : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
+                                }
+                              </button>
+                            )}
+                          </div>
+                        </motion.button>
+                      ))
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Bottom Actions */}
           <div className="mt-auto pt-4 space-y-1 border-t border-border/50">

@@ -535,6 +535,14 @@ export default function SettingsPage({ user }) {
   const [activeTab, setActiveTab] = useState('profile');
   const [toast, setToast] = useState(null);
 
+  const isViewer = user?.role === 'viewer';
+  const filteredTabs = TABS.filter(tab => {
+    if (isViewer && (tab.id === 'organization' || tab.id === 'members')) {
+      return false;
+    }
+    return true;
+  });
+
   const showToast = useCallback((message, type = 'success') => {
     const id = Date.now();
     setToast({ id, message, type });
@@ -577,7 +585,7 @@ export default function SettingsPage({ user }) {
 
       {/* Tabs */}
       <div className="mb-6 flex gap-1 rounded-xl bg-black/5 dark:bg-white/5 p-1 w-fit">
-        {TABS.map((tab) => {
+        {filteredTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -605,8 +613,8 @@ export default function SettingsPage({ user }) {
           transition={{ duration: 0.15 }}
         >
           {activeTab === 'profile' && <ProfileTab showToast={showToast} />}
-          {activeTab === 'organization' && <OrganizationTab user={user} showToast={showToast} />}
-          {activeTab === 'members' && <MembersTab user={user} showToast={showToast} />}
+          {activeTab === 'organization' && !isViewer && <OrganizationTab user={user} showToast={showToast} />}
+          {activeTab === 'members' && !isViewer && <MembersTab user={user} showToast={showToast} />}
           {activeTab === 'security' && <SecurityTab showToast={showToast} />}
         </motion.div>
       </AnimatePresence>

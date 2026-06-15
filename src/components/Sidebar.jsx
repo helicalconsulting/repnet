@@ -171,7 +171,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <nav className="space-y-1">
             {navItems
               .filter((item) => {
-                if (item.id === 'connections' && isViewer) return false;
+                if (item.id === 'connections' && !isAdmin) return false;
                 if (item.id === 'chat' && isViewer) return false;
                 return true;
               })

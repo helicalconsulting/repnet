@@ -175,7 +175,7 @@ function App() {
           <Route
             path="/connections"
             element={
-              sessionUser?.role !== 'viewer' ? (
+              sessionUser?.role === 'admin' ? (
                 <ConnectionsPage />
               ) : (
                 <Navigate to="/dashboard" replace />

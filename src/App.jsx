@@ -17,6 +17,7 @@ import SettingsPage from './pages/SettingsPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import SchemaExplorerPage from './pages/SchemaExplorerPage';
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
@@ -177,6 +178,16 @@ function App() {
             element={
               sessionUser?.role === 'admin' ? (
                 <ConnectionsPage />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+          <Route
+            path="/connections/:id/schema"
+            element={
+              sessionUser?.role === 'admin' ? (
+                <SchemaExplorerPage />
               ) : (
                 <Navigate to="/dashboard" replace />
               )

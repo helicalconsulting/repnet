@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Database, 
@@ -21,7 +22,8 @@ import {
   Terminal,
   ShieldAlert,
   Download,
-  MonitorDown
+  MonitorDown,
+  Maximize2
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { databaseApi } from "../services/api";
@@ -186,13 +188,23 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, i
       {/* Collapsible Schema Section */}
       <div className="mt-4 pt-3 border-t border-border/50 dark:border-white/5">
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => setShowSchema(!showSchema)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronRight className={`w-4 h-4 transition-transform ${showSchema ? 'rotate-90' : ''}`} />
-            {showSchema ? 'Hide Database Schema' : 'View Database Schema'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSchema(!showSchema)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight className={`w-4 h-4 transition-transform ${showSchema ? 'rotate-90' : ''}`} />
+              {showSchema ? 'Hide Database Schema' : 'View Database Schema'}
+            </button>
+            <span className="text-muted-foreground/30 text-[10px]">|</span>
+            <Link
+              to={`/connections/${connection.id}/schema`}
+              className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors"
+            >
+              <Maximize2 className="w-3 h-3" />
+              Open Explorer
+            </Link>
+          </div>
           
           {showSchema && !isViewer && (
             <button

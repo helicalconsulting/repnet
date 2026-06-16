@@ -94,7 +94,7 @@ export default function ChatPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col h-full overflow-y-auto w-full"
+            className="flex-1 flex flex-col h-full overflow-y-auto w-full custom-scrollbar"
           >
             <AIChatArea onSearch={handleSearch} />
           </Motion.div>

@@ -34,13 +34,26 @@ const dbTypes = [
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
 ];
 
-function ConnectionCard({ connection, onSync, onDelete, isAdmin, isViewer }) {
+function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, isViewer }) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showSchema, setShowSchema] = useState(false);
+  const [isSyncingSchema, setIsSyncingSchema] = useState(false);
 
   const handleSync = async () => {
     setIsSyncing(true);
     await onSync(connection.id);
     setIsSyncing(false);
+  };
+
+  const handleSyncSchema = async () => {
+    setIsSyncingSchema(true);
+    try {
+      await onSyncSchema(connection.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSyncingSchema(false);
+    }
   };
 
   const dbType = dbTypes.find(d => d.id === connection.type);
@@ -119,6 +132,84 @@ function ConnectionCard({ connection, onSync, onDelete, isAdmin, isViewer }) {
           )}
         </div>
       )}
+
+      {/* Collapsible Schema Section */}
+      <div className="mt-4 pt-3 border-t border-border/50 dark:border-white/5">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowSchema(!showSchema)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight className={`w-4 h-4 transition-transform ${showSchema ? 'rotate-90' : ''}`} />
+            {showSchema ? 'Hide Database Schema' : 'View Database Schema'}
+          </button>
+          
+          {showSchema && !isViewer && (
+            <button
+              onClick={handleSyncSchema}
+              disabled={isSyncingSchema}
+              className="flex items-center gap-1 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors disabled:opacity-50"
+            >
+              {isSyncingSchema ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              {isSyncingSchema ? 'Syncing...' : 'Sync Schema'}
+            </button>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {showSchema && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mt-3"
+            >
+              {connection.schema_info?.tables?.length > 0 ? (
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs">
+                  {connection.schema_info.tables.map((table) => (
+                    <div key={table.name} className="bg-black/5 dark:bg-white/[0.02] border border-border/30 dark:border-white/5 rounded-xl p-3">
+                      <div className="font-semibold text-foreground flex items-center gap-2 mb-1.5">
+                        <span>📋</span> {table.name}
+                        <span className="text-[10px] text-muted-foreground font-normal">({table.columns?.length || 0} columns)</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-5 text-[11px] text-muted-foreground">
+                        {table.columns?.map((col) => (
+                          <div key={col.name} className="flex items-center justify-between py-0.5 border-b border-border/10 dark:border-white/[0.02] truncate">
+                            <span className="font-medium text-foreground/80 truncate pr-2" title={col.name}>{col.name}</span>
+                            <span className="text-[9px] uppercase px-1 bg-black/10 dark:bg-white/5 rounded text-muted-foreground shrink-0">{col.type}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 text-center mt-2">
+                  <p className="text-xs text-muted-foreground mb-3">No schema has been synced for this connection yet.</p>
+                  {!isViewer && (
+                    <button
+                      onClick={handleSyncSchema}
+                      disabled={isSyncingSchema}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {isSyncingSchema ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      )}
+                      Sync Database Schema
+                    </button>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -1055,7 +1146,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 }
 
 export default function DatabaseConnections() {
-  const { connections, addConnection, removeConnection, syncConnection, user } = useApp();
+  const { connections, addConnection, removeConnection, syncConnection, syncSchema, user } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
 
@@ -1153,12 +1244,13 @@ export default function DatabaseConnections() {
             <AnimatePresence>
               {connections.map(connection => (
                 <ConnectionCard
-                  key={connection.id}
-                  connection={connection}
-                  onSync={handleSync}
-                  onDelete={removeConnection}
-                  isAdmin={isAdmin}
-                  isViewer={isViewer}
+                   key={connection.id}
+                   connection={connection}
+                   onSync={handleSync}
+                   onSyncSchema={syncSchema}
+                   onDelete={removeConnection}
+                   isAdmin={isAdmin}
+                   isViewer={isViewer}
                 />
               ))}
             </AnimatePresence>

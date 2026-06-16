@@ -50,10 +50,10 @@ export function AppProvider({ children, user }) {
       type: conn.db_type || conn.type || 'mssql',
       database: conn.db_name || conn.database || '',
       status: conn.is_active ? 'connected' : 'disconnected',
-      tables: conn.tables || 0,
-      lastSync: conn.last_tested_at
-        ? new Date(conn.last_tested_at).toLocaleDateString()
-        : 'Never'
+      tables: conn.schema_info?.tables?.length || conn.tables || 0,
+      lastSync: conn.schema_last_synced_at
+        ? new Date(conn.schema_last_synced_at).toLocaleString()
+        : (conn.last_tested_at ? new Date(conn.last_tested_at).toLocaleDateString() : 'Never')
     };
   }, []);
 
@@ -134,6 +134,21 @@ export function AppProvider({ children, user }) {
     }
     addNotification('success', 'Connection synced');
   }, [activeConnection]);
+
+  const syncSchema = useCallback(async (id) => {
+    const updated = await databaseApi.syncSchema(id);
+    const formatted = formatConnection(updated);
+    setConnections((prev) =>
+      prev.map((connection) =>
+        connection.id === id ? formatted : connection
+      )
+    );
+    if (!activeConnection) {
+      setActiveConnection(id);
+    }
+    addNotification('success', 'Database schema synced');
+    return formatted;
+  }, [activeConnection, formatConnection]);
 
   // Report functions
   const togglePinReport = useCallback(async (reportId) => {
@@ -248,6 +263,7 @@ export function AppProvider({ children, user }) {
     listDatabases,
     listGatewayAgents,
     syncConnection,
+    syncSchema,
 
     // Reports state
     reports,

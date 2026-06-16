@@ -387,6 +387,12 @@ export const databaseApi = {
   async syncSchema(id) {
     return request(`/connections/${id}/sync-schema`, { method: 'POST' });
   },
+  async getTables(id) {
+    return request(`/connections/${id}/tables`);
+  },
+  async getTableColumns(id, tableName) {
+    return request(`/connections/${id}/tables/${tableName}`);
+  },
   async listGatewayAgents() {
     try {
       const res = await request('/connections/gateway-agents');

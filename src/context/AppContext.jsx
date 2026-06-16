@@ -50,7 +50,7 @@ export function AppProvider({ children, user }) {
       type: conn.db_type || conn.type || 'mssql',
       database: conn.db_name || conn.database || '',
       status: conn.is_active ? 'connected' : 'disconnected',
-      tables: conn.schema_info?.tables?.length || conn.tables || 0,
+      tables: conn.tables_count || conn.tables || 0,
       lastSync: conn.schema_last_synced_at
         ? new Date(conn.schema_last_synced_at).toLocaleString()
         : (conn.last_tested_at ? new Date(conn.last_tested_at).toLocaleDateString() : 'Never')
@@ -239,6 +239,14 @@ export function AppProvider({ children, user }) {
     return formatted;
   }, [activeConnection, formatConnection]);
 
+  const getTables = useCallback(async (id) => {
+    return await databaseApi.getTables(id);
+  }, []);
+
+  const getTableColumns = useCallback(async (id, tableName) => {
+    return await databaseApi.getTableColumns(id, tableName);
+  }, []);
+
   // Report functions
   const togglePinReport = useCallback(async (reportId) => {
     // Optimistic update: flip the local isPinned immediately
@@ -353,6 +361,8 @@ export function AppProvider({ children, user }) {
     listGatewayAgents,
     syncConnection,
     syncSchema,
+    getTables,
+    getTableColumns,
 
     // Reports state
     reports,

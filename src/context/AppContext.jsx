@@ -77,6 +77,30 @@ export function AppProvider({ children, user }) {
         if (firstConnected) {
           setActiveConnection(firstConnected.id);
         }
+
+        // Run initial health check shortly after mount
+        setTimeout(async () => {
+          try {
+            const checks = await Promise.all(
+              formatted.map(async (c) => {
+                try {
+                  const res = await databaseApi.syncConnection(c.id);
+                  return { id: c.id, status: res.ok ? 'connected' : 'disconnected' };
+                } catch {
+                  return { id: c.id, status: 'disconnected' };
+                }
+              })
+            );
+            setConnections(prev =>
+              prev.map(c => {
+                const check = checks.find(x => x.id === c.id);
+                return check ? { ...c, status: check.status } : c;
+              })
+            );
+          } catch (e) {
+            console.warn("Initial health check failed:", e);
+          }
+        }, 800);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -86,6 +110,43 @@ export function AppProvider({ children, user }) {
     };
     loadData();
   }, [formatConnection]);
+
+  // Periodic background health check for connections
+  useEffect(() => {
+    if (connections.length === 0) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const checks = await Promise.all(
+          connections.map(async (c) => {
+            try {
+              const res = await databaseApi.syncConnection(c.id);
+              return { id: c.id, status: res.ok ? 'connected' : 'disconnected' };
+            } catch {
+              return { id: c.id, status: 'disconnected' };
+            }
+          })
+        );
+
+        setConnections(prev => {
+          let changed = false;
+          const updated = prev.map(c => {
+            const check = checks.find(x => x.id === c.id);
+            if (check && check.status !== c.status) {
+              changed = true;
+              return { ...c, status: check.status };
+            }
+            return c;
+          });
+          return changed ? updated : prev;
+        });
+      } catch (err) {
+        console.error("Periodic health check failed:", err);
+      }
+    }, 20000); // Check every 20 seconds
+
+    return () => clearInterval(interval);
+  }, [connections.length]);
 
   // Database functions
   const addConnection = useCallback(async (connectionData) => {
@@ -121,18 +182,46 @@ export function AppProvider({ children, user }) {
   }, []);
 
   const syncConnection = useCallback(async (id) => {
-    await databaseApi.syncConnection(id);
-    setConnections((prev) =>
-      prev.map((connection) =>
-        connection.id === id
-          ? { ...connection, status: 'connected', lastSync: 'Just now' }
-          : connection
-      )
-    );
-    if (!activeConnection) {
-      setActiveConnection(id);
+    try {
+      const res = await databaseApi.syncConnection(id);
+      if (res && res.ok) {
+        setConnections((prev) =>
+          prev.map((connection) =>
+            connection.id === id
+              ? { 
+                  ...connection, 
+                  status: 'connected', 
+                  lastSync: connection.schema_last_synced_at 
+                    ? new Date(connection.schema_last_synced_at).toLocaleString() 
+                    : 'Just now'
+                }
+              : connection
+          )
+        );
+        if (!activeConnection) {
+          setActiveConnection(id);
+        }
+        addNotification('success', 'Connection is online and healthy');
+      } else {
+        setConnections((prev) =>
+          prev.map((connection) =>
+            connection.id === id
+              ? { ...connection, status: 'disconnected' }
+              : connection
+          )
+        );
+        addNotification('error', `Connection failed: ${res?.error || 'Database is offline'}`);
+      }
+    } catch (err) {
+      setConnections((prev) =>
+        prev.map((connection) =>
+          connection.id === id
+            ? { ...connection, status: 'disconnected' }
+            : connection
+        )
+      );
+      addNotification('error', 'Failed to communicate with connection');
     }
-    addNotification('success', 'Connection synced');
   }, [activeConnection]);
 
   const syncSchema = useCallback(async (id) => {

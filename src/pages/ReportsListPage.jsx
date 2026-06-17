@@ -19,13 +19,15 @@ function timeAgo(dateStr) {
 
 export default function ReportsListPage() {
   const navigate = useNavigate();
-  const { activeConnection, connections } = useApp();
+  const { activeConnection, connections, user } = useApp();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   
+  const isViewer = user?.role === 'viewer';
+
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -64,33 +66,8 @@ export default function ReportsListPage() {
     if (selectedIds.length === 0) return;
     setIsExporting(true);
     try {
-      const connId = activeConnection || (connections && connections[0]?.id);
-      if (!connId) {
-        alert('Please connect a database connection first to run the reports.');
-        return;
-      }
-      
-      // Fetch data for each selected report in parallel
-      const reportsData = await Promise.all(
-        selectedIds.map(async (id) => {
-          const config = await reportApi.getReport(id);
-          const runResult = await reportApi.runReport(id, connId);
-          
-          // Get visible columns/headers (filter out internal properties)
-          const headers = config.columns
-            ?.filter(c => c.is_visible)
-            ?.map(c => c.column_name) || [];
-            
-          return {
-            title: config.name || 'Report',
-            headers,
-            rows: runResult.rows || []
-          };
-        })
-      );
-      
       const result = await exportApi.exportBulk({
-        reports: reportsData,
+        reportIds: selectedIds,
         format
       });
       
@@ -134,7 +111,7 @@ export default function ReportsListPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {filtered.length > 0 && (
+          {!isViewer && filtered.length > 0 && (
             <button
               onClick={() => {
                 if (selectedIds.length === filtered.length) {
@@ -155,13 +132,15 @@ export default function ReportsListPage() {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => navigate('/chat')}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-blue-600 text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/25 hover:from-primary/90 hover:to-blue-600/90 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            New Report
-          </button>
+          {!isViewer && (
+            <button
+              onClick={() => navigate('/chat')}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-blue-600 text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/25 hover:from-primary/90 hover:to-blue-600/90 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              New Report
+            </button>
+          )}
         </div>
       </div>
 
@@ -210,7 +189,7 @@ export default function ReportsListPage() {
                 {search ? 'Try a different search term.' : 'Run an AI chat query and save the results as a report.'}
               </p>
             </div>
-            {!search && (
+            {!search && !isViewer && (
               <button
                 onClick={() => navigate('/chat')}
                 className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-semibold hover:bg-primary/15 transition-colors"
@@ -240,21 +219,23 @@ export default function ReportsListPage() {
                     }`}
                   >
                     {/* Checkbox overlay */}
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedIds(prev =>
-                          isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
-                        );
-                      }}
-                      className="absolute top-4 right-4 z-10 p-1 rounded-lg text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      {isSelected ? (
-                        <CheckSquare className="w-4 h-4 text-primary" />
-                      ) : (
-                        <Square className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
-                      )}
-                    </div>
+                    {!isViewer && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedIds(prev =>
+                            isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
+                          );
+                        }}
+                        className="absolute top-4 right-4 z-10 p-1 rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Square className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    )}
 
                     {/* Icon + Name */}
                     <div className="flex items-start gap-3 pr-6">
@@ -296,16 +277,18 @@ export default function ReportsListPage() {
                         <Play className="w-3.5 h-3.5" />
                         Open Report
                       </button>
-                      <button
-                        onClick={(e) => handleDelete(e, report.id)}
-                        disabled={deletingId === report.id}
-                        className="p-2 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
-                      >
-                        {deletingId === report.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <Trash2 className="w-3.5 h-3.5" />
-                        }
-                      </button>
+                      {!isViewer && (
+                        <button
+                          onClick={(e) => handleDelete(e, report.id)}
+                          disabled={deletingId === report.id}
+                          className="p-2 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                        >
+                          {deletingId === report.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />
+                          }
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -316,11 +299,11 @@ export default function ReportsListPage() {
       </div>
 
       {/* Floating Action Bar */}
-      {selectedIds.length > 0 && (
+      {!isViewer && selectedIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card/95 dark:bg-zinc-900/95 backdrop-blur border border-border/80 shadow-2xl rounded-2xl px-6 py-4 flex items-center justify-between gap-6 max-w-lg w-[calc(100%-2rem)]">
           <div className="flex flex-col gap-0.5">
             <p className="text-sm font-semibold text-foreground">{selectedIds.length} report{selectedIds.length !== 1 ? 's' : ''} selected</p>
-            <p className="text-[11px] text-muted-foreground">Export as single file or zip package</p>
+            <p className="text-[11px] text-muted-foreground">Export latest snapshot results</p>
           </div>
           <div className="flex items-center gap-2">
             <button

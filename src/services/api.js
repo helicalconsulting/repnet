@@ -331,6 +331,9 @@ export const organizationApi = {
     const response = await request('/organizations/me');
     return response.organization || response;
   },
+  async updateOrganization(payload) {
+    return request('/organizations/me', { method: 'PATCH', body: JSON.stringify(payload) });
+  },
   async completeOnboarding(payload) {
     return request('/organizations/onboarding', { method: 'POST', body: JSON.stringify(payload) });
   },
@@ -579,4 +582,31 @@ export const exportApi = {
     const blob = await response.blob();
     return { filename, content: blob, mimeType: 'application/pdf' };
   },
+
+  async exportBulk({ reports, format }, filename = 'bulk_export.zip') {
+    const token = getToken();
+    const response = await fetch(`${API_BASE}/reports/export/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ reports, format }),
+    });
+    if (!response.ok) throw new Error('Failed to perform bulk export');
+    const blob = await response.blob();
+    
+    let mimeType = 'application/zip';
+    let fileExt = 'zip';
+    if (format === 'excel') {
+      mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      fileExt = 'xlsx';
+    } else if (format === 'pdf') {
+      mimeType = 'application/pdf';
+      fileExt = 'pdf';
+    }
+    
+    return { filename: `bulk_export_${Date.now()}.${fileExt}`, content: blob, mimeType };
+  },
 };
+

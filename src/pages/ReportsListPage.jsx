@@ -218,44 +218,45 @@ export default function ReportsListPage() {
                         : 'border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5'
                     }`}
                   >
-                    {/* Checkbox overlay */}
-                    {!isViewer && (
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedIds(prev =>
-                            isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
-                          );
-                        }}
-                        className="absolute top-4 right-4 z-10 p-1 rounded-lg text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-primary" />
-                        ) : (
-                          <Square className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Icon + Name */}
-                    <div className="flex items-start gap-3 pr-6">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <BarChart3 className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground text-sm truncate leading-tight">
-                          {report.name}
-                        </h3>
-                        {report.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                            {report.description}
-                          </p>
-                        )}
+                    {/* Header: Icon + Checkbox + Name */}
+                    <div className="flex items-start gap-3">
+                      {!isViewer && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIds(prev =>
+                              isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
+                            );
+                          }}
+                          className="p-1.5 -ml-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all cursor-pointer shrink-0 z-20 relative"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-primary" />
+                          ) : (
+                            <Square className="w-5 h-5 text-muted-foreground/40 hover:text-primary transition-colors" />
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex-1 min-w-0 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <BarChart3 className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground text-sm truncate leading-tight">
+                            {report.name}
+                          </h3>
+                          {report.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                              {report.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Meta */}
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground pl-[36px]">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {timeAgo(report.created_at)}

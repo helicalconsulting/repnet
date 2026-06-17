@@ -68,7 +68,8 @@ export default function ReportsListPage() {
     try {
       const result = await exportApi.exportBulk({
         reportIds: selectedIds,
-        format
+        format,
+        connectionId: activeConnection?.id
       });
       
       if (result) {

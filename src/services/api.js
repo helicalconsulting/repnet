@@ -583,7 +583,7 @@ export const exportApi = {
     return { filename, content: blob, mimeType: 'application/pdf' };
   },
 
-  async exportBulk({ reportIds, format }, filename = 'bulk_export.zip') {
+  async exportBulk({ reportIds, format, connectionId }, filename = 'bulk_export.zip') {
     const token = getToken();
     const response = await fetch(`${API_BASE}/reports/export/bulk`, {
       method: 'POST',
@@ -591,7 +591,7 @@ export const exportApi = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ report_ids: reportIds, format }),
+      body: JSON.stringify({ report_ids: reportIds, format, connection_id: connectionId }),
     });
     if (!response.ok) throw new Error('Failed to perform bulk export');
     const blob = await response.blob();

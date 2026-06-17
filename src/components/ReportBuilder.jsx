@@ -27,7 +27,9 @@ import {
   Maximize2,
   Minimize2,
   ArrowDownToLine,
-  Sparkles
+  Sparkles,
+  FileSpreadsheet,
+  File
 } from "lucide-react";
 import { 
   BarChart, 
@@ -66,6 +68,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useApp } from "../context/AppContext";
+import { exportApi } from "../services/api";
 import { chartColors, chartTypes } from "../services/mockData";
 
 const dummyData = [
@@ -181,6 +184,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [saveName, setSaveName] = useState(query || "");
   const [saveDescription, setSaveDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showDataExportMenu, setShowDataExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const isNewReport = !reportData?.id || String(reportData.id).startsWith('rep-');
   
@@ -348,10 +355,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   };
 
   const handleExportCSV = () => {
-    const headers = Object.keys(data[0]).filter(k => k !== '__rowId');
+    if (!data?.length) return;
+    const headers = columns.filter(k => k !== '__rowId' && k !== 'id');
     const csvContent = [
       headers.join(','),
-      ...data.map(row => headers.map(h => row[h]).join(','))
+      ...data.map(row => headers.map(h => `"${row[h] ?? ''}"`).join(','))
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -361,6 +369,70 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     a.download = `report_${Date.now()}.csv`;
     a.click();
     addNotification('success', 'CSV exported successfully');
+  };
+
+  const handleExportExcel = async () => {
+    if (!data?.length) return;
+    setIsExporting(true);
+    try {
+      const headers = columns.filter(k => k !== '__rowId' && k !== 'id');
+      const cleanRows = data.map(row => {
+        const cleanRow = {};
+        headers.forEach(h => {
+          cleanRow[h] = row[h];
+        });
+        return cleanRow;
+      });
+      const result = await exportApi.exportExcel({
+        title: query || "Report",
+        headers,
+        rows: cleanRows
+      }, `report_${Date.now()}.xlsx`);
+      
+      const url = URL.createObjectURL(result.content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      addNotification('success', 'Excel exported successfully');
+    } catch (err) {
+      console.error(err);
+      addNotification('error', err.message || 'Excel export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!data?.length) return;
+    setIsExporting(true);
+    try {
+      const headers = columns.filter(k => k !== '__rowId' && k !== 'id');
+      const cleanRows = data.map(row => {
+        const cleanRow = {};
+        headers.forEach(h => {
+          cleanRow[h] = row[h];
+        });
+        return cleanRow;
+      });
+      const result = await exportApi.exportPDF({
+        title: query || "Report",
+        headers,
+        rows: cleanRows
+      }, `report_${Date.now()}.pdf`);
+      
+      const url = URL.createObjectURL(result.content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      addNotification('success', 'PDF exported successfully');
+    } catch (err) {
+      console.error(err);
+      addNotification('error', err.message || 'PDF export failed');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const actualSQL = reportData?.sql || fallbackSQL;
@@ -557,13 +629,58 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             </button>
           )}
 
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-lg text-sm font-medium transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden md:inline">Export</span>
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            >
+              {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              <span className="hidden md:inline">{isExporting ? "Exporting..." : "Export"}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            
+            {showExportMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowExportMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-card border border-border shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <button
+                    onClick={() => {
+                      handleExportCSV();
+                      setShowExportMenu(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                  >
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    CSV Format
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setShowExportMenu(false);
+                      await handleExportExcel();
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
+                    Excel (XLSX)
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setShowExportMenu(false);
+                      await handleExportPDF();
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                  >
+                    <File className="w-4 h-4 text-muted-foreground" />
+                    PDF Document
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -744,10 +861,58 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                   <span className="truncate">Data View</span>
                   <span className="text-xs text-muted-foreground shrink-0">({data.length} rows)</span>
                 </h3>
-                <button onClick={handleExportCSV} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0">
-                  <ArrowDownToLine className="w-3.5 h-3.5" />
-                  CSV
-                </button>
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowDataExportMenu(!showDataExportMenu)}
+                    disabled={isExporting}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-50"
+                  >
+                    {isExporting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ArrowDownToLine className="w-3.5 h-3.5" />}
+                    <span>Export</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  
+                  {showDataExportMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowDataExportMenu(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-44 rounded-xl bg-card border border-border shadow-lg py-1 z-50">
+                        <button
+                          onClick={() => {
+                            handleExportCSV();
+                            setShowDataExportMenu(false);
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                          CSV Format
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setShowDataExportMenu(false);
+                            await handleExportExcel();
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground" />
+                          Excel (XLSX)
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setShowDataExportMenu(false);
+                            await handleExportPDF();
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                        >
+                          <File className="w-3.5 h-3.5 text-muted-foreground" />
+                          PDF Document
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="overflow-x-auto flex-1 p-2 sm:p-3">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

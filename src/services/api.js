@@ -344,6 +344,12 @@ export const organizationApi = {
     const response = await request('/users');
     return response.users || response;
   },
+  async updatePermissions(userId, permissions) {
+    return request(`/users/${userId}/permissions`, {
+      method: 'PATCH',
+      body: JSON.stringify({ module_permissions: permissions }),
+    });
+  },
 };
 
 // ── Database Connection API ───────────────────────────────────────────

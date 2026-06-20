@@ -12,7 +12,8 @@ import {
   History,
   ChevronRight,
   Trash2,
-  Loader2
+  Loader2,
+  Layers
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect, useCallback } from "react";
@@ -24,6 +25,7 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", path: "/dashboard" },
   { icon: MessageSquare, label: "AI Chat", id: "chat", path: "/chat" },
   { icon: Database, label: "Connections", id: "connections", path: "/connections" },
+  { icon: Layers, label: "ERP Modules", id: "erp", path: "/erp" },
   { icon: BarChart3, label: "Reports", id: "reports", path: "/report" },
   { icon: Bookmark, label: "Saved Views", id: "saved", path: "/saved" },
   { icon: Settings, label: "Settings", id: "settings", path: "/settings" },

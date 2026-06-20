@@ -15,6 +15,15 @@ const TABS = [
   { id: 'security',     label: 'Security',     icon: KeyRound },
 ];
 
+// ERP module definitions for per-user access control
+const ERP_MODULES = [
+  { id: 'finance',       label: 'Finance',       defaultRoles: ['admin','editor','viewer'] },
+  { id: 'sales',         label: 'Sales',          defaultRoles: ['admin','editor','viewer'] },
+  { id: 'purchase',      label: 'Purchase',       defaultRoles: ['admin','editor'] },
+  { id: 'manufacturing', label: 'Manufacturing',  defaultRoles: ['admin','editor'] },
+  { id: 'inventory',     label: 'Inventory',      defaultRoles: ['admin','editor','viewer'] },
+];
+
 // ─── Toast ───────────────────────────────────────────────────────────────────
 function Toast({ toast }) {
   if (!toast) return null;
@@ -308,6 +317,8 @@ function MembersTab({ user, showToast }) {
   const [inviteRole, setInviteRole] = useState('viewer');
   const [inviting, setInviting] = useState(false);
   const [showRoleFor, setShowRoleFor] = useState(null);
+  const [expandedPerms, setExpandedPerms] = useState(null); // member id
+  const [updatingPerm, setUpdatingPerm] = useState(null);   // `${memberId}-${moduleId}`
   const isAdmin = user?.role === 'admin';
 
   const loadMembers = useCallback(async () => {
@@ -343,13 +354,31 @@ function MembersTab({ user, showToast }) {
   const handleRoleChange = async (memberId, newRole) => {
     if (!isAdmin) return;
     try {
-      // Optimistic update
       setMembers((prev) => prev.map((m) => m.id === memberId ? { ...m, role: newRole } : m));
       setShowRoleFor(null);
-      // Real API: uses /users/:id/role (PATCH)
       showToast('Role updated', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to update role', 'error');
+    }
+  };
+
+  const handlePermToggle = async (member, moduleId) => {
+    const perms = member.module_permissions || {};
+    const mod = ERP_MODULES.find(m => m.id === moduleId);
+    const defaultAllowed = mod ? mod.defaultRoles.includes(member.role) : false;
+    const current = perms[moduleId] !== undefined ? perms[moduleId] : defaultAllowed;
+    const updated = { ...perms, [moduleId]: !current };
+    setUpdatingPerm(`${member.id}-${moduleId}`);
+    try {
+      await organizationApi.updatePermissions(member.id, updated);
+      setMembers(prev => prev.map(m =>
+        m.id === member.id ? { ...m, module_permissions: updated } : m
+      ));
+      showToast(`${mod?.label} access ${!current ? 'granted' : 'revoked'} for ${member.email}`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to update permission', 'error');
+    } finally {
+      setUpdatingPerm(null);
     }
   };
 
@@ -416,42 +445,113 @@ function MembersTab({ user, showToast }) {
         ) : (
           <div className="rounded-2xl border border-border/60 bg-card/60 divide-y divide-border/40 overflow-hidden">
             {members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between px-5 py-3.5 group">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-                    {(member.email || '?').charAt(0).toUpperCase()}
+              <div key={member.id}>
+                <div className="flex items-center justify-between px-5 py-3.5 group">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                      {(member.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{member.email}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{member.status || 'active'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{member.email}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{member.status || 'active'}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {member.role === 'admin' && <Crown className="h-3.5 w-3.5 text-amber-500" />}
-                  <div className="relative">
-                    <button
-                      onClick={() => isAdmin && member.id !== user?.id && setShowRoleFor(showRoleFor === member.id ? null : member.id)}
-                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium capitalize ${roleColor(member.role)} ${isAdmin && member.id !== user?.id ? 'cursor-pointer' : 'cursor-default'}`}
-                    >
-                      {member.role}
-                      {isAdmin && member.id !== user?.id && <ChevronDown className="h-3 w-3" />}
-                    </button>
-                    {showRoleFor === member.id && (
-                      <div className="absolute right-0 top-full mt-1 z-20 min-w-[100px] rounded-xl border border-border/60 bg-card shadow-xl overflow-hidden">
-                        {ROLE_OPTIONS.map((r) => (
-                          <button
-                            key={r}
-                            onClick={() => handleRoleChange(member.id, r)}
-                            className={`w-full px-3 py-2 text-left text-xs font-medium capitalize hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${member.role === r ? 'text-primary' : 'text-foreground'}`}
-                          >
-                            {r}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="flex items-center gap-2">
+                    {member.role === 'admin' && <Crown className="h-3.5 w-3.5 text-amber-500" />}
+                    <div className="relative">
+                      <button
+                        onClick={() => isAdmin && member.id !== user?.id && setShowRoleFor(showRoleFor === member.id ? null : member.id)}
+                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium capitalize ${roleColor(member.role)} ${isAdmin && member.id !== user?.id ? 'cursor-pointer' : 'cursor-default'}`}
+                      >
+                        {member.role}
+                        {isAdmin && member.id !== user?.id && <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      {showRoleFor === member.id && (
+                        <div className="absolute right-0 top-full mt-1 z-20 min-w-[100px] rounded-xl border border-border/60 bg-card shadow-xl overflow-hidden">
+                          {ROLE_OPTIONS.map((r) => (
+                            <button
+                              key={r}
+                              onClick={() => handleRoleChange(member.id, r)}
+                              className={`w-full px-3 py-2 text-left text-xs font-medium capitalize hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${member.role === r ? 'text-primary' : 'text-foreground'}`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Module access toggle — admin only, not self */}
+                    {isAdmin && member.id !== user?.id && (
+                      <button
+                        onClick={() => setExpandedPerms(expandedPerms === member.id ? null : member.id)}
+                        title="Module access"
+                        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all ${
+                          expandedPerms === member.id
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <Shield className="h-3.5 w-3.5" />
+                        Access
+                      </button>
                     )}
                   </div>
                 </div>
+
+                {/* Per-module access panel */}
+                <AnimatePresence>
+                  {expandedPerms === member.id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mx-5 mb-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
+                          Module Query Access
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {ERP_MODULES.map(mod => {
+                            const perms = member.module_permissions || {};
+                            const isOverride = perms[mod.id] !== undefined;
+                            const isAllowed = isOverride ? perms[mod.id] : mod.defaultRoles.includes(member.role);
+                            const busy = updatingPerm === `${member.id}-${mod.id}`;
+                            return (
+                              <button
+                                key={mod.id}
+                                disabled={busy}
+                                onClick={() => handlePermToggle(member, mod.id)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                                  isAllowed
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                                    : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/20'
+                                }`}
+                              >
+                                {busy ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : isAllowed ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <Shield className="h-2.5 w-2.5 opacity-60" />
+                                )}
+                                {mod.label}
+                                {isOverride && (
+                                  <span className="ml-0.5 text-[9px] opacity-60">(custom)</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-2.5 leading-relaxed">
+                          Overrides role defaults. Toggling sends a live API update enforced by the backend.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>

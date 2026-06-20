@@ -18,7 +18,7 @@ import AcceptInvitePage from './pages/AcceptInvitePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SchemaExplorerPage from './pages/SchemaExplorerPage';
-import ERPModulesPage from './pages/ERPModulesPage';
+
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
@@ -174,7 +174,7 @@ function App() {
           <Route path="/report" element={<ReportsListPage />} />
           <Route path="/report/:id" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />
-          <Route path="/erp" element={<ERPModulesPage />} />
+
           <Route
             path="/connections"
             element={

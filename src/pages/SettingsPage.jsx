@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, Users, KeyRound, Mail, Shield, Check,
-  Loader2, AlertCircle, Plus, Trash2, ChevronDown, Eye, EyeOff, RefreshCw, Crown, UserCog, Sparkles
+  Loader2, AlertCircle, Plus, Trash2, ChevronDown, Eye, EyeOff, RefreshCw, Crown, UserCog, Sparkles, X
 } from 'lucide-react';
 import { organizationApi, authApi } from '../services/api';
 import { usePersonalization } from '../context/PersonalizationContext';
@@ -17,11 +17,56 @@ const TABS = [
 
 // ERP module definitions for per-user access control
 const ERP_MODULES = [
-  { id: 'finance',       label: 'Finance',       defaultRoles: ['admin','editor','viewer'] },
-  { id: 'sales',         label: 'Sales',          defaultRoles: ['admin','editor','viewer'] },
-  { id: 'purchase',      label: 'Purchase',       defaultRoles: ['admin','editor'] },
-  { id: 'manufacturing', label: 'Manufacturing',  defaultRoles: ['admin','editor'] },
-  { id: 'inventory',     label: 'Inventory',      defaultRoles: ['admin','editor','viewer'] },
+  {
+    id: 'finance',
+    label: 'Finance',
+    defaultRoles: ['admin', 'editor', 'viewer'],
+    subModules: [
+      { id: 'ar', label: 'Accounts Receivable (AR)' },
+      { id: 'ap', label: 'Accounts Payable (AP)' },
+      { id: 'cashbook', label: 'Cashbook' },
+      { id: 'gl', label: 'General Ledger (GL)' }
+    ]
+  },
+  {
+    id: 'sales',
+    label: 'Sales',
+    defaultRoles: ['admin', 'editor', 'viewer'],
+    subModules: [
+      { id: 'sorder', label: 'Sales Order (S Order)' },
+      { id: 'sinvoice', label: 'Sales Invoice (S Invoice)' },
+      { id: 'dispatch', label: 'Dispatch' }
+    ]
+  },
+  {
+    id: 'purchase',
+    label: 'Purchase',
+    defaultRoles: ['admin', 'editor'],
+    subModules: [
+      { id: 'porder', label: 'Purchase Order (P Order)' },
+      { id: 'pinvoice', label: 'Purchase Invoice (P Invoice)' },
+      { id: 'grn', label: 'Goods Received Note (GRN)' }
+    ]
+  },
+  {
+    id: 'manufacturing',
+    label: 'Manufacturing',
+    defaultRoles: ['admin', 'editor'],
+    subModules: [
+      { id: 'bom', label: 'Bill of Material (BOM)' },
+      { id: 'wip', label: 'Work in Progress (WIP)' },
+      { id: 'jobcosting', label: 'Job Costing' }
+    ]
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    defaultRoles: ['admin', 'editor', 'viewer'],
+    subModules: [
+      { id: 'invvaluation', label: 'Inventory Valuation' },
+      { id: 'invholding', label: 'Inventory Holding' }
+    ]
+  }
 ];
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -317,8 +362,10 @@ function MembersTab({ user, showToast }) {
   const [inviteRole, setInviteRole] = useState('viewer');
   const [inviting, setInviting] = useState(false);
   const [showRoleFor, setShowRoleFor] = useState(null);
-  const [expandedPerms, setExpandedPerms] = useState(null); // member id
-  const [updatingPerm, setUpdatingPerm] = useState(null);   // `${memberId}-${moduleId}`
+  const [activeAccessMember, setActiveAccessMember] = useState(null);
+  const [createdInvite, setCreatedInvite] = useState(null); // { email: '...', acceptUrl: '...' }
+  const [requests, setRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   const isAdmin = user?.role === 'admin';
 
   const loadMembers = useCallback(async () => {
@@ -333,16 +380,57 @@ function MembersTab({ user, showToast }) {
     }
   }, []);
 
-  useEffect(() => { loadMembers(); }, [loadMembers]);
+  const loadRequests = useCallback(async () => {
+    if (!isAdmin) return;
+    setLoadingRequests(true);
+    try {
+      const list = await organizationApi.listPermissionRequests();
+      setRequests(Array.isArray(list) ? list : []);
+    } catch {
+      setRequests([]);
+    } finally {
+      setLoadingRequests(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    loadMembers();
+    if (isAdmin) {
+      loadRequests();
+    }
+  }, [loadMembers, loadRequests, isAdmin]);
+
+  const handleRequestAction = async (requestId, action) => {
+    try {
+      await organizationApi.actOnPermissionRequest(requestId, action);
+      showToast(`Permission request ${action}d successfully.`, 'success');
+      loadRequests();
+      loadMembers();
+    } catch (err) {
+      showToast(err.message || `Failed to ${action} request.`, 'error');
+    }
+  };
+
+  const getModuleInfo = (id) => {
+    for (const parent of ERP_MODULES) {
+      if (parent.id === id) return { mod: parent, isSub: false, parentId: parent.id, parentMod: parent };
+      const sub = parent.subModules?.find(s => s.id === id);
+      if (sub) return { mod: sub, isSub: true, parentId: parent.id, parentMod: parent };
+    }
+    return null;
+  };
 
   const handleInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
     setInviting(true);
     try {
-      await organizationApi.inviteUser({ email: inviteEmail.trim(), role: inviteRole });
+      const res = await organizationApi.inviteUser({ email: inviteEmail.trim(), role: inviteRole });
       setInviteEmail('');
       showToast(`Invite sent to ${inviteEmail}`, 'success');
+      if (res && res.accept_url) {
+        setCreatedInvite({ email: inviteEmail.trim(), acceptUrl: res.accept_url });
+      }
       loadMembers();
     } catch (err) {
       showToast(err.message || 'Failed to send invite', 'error');
@@ -363,22 +451,61 @@ function MembersTab({ user, showToast }) {
   };
 
   const handlePermToggle = async (member, moduleId) => {
+    const info = getModuleInfo(moduleId);
+    if (!info) return;
+    const { mod, isSub, parentId, parentMod } = info;
+
     const perms = member.module_permissions || {};
-    const mod = ERP_MODULES.find(m => m.id === moduleId);
-    const defaultAllowed = mod ? mod.defaultRoles.includes(member.role) : false;
-    const current = perms[moduleId] !== undefined ? perms[moduleId] : defaultAllowed;
-    const updated = { ...perms, [moduleId]: !current };
-    setUpdatingPerm(`${member.id}-${moduleId}`);
+    const defaultAllowed = isSub 
+      ? (perms[parentId] !== undefined ? perms[parentId] : parentMod.defaultRoles.includes(member.role))
+      : parentMod.defaultRoles.includes(member.role);
+    const currentVal = perms[moduleId] !== undefined ? perms[moduleId] : defaultAllowed;
+    const targetVal = !currentVal;
+
+    let updated = { ...perms };
+    if (!isSub) {
+      // Toggle parent: update parent and all its subModules to match targetVal
+      updated[moduleId] = targetVal;
+      if (parentMod.subModules) {
+        parentMod.subModules.forEach(sub => {
+          updated[sub.id] = targetVal;
+        });
+      }
+    } else {
+      // Toggle subModule:
+      updated[moduleId] = targetVal;
+      if (targetVal === true) {
+        // If enabling a subModule, parent must be enabled or defaults allowed
+        if (updated[parentId] === false) {
+          updated[parentId] = true;
+          parentMod.subModules.forEach(sub => {
+            if (sub.id !== moduleId && updated[sub.id] === undefined) {
+              updated[sub.id] = false;
+            }
+          });
+        }
+      }
+    }
+
+    // Keep a backup of current permissions for rollback in case of error
+    const previousPerms = member.module_permissions;
+
+    // Optimistic Update: instantly update React state
+    setMembers(prev => prev.map(m =>
+      m.id === member.id ? { ...m, module_permissions: updated } : m
+    ));
+    setActiveAccessMember(prev => prev && prev.id === member.id ? { ...prev, module_permissions: updated } : prev);
+    showToast(`${mod?.label} access ${targetVal ? 'granted' : 'revoked'} for ${member.email}`, 'success');
+
     try {
       await organizationApi.updatePermissions(member.id, updated);
-      setMembers(prev => prev.map(m =>
-        m.id === member.id ? { ...m, module_permissions: updated } : m
-      ));
-      showToast(`${mod?.label} access ${!current ? 'granted' : 'revoked'} for ${member.email}`, 'success');
     } catch (err) {
+      // Rollback on failure
+      setMembers(prev => prev.map(m =>
+        m.id === member.id ? { ...m, module_permissions: previousPerms } : m
+      ));
+      setActiveAccessMember(prev => prev && prev.id === member.id ? { ...prev, module_permissions: previousPerms } : prev);
       showToast(err.message || 'Failed to update permission', 'error');
-    } finally {
-      setUpdatingPerm(null);
     }
   };
 
@@ -424,6 +551,59 @@ function MembersTab({ user, showToast }) {
               Send Invite
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Pending Permission Requests */}
+      {isAdmin && requests.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-duration-1000"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <h3 className="text-base font-semibold text-amber-600 dark:text-amber-400">Permission Requests</h3>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold">
+              {requests.length} pending
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {requests.map((req) => (
+              <div 
+                key={req.id} 
+                className="flex items-center justify-between p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-200"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-foreground">{req.user_email}</span>
+                    <span className="text-[10px] text-muted-foreground">requested access to:</span>
+                  </div>
+                  <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <Shield className="h-3.5 w-3.5" />
+                    {req.module_key.toUpperCase()}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleRequestAction(req.id, 'approve')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold shadow-sm transition-all"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleRequestAction(req.id, 'deny')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-all border border-zinc-700/50"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Deny
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -484,13 +664,10 @@ function MembersTab({ user, showToast }) {
                     {/* Module access toggle — admin only, not self */}
                     {isAdmin && member.id !== user?.id && (
                       <button
-                        onClick={() => setExpandedPerms(expandedPerms === member.id ? null : member.id)}
+                        type="button"
+                        onClick={() => setActiveAccessMember(member)}
                         title="Module access"
-                        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all ${
-                          expandedPerms === member.id
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5'
-                        }`}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
                       >
                         <Shield className="h-3.5 w-3.5" />
                         Access
@@ -498,65 +675,196 @@ function MembersTab({ user, showToast }) {
                     )}
                   </div>
                 </div>
-
-                {/* Per-module access panel */}
-                <AnimatePresence>
-                  {expandedPerms === member.id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mx-5 mb-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
-                          Module Query Access
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {ERP_MODULES.map(mod => {
-                            const perms = member.module_permissions || {};
-                            const isOverride = perms[mod.id] !== undefined;
-                            const isAllowed = isOverride ? perms[mod.id] : mod.defaultRoles.includes(member.role);
-                            const busy = updatingPerm === `${member.id}-${mod.id}`;
-                            return (
-                              <button
-                                key={mod.id}
-                                disabled={busy}
-                                onClick={() => handlePermToggle(member, mod.id)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                                  isAllowed
-                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
-                                    : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/20'
-                                }`}
-                              >
-                                {busy ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : isAllowed ? (
-                                  <Check className="h-3 w-3" />
-                                ) : (
-                                  <Shield className="h-2.5 w-2.5 opacity-60" />
-                                )}
-                                {mod.label}
-                                {isOverride && (
-                                  <span className="ml-0.5 text-[9px] opacity-60">(custom)</span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground mt-2.5 leading-relaxed">
-                          Overrides role defaults. Toggling sends a live API update enforced by the backend.
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Module Access Modal */}
+      <AnimatePresence>
+        {activeAccessMember && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden text-foreground"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground text-base">Module Access Controls</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold capitalize">
+                      {activeAccessMember.role}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{activeAccessMember.email}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveAccessMember(null)}
+                  className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Modal Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="space-y-4">
+                  {ERP_MODULES.map(parentMod => {
+                    const perms = activeAccessMember.module_permissions || {};
+                    const isParentOverride = perms[parentMod.id] !== undefined;
+                    const isParentAllowed = isParentOverride ? perms[parentMod.id] : parentMod.defaultRoles.includes(activeAccessMember.role);
+                    
+                    return (
+                      <div key={parentMod.id} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                        {/* Parent Module Header */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-foreground flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${isParentAllowed ? 'bg-emerald-500 shadow shadow-emerald-500/35' : 'bg-muted-foreground/50'}`} />
+                            {parentMod.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handlePermToggle(activeAccessMember, parentMod.id)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${
+                              isParentAllowed
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 shadow-sm'
+                                : 'bg-muted text-muted-foreground border-border hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/20'
+                            }`}
+                          >
+                            {isParentAllowed ? <Check className="h-3 w-3" /> : <Shield className="h-3 w-3 opacity-60" />}
+                            {isParentAllowed ? 'Enabled' : 'Restricted'}
+                            {isParentOverride && <span className="text-[8px] opacity-60 ml-0.5">(custom)</span>}
+                          </button>
+                        </div>
+
+                        {/* Sub-modules Grid */}
+                        {parentMod.subModules && (
+                          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 pt-3 border-t border-border/40">
+                            {parentMod.subModules.map(sub => {
+                              const isSubOverride = perms[sub.id] !== undefined;
+                              const isSubAllowed = isSubOverride 
+                                ? perms[sub.id] 
+                                : isParentAllowed; // inherit from parent allowed state
+                              
+                              return (
+                                <button
+                                  type="button"
+                                  key={sub.id}
+                                  onClick={() => handlePermToggle(activeAccessMember, sub.id)}
+                                  className={`flex items-center justify-between px-3 py-2 rounded-xl border text-[11px] font-medium transition-all ${
+                                    isSubAllowed
+                                      ? 'bg-card text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/5'
+                                      : 'bg-muted/40 text-muted-foreground/65 border-border hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/20'
+                                  }`}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    {isSubAllowed ? (
+                                      <Check className="h-3 w-3 text-emerald-500" />
+                                    ) : (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/45" />
+                                    )}
+                                    {sub.label}
+                                  </span>
+                                  {isSubOverride && (
+                                    <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase">
+                                      Override
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed bg-muted/30 p-3 rounded-xl border border-border">
+                  💡 <strong>Toggling parent</strong> automatically enables/disables all its child sub-modules. Override settings are updated instantly on the backend and take effect immediately.
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-border bg-muted/30 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActiveAccessMember(null)}
+                  className="px-5 py-2.5 bg-gradient-to-r from-primary to-blue-600 hover:opacity-95 text-white font-semibold rounded-xl text-xs shadow-lg shadow-primary/25 transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Invite Link Backup Modal */}
+      <AnimatePresence>
+        {createdInvite && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4 text-foreground"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-xl">
+                  <Mail className="h-5 w-5 text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground text-base">Invite Link Generated</h3>
+                  <p className="text-xs text-muted-foreground">An invitation email was sent to {createdInvite.email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Backup Invitation Link
+                </label>
+                <div className="flex items-center gap-2 bg-muted/40 border border-border rounded-xl p-2.5">
+                  <input
+                    type="text"
+                    readOnly
+                    value={createdInvite.acceptUrl}
+                    className="flex-1 bg-transparent text-xs text-foreground outline-none select-all"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdInvite.acceptUrl);
+                      showToast('Copied to clipboard!', 'success');
+                    }}
+                    className="flex items-center justify-center p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                    title="Copy Link"
+                  >
+                    <Check className="h-4 w-4 text-emerald-500" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/80">
+                  If they do not receive the email, you can copy and share this link directly with them.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setCreatedInvite(null)}
+                  className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-xs font-medium transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

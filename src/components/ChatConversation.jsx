@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
-import { queryApi, sessionsApi } from "../services/api";
+import { queryApi, sessionsApi, organizationApi } from "../services/api";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 import { 
@@ -37,6 +37,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [loadingHistory, setLoadingHistory] = useState(false);
   const bottomRef = useRef(null);
   const loadedSessionIdRef = useRef(null);
+  const hasProcessedInitialRef = useRef(false);
+  const [requestedModules, setRequestedModules] = useState([]);
 
   const activeConn = connections.find((c) => c.id === activeConnection);
   const [visualTabs, setVisualTabs] = useState({});
@@ -238,6 +240,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           setCurrentSuggestions(getCombinedSuggestions(response));
           setShowSuggestions(true);
 
+        } else if (response.type === "access_denied") {
+          setPipelineStep(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: "ai",
+              type: "error",
+              content: response.message || "Access denied to this module.",
+              templateModule: response.template_module,
+            },
+          ]);
+          setCurrentSuggestions(response.suggestions || []);
+          setShowSuggestions(response.suggestions?.length > 0);
+
         } else {
           // Error
           setPipelineStep(null);
@@ -331,7 +348,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
   // Process initial query on fresh mount (new chat from landing page)
   useEffect(() => {
-    if (initialQuery && !sessionId) {
+    if (initialQuery && !sessionId && !hasProcessedInitialRef.current) {
+      hasProcessedInitialRef.current = true;
       processQuery(initialQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -758,10 +776,34 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 <button
                   key={i}
                   disabled={isViewer}
-                  onClick={() => {
+                  onClick={async () => {
                     if (isViewer) return;
                     setShowSuggestions(false);
-                    processQuery(typeof sug === "string" ? sug : sug.text || sug);
+                    const sugText = typeof sug === "string" ? sug : sug.text || sug;
+                    if (sugText === "Contact your admin to request module access") {
+                      const lastMsg = [...messages].reverse().find(m => m.templateModule);
+                      if (lastMsg && lastMsg.templateModule) {
+                        try {
+                          await organizationApi.requestPermission(lastMsg.templateModule);
+                          setMessages(prev => [
+                            ...prev,
+                            {
+                              id: Date.now().toString(),
+                              role: "ai",
+                              type: "conversational",
+                              content: `Request submitted! A permission request for the **${lastMsg.templateModule.toUpperCase()}** module has been sent to your administrators.`,
+                            }
+                          ]);
+                          addNotification("success", "Permission request sent to administrators.");
+                        } catch (err) {
+                          addNotification("error", err.message || "Failed to submit request.");
+                        }
+                      } else {
+                        addNotification("error", "No module information found for request.");
+                      }
+                    } else {
+                      processQuery(sugText);
+                    }
                   }}
                   className={`px-3 py-1.5 text-xs font-medium bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 hover:border-primary/50 rounded-lg transition-colors ${isViewer ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >

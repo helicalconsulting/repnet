@@ -10,7 +10,7 @@
  *     never hits a 401 during normal usage.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://repnex-backend.onrender.com/v1';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://repnex-production.up.railway.app/v1';
 
 const REFRESH_KEY = 'repnex-refresh-token';
 // Access token lives only in memory — not localStorage — for XSS safety.
@@ -348,6 +348,21 @@ export const organizationApi = {
     return request(`/users/${userId}/permissions`, {
       method: 'PATCH',
       body: JSON.stringify({ module_permissions: permissions }),
+    });
+  },
+  async requestPermission(moduleKey) {
+    return request('/users/request-permission', {
+      method: 'POST',
+      body: JSON.stringify({ module_key: moduleKey }),
+    });
+  },
+  async listPermissionRequests() {
+    return request('/users/permission-requests');
+  },
+  async actOnPermissionRequest(requestId, action) {
+    return request(`/users/permission-requests/${requestId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
     });
   },
 };

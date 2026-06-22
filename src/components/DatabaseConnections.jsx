@@ -350,7 +350,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   }, [isOpen, connectionMode, agentToken]);
 
   const getWsServerUrl = () => {
-    const apiBase = import.meta.env.VITE_API_BASE || 'https://repnex-backend.onrender.com/v1';
+    const apiBase = import.meta.env.VITE_API_BASE || 'https://repnex-production.up.railway.app/v1';
     let wsBase = apiBase.replace(/\/v1\/?$/, '');
     wsBase = wsBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
     return wsBase;

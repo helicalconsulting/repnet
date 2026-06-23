@@ -210,6 +210,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               content: response.summary || response.message,
               sql: response.sql,
               rows: response.rows,
+              columns: response.columns,
               rowsReturned: response.rows_returned,
               executionTime: response.execution_time_ms,
               templateId: response.template_id,
@@ -310,6 +311,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             type: turn.type || "conversational",
             sql: turn.sql || null,
             rows: turn.rows || null,
+            columns: turn.columns || null,
             rowsReturned: turn.rows_returned || turn.rowsReturned || null,
             executionTime: turn.execution_time_ms || turn.executionTime || null,
             templateId: turn.template_id || turn.templateId || null,
@@ -397,6 +399,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               content: response.summary || response.message,
               sql: response.sql,
               rows: response.rows,
+              columns: response.columns,
               rowsReturned: response.rows_returned,
               executionTime: response.execution_time_ms,
               templateId: response.template_id,
@@ -584,101 +587,118 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Quick Visuals & Data Table Preview */}
-              {msg.type === "executable" && msg.rows && msg.rows.length > 0 && (
-                <div className="mt-4 bg-slate-900/40 dark:bg-black/30 border border-slate-800/60 dark:border-white/5 rounded-2xl p-4 overflow-hidden">
-                  <div className="flex items-center justify-between mb-4 border-b border-slate-800/60 dark:border-white/5 pb-2">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      Quick Visuals
-                    </span>
-                    <div className="flex gap-1 bg-black/20 dark:bg-white/5 p-1 rounded-lg">
-                      <button
-                        onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'chart' }))}
-                        className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
-                          (visualTabs[msg.id] || 'chart') === 'chart'
-                            ? 'bg-primary text-primary-foreground shadow'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Chart
-                      </button>
-                      <button
-                        onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'table' }))}
-                        className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
-                          visualTabs[msg.id] === 'table'
-                            ? 'bg-primary text-primary-foreground shadow'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Table
-                      </button>
+              {msg.type === "executable" && ((msg.rows && msg.rows.length > 0) || (msg.columns && msg.columns.length > 0)) && (() => {
+                const hasRows = msg.rows && msg.rows.length > 0;
+                const activeTab = visualTabs[msg.id] || (hasRows ? 'chart' : 'table');
+                return (
+                  <div className="mt-4 bg-slate-900/40 dark:bg-black/30 border border-slate-800/60 dark:border-white/5 rounded-2xl p-4 overflow-hidden">
+                    <div className="flex items-center justify-between mb-4 border-b border-slate-800/60 dark:border-white/5 pb-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Quick Visuals
+                      </span>
+                      <div className="flex gap-1 bg-black/20 dark:bg-white/5 p-1 rounded-lg">
+                        {hasRows && (
+                          <button
+                            onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'chart' }))}
+                            className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
+                              activeTab === 'chart'
+                                ? 'bg-primary text-primary-foreground shadow'
+                                : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            Chart
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'table' }))}
+                          className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
+                            activeTab === 'table'
+                              ? 'bg-primary text-primary-foreground shadow'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Table
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {(visualTabs[msg.id] || 'chart') === 'chart' ? (
-                    <div className="h-48 w-full mt-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={msg.rows.slice(0, 8)}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                          <XAxis 
-                            dataKey={getKeysForVisuals(msg.rows).xAxisKey} 
-                            stroke="rgba(255,255,255,0.4)" 
-                            fontSize={10}
-                            tickLine={false}
-                          />
-                          <YAxis 
-                            stroke="rgba(255,255,255,0.4)" 
-                            fontSize={10}
-                            tickLine={false}
-                          />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: '#1E293B', 
-                              border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '8px',
-                              fontSize: '11px',
-                              color: '#fff'
-                            }} 
-                          />
-                          <Bar 
-                            dataKey={getKeysForVisuals(msg.rows).yAxisKey} 
-                            fill="url(#primaryGradient)" 
-                            radius={[4, 4, 0, 0]} 
-                          />
-                          <defs>
-                            <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
-                              <stop offset="95%" stopColor="#2563eb" stopOpacity={0.3}/>
-                            </linearGradient>
-                          </defs>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto w-full border border-slate-800/60 dark:border-white/5 rounded-xl mt-2 max-h-48 overflow-y-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-black/20 dark:bg-white/5 border-b border-slate-800/60 dark:border-white/5 text-muted-foreground font-medium">
-                            {Object.keys(msg.rows[0] || {}).filter(k => k !== 'id' && k !== '__rowId').map(col => (
-                              <th key={col} className="px-3 py-2 uppercase tracking-wider">{col}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {msg.rows.slice(0, 5).map((row, idx) => (
-                            <tr key={idx} className="border-b border-slate-800/40 dark:border-white/5 hover:bg-white/5 transition-colors">
-                              {Object.keys(row).filter(k => k !== 'id' && k !== '__rowId').map((col, colIdx) => (
-                                <td key={colIdx} className="px-3 py-2 text-slate-300 font-mono">
-                                  {typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col] ?? '')}
-                                </td>
+                    {activeTab === 'chart' && hasRows ? (
+                      <div className="h-48 w-full mt-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={msg.rows.slice(0, 8)}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                            <XAxis 
+                              dataKey={getKeysForVisuals(msg.rows).xAxisKey} 
+                              stroke="rgba(255,255,255,0.4)" 
+                              fontSize={10}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              stroke="rgba(255,255,255,0.4)" 
+                              fontSize={10}
+                              tickLine={false}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: '#1E293B', 
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                color: '#fff'
+                              }} 
+                            />
+                            <Bar 
+                              dataKey={getKeysForVisuals(msg.rows).yAxisKey} 
+                              fill="url(#primaryGradient)" 
+                              radius={[4, 4, 0, 0]} 
+                            />
+                            <defs>
+                              <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.3}/>
+                              </linearGradient>
+                            </defs>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto w-full border border-slate-800/60 dark:border-white/5 rounded-xl mt-2 max-h-48 overflow-y-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-black/20 dark:bg-white/5 border-b border-slate-800/60 dark:border-white/5 text-muted-foreground font-medium">
+                              {(msg.columns || Object.keys(msg.rows[0] || {})).filter(k => k !== 'id' && k !== '__rowId').map(col => (
+                                <th key={col} className="px-3 py-2 uppercase tracking-wider">{col}</th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
+                          </thead>
+                          <tbody>
+                            {hasRows ? (
+                              msg.rows.slice(0, 5).map((row, idx) => (
+                                <tr key={idx} className="border-b border-slate-800/40 dark:border-white/5 hover:bg-white/5 transition-colors">
+                                  {(msg.columns || Object.keys(row)).filter(k => k !== 'id' && k !== '__rowId').map((col, colIdx) => (
+                                    <td key={colIdx} className="px-3 py-2 text-slate-300 font-mono">
+                                      {typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col] ?? '')}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td 
+                                  colSpan={(msg.columns || []).filter(k => k !== 'id' && k !== '__rowId').length || 1} 
+                                  className="px-3 py-4 text-center text-muted-foreground font-medium bg-black/10 dark:bg-white/5"
+                                >
+                                  No records found
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Parameter Card for params_needed */}
               {msg.type === "params_needed" && (
@@ -705,6 +725,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   <button
                     onClick={() => onOpenReport(msg.templateDescription || initialQuery, { 
                       rows: msg.rows, 
+                      columns: msg.columns,
                       sql: msg.sql, 
                       templateId: msg.templateId, 
                       extractedParams: msg.extractedParams 

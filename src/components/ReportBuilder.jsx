@@ -197,10 +197,20 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     __rowId: row.id ?? row.__rowId ?? `row-${idx}`,
   }));
 
-  const [data, setData] = useState(() => ensureRowIds(reportData?.rows || reportData?.data || dummyData));
+  const [data, setData] = useState(() => {
+    const raw = reportData?.rows || reportData?.data;
+    if (raw) return ensureRowIds(raw);
+    return reportData ? [] : ensureRowIds(dummyData);
+  });
   const [columns, setColumns] = useState(() => {
-    const initData = reportData?.rows || reportData?.data || dummyData;
-    return initData.length > 0 ? Object.keys(initData[0]).filter(k => k !== 'id' && k !== '__rowId') : [];
+    if (reportData?.columns && reportData.columns.length > 0) {
+      return reportData.columns.map(c => typeof c === 'string' ? c : c.column_name || c.name || c);
+    }
+    const initData = reportData?.rows || reportData?.data;
+    if (initData) {
+      return initData.length > 0 ? Object.keys(initData[0]).filter(k => k !== 'id' && k !== '__rowId') : [];
+    }
+    return reportData ? [] : Object.keys(dummyData[0]).filter(k => k !== 'id' && k !== '__rowId');
   });
   
   const availableKeys = columns.filter(k => data.length > 0 && typeof data[0][k] === 'number');
@@ -247,10 +257,17 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
     // 3. Update report rows and columns
     const rawRows = reportData.rows || reportData.data || [];
-    if (rawRows.length > 0) {
+    const rawCols = reportData.columns || [];
+    if (rawCols.length > 0) {
+      setColumns(rawCols.map(c => typeof c === 'string' ? c : c.column_name || c.name || c));
+      setData(ensureRowIds(rawRows));
+    } else if (rawRows.length > 0) {
       const ensured = ensureRowIds(rawRows);
       setData(ensured);
       setColumns(Object.keys(rawRows[0]).filter(k => k !== 'id' && k !== '__rowId'));
+    } else {
+      setData([]);
+      setColumns([]);
     }
 
     // 4. Update save name / description
@@ -691,7 +708,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: "Total Revenue", value: `$${(data.reduce((acc, row) => acc + (row.revenue || 0), 0) / 1000).toFixed(0)}K`, change: "+14%", type: "positive" },
-            { label: "Avg Margin", value: `${(data.reduce((acc, row) => acc + (row.margin || 0), 0) / data.length).toFixed(1)}%`, change: "+2.4%", type: "positive" },
+            { label: "Avg Margin", value: `${data.length ? (data.reduce((acc, row) => acc + (row.margin || 0), 0) / data.length).toFixed(1) : 0}%`, change: "+2.4%", type: "positive" },
             { label: "Total Units", value: data.reduce((acc, row) => acc + (row.quantity || 0), 0).toLocaleString(), change: "-5%", type: "negative" },
             { label: "Data Points", value: data.length, change: "Live", type: "neutral" },
           ].map((kpi, i) => (
@@ -933,9 +950,20 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                     </thead>
                     <SortableContext items={data.map(r => `row-${r.__rowId}`)} strategy={verticalListSortingStrategy}>
                       <tbody>
-                        {data.map(row => (
-                          <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
-                        ))}
+                        {data.length > 0 ? (
+                          data.map(row => (
+                            <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
+                          ))
+                        ) : (
+                          <tr>
+                            <td 
+                              colSpan={(columns.length || 0) + 1} 
+                              className="px-4 py-8 text-center text-muted-foreground font-medium bg-black/[0.01] dark:bg-white/[0.01]"
+                            >
+                              No records found
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </SortableContext>
                   </table>

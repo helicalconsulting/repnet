@@ -119,8 +119,19 @@ export function PersonalizationProvider({ children, user }) {
     const name = getDisplayName();
     const greeting = getGreeting();
     const lower = input.toLowerCase().trim();
-    const isGreeting = CASUAL_GREETINGS.some(g => lower.startsWith(g));
-    if (!isGreeting) return null;
+    
+    // Clean punctuation for matching
+    const cleanLower = lower.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
+    const words = cleanLower.split(/\s+/);
+    
+    // If the message contains report/query keywords, do not treat it as a casual greeting
+    const queryKeywords = ["show", "list", "report", "select", "customer", "invoice", "revenue", "sales", "inventory", "stock", "margin", "run", "find", "get", "view", "display", "overdue", "ageing", "top", "best"];
+    const hasQueryKeywords = words.some(w => queryKeywords.includes(w));
+    if (hasQueryKeywords) return null;
+
+    // Check if it's a short message (max 3 words) starting with/matching a greeting
+    const startsWithGreeting = CASUAL_GREETINGS.some(g => cleanLower === g || cleanLower.startsWith(g + ' '));
+    if (!startsWithGreeting || words.length > 3) return null;
 
     const responses = profile.aiTone === 'professional'
       ? [`${greeting}, ${name}. How may I assist you with your ERP data analysis today?`]

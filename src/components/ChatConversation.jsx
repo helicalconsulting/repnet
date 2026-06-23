@@ -268,8 +268,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               content: response.message || "Something went wrong.",
             },
           ]);
-          setCurrentSuggestions(response.suggestions || []);
-          setShowSuggestions(response.suggestions?.length > 0);
+          setCurrentSuggestions(getCombinedSuggestions(response));
+          setShowSuggestions(true);
         }
       } catch (err) {
         setPipelineStep(null);

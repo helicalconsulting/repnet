@@ -415,8 +415,8 @@ export default function Dashboard() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 md:p-10 w-full h-full bg-background custom-scrollbar">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="flex-1 overflow-y-auto p-6 md:p-8 w-full h-full bg-background custom-scrollbar">
+      <div className="w-full space-y-8">
 
         {/* ── Page header ─────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

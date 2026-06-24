@@ -488,7 +488,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         </div>
       )}
 
-      <div className="w-full max-w-3xl flex-1 flex flex-col pt-20 pb-40 px-6 overflow-y-auto custom-scrollbar">
+      <div className="w-full max-w-6xl flex-1 flex flex-col pt-20 pb-40 px-6 overflow-y-auto custom-scrollbar">
         {loadingHistory ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
@@ -508,13 +508,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               </div>
             )}
 
-            <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} max-w-[85%]`}>
+            <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} ${
+              msg.role === "ai" && (msg.type === "executable" || msg.sql || msg.type === "template_preview") 
+                ? "w-full max-w-full" 
+                : "max-w-[85%]"
+            }`}>
               <div
                 className={`relative group ${
                   msg.role === "user"
                     ? "px-5 py-3 bg-blue-600 dark:bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm"
                     : msg.type === "error"
-                    ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm"
+                    ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
+                    : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
+                    ? "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
                     : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
                 }`}
               >
@@ -842,7 +848,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       <div className="absolute bottom-0 w-full left-0 right-0 px-6 pb-6 bg-gradient-to-t from-[#fcfcf9] via-[#fcfcf9]/95 dark:from-[#141414] dark:via-[#141414]/95 to-transparent z-10 pt-10 flex justify-center pointer-events-none">
         <form
           onSubmit={handleSubmit}
-          className="relative w-full max-w-3xl pointer-events-auto bg-card dark:bg-[#1C1C1C] rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] border border-border/50 dark:border-white/5 flex flex-col p-2 min-h-[90px] focus-within:border-primary/30 focus-within:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all"
+          className="relative w-full max-w-6xl pointer-events-auto bg-card dark:bg-[#1C1C1C] rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] border border-border/50 dark:border-white/5 flex flex-col p-2 min-h-[90px] focus-within:border-primary/30 focus-within:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all"
         >
           <textarea
             value={inputValue}

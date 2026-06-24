@@ -213,7 +213,30 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     return reportData ? [] : Object.keys(dummyData[0]).filter(k => k !== 'id' && k !== '__rowId');
   });
   
-  const availableKeys = columns.filter(k => data.length > 0 && typeof data[0][k] === 'number');
+  const availableKeys = columns.filter(k => 
+    data.length > 0 && 
+    data.some(row => 
+      row[k] !== undefined && 
+      row[k] !== null && 
+      row[k] !== '' &&
+      !isNaN(Number(row[k])) &&
+      typeof row[k] !== 'boolean'
+    )
+  );
+
+  const processedDataForChart = data.map(row => {
+    const cleanRow = { ...row };
+    availableKeys.forEach(key => {
+      if (cleanRow[key] !== undefined && cleanRow[key] !== null) {
+        const val = Number(cleanRow[key]);
+        cleanRow[key] = isNaN(val) ? 0 : val;
+      } else {
+        cleanRow[key] = 0;
+      }
+    });
+    return cleanRow;
+  });
+
   const displayedTab = isMobile && activeTab === 'split' ? 'chart' : activeTab;
   const chartHeight = displayedTab === 'split'
     ? (isMobile ? 260 : 320)
@@ -221,19 +244,29 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
   useEffect(() => {
     if (columns.length > 0 && data.length > 0) {
-      const numCols = columns.filter(k => typeof data[0]?.[k] === 'number');
+      const numCols = columns.filter(k => 
+        data.some(row => 
+          row[k] !== undefined && 
+          row[k] !== null && 
+          row[k] !== '' &&
+          !isNaN(Number(row[k])) &&
+          typeof row[k] !== 'boolean'
+        )
+      );
       setSelectedDataKeys(prev => {
         const active = prev.filter(p => numCols.includes(p));
         active.sort((a, b) => numCols.indexOf(a) - numCols.indexOf(b));
-        return active.length ? active : [numCols[0]].filter(Boolean);
+        return active.length ? active : (numCols.length > 0 ? [numCols[0]] : []);
       });
       
-      const firstCol = columns[0];
-      if (typeof data[0]?.[firstCol] !== 'number') {
-        setXAxisKey(firstCol);
+      const nonNumCols = columns.filter(k => !numCols.includes(k));
+      if (nonNumCols.length > 0) {
+        setXAxisKey(nonNumCols[0]);
+      } else if (columns.length > 0) {
+        setXAxisKey(columns[0]);
       }
     }
-  }, [columns]);
+  }, [columns, data]);
 
   // Keep all internal states synchronized when reportData or pinnedReports changes
   useEffect(() => {
@@ -459,6 +492,79 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     addNotification('success', 'SQL copied to clipboard');
   };
 
+  const getDynamicKPIs = () => {
+    if (!data || data.length === 0) {
+      return [
+        { label: "Data Points", value: 0, change: "Live", type: "neutral" },
+        { label: "Columns", value: columns.length, change: "Meta", type: "neutral" }
+      ];
+    }
+
+    const kpis = [];
+
+    // Add up to 3 numeric KPIs dynamically based on availableKeys
+    availableKeys.slice(0, 3).forEach(col => {
+      const sum = data.reduce((acc, row) => acc + (Number(row[col]) || 0), 0);
+      const avg = sum / data.length;
+      
+      const lowerCol = col.toLowerCase();
+      const isPercentage = lowerCol.includes('margin') || lowerCol.includes('rate') || lowerCol.includes('percent') || lowerCol.includes('pct') || (avg < 1.0 && avg > 0 && !lowerCol.includes('price') && !lowerCol.includes('cost'));
+      const isCurrency = lowerCol.includes('revenue') || lowerCol.includes('amount') || lowerCol.includes('price') || lowerCol.includes('sales') || lowerCol.includes('cost');
+      
+      let formattedValue = "";
+      let label = "";
+
+      if (isPercentage) {
+        formattedValue = `${(avg * (avg <= 1 && avg > 0 ? 100 : 1)).toFixed(1)}%`;
+        label = `Avg ${col.charAt(0).toUpperCase() + col.slice(1)}`;
+      } else if (isCurrency) {
+        if (sum >= 1000000) {
+          formattedValue = `$${(sum / 1000000).toFixed(1)}M`;
+        } else if (sum >= 1000) {
+          formattedValue = `$${(sum / 1000).toFixed(0)}K`;
+        } else {
+          formattedValue = `$${sum.toLocaleString()}`;
+        }
+        label = `Total ${col.charAt(0).toUpperCase() + col.slice(1)}`;
+      } else {
+        const isSumPreferable = lowerCol.includes('quantity') || lowerCol.includes('unit') || lowerCol.includes('count') || lowerCol.includes('volume') || lowerCol.includes('qty');
+        if (isSumPreferable) {
+          formattedValue = sum >= 1000000 ? `${(sum / 1000000).toFixed(1)}M` : (sum >= 1000 ? `${(sum / 1000).toFixed(0)}K` : sum.toLocaleString());
+          label = `Total ${col.charAt(0).toUpperCase() + col.slice(1)}`;
+        } else {
+          formattedValue = avg >= 1000 ? `${(avg / 1000).toFixed(0)}K` : (avg % 1 === 0 ? String(avg) : avg.toFixed(1));
+          label = `Avg ${col.charAt(0).toUpperCase() + col.slice(1)}`;
+        }
+      }
+
+      kpis.push({
+        label: label,
+        value: formattedValue,
+        change: "Active",
+        type: "positive"
+      });
+    });
+
+    // Add general count metrics to pad/fill up to 4 cards
+    kpis.push({
+      label: "Total Data Points",
+      value: data.length.toLocaleString(),
+      change: "Live",
+      type: "neutral"
+    });
+
+    if (kpis.length < 4) {
+      kpis.push({
+        label: "Total Columns",
+        value: columns.length,
+        change: "Schema",
+        type: "neutral"
+      });
+    }
+
+    return kpis;
+  };
+
   const renderChart = () => {
     const colors = selectedColors.colors;
     const xAxisProps = {
@@ -474,14 +580,32 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       interval: isMobile ? 0 : 'preserveStartEnd'
     };
     const legendProps = { wrapperStyle: { fontSize: isMobile ? 10 : 12 } };
+
+    const formatYAxis = (value) => {
+      if (typeof value !== 'number') return value;
+      const primaryKey = selectedDataKeys[0] || "";
+      const lowerKey = primaryKey.toLowerCase();
+      const isCurrency = lowerKey.includes('revenue') || lowerKey.includes('amount') || lowerKey.includes('price') || lowerKey.includes('sales') || lowerKey.includes('cost');
+      
+      let formatted = value;
+      if (value >= 1000000) {
+        formatted = `${(value / 1000000).toFixed(1)}M`;
+      } else if (value >= 1000) {
+        formatted = `${(value / 1000).toFixed(0)}k`;
+      } else {
+        formatted = String(value);
+      }
+      
+      return isCurrency ? `$${formatted}` : formatted;
+    };
     
     switch (chartType) {
       case 'line':
         return (
-          <LineChart data={data}>
+          <LineChart data={processedDataForChart}>
             <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} vertical={false} />
             <XAxis {...xAxisProps} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => typeof value === 'number' ? `${value/1000}k` : value} />
+            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
             <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
             <Legend {...legendProps} />
             {selectedDataKeys.map((key, i) => (
@@ -492,10 +616,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       
       case 'area':
         return (
-          <AreaChart data={data}>
+          <AreaChart data={processedDataForChart}>
             <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} vertical={false} />
             <XAxis {...xAxisProps} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
             <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
             <Legend {...legendProps} />
             {selectedDataKeys.map((key, i) => (
@@ -509,7 +633,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         return (
           <RechartsPie>
             <Pie
-              data={data}
+              data={processedDataForChart}
               cx="50%"
               cy="50%"
               labelLine={false}
@@ -517,10 +641,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               outerRadius={chartType === 'donut' ? 100 : 120}
               innerRadius={chartType === 'donut' ? 60 : 0}
               fill="#8884d8"
-              dataKey={selectedDataKeys[0] || 'revenue'}
+              dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')}
               nameKey={xAxisKey}
             >
-              {data.map((entry, index) => (
+              {processedDataForChart.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>
@@ -533,19 +657,19 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         return (
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} />
-            <XAxis dataKey={selectedDataKeys[0] || 'revenue'} name={selectedDataKeys[0] || 'revenue'} stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} />
-            <YAxis dataKey={selectedDataKeys[1] || 'margin'} name={selectedDataKeys[1] || 'margin'} stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} />
+            <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} />
+            <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} />
             <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
-            <Scatter name="Data" data={data} fill={colors[0]} />
+            <Scatter name="Data" data={processedDataForChart} fill={colors[0]} />
           </ScatterChart>
         );
       
       default: // bar
         return (
-          <BarChart data={data}>
+          <BarChart data={processedDataForChart}>
             <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} vertical={false} />
             <XAxis {...xAxisProps} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => typeof value === 'number' ? `$${value/1000}k` : value} />
+            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
             <Tooltip cursor={{fill: '#888888', opacity: 0.1}} contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
             <Legend {...legendProps} />
             {selectedDataKeys.map((key, i) => (
@@ -706,12 +830,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-          {[
-            { label: "Total Revenue", value: `$${(data.reduce((acc, row) => acc + (row.revenue || 0), 0) / 1000).toFixed(0)}K`, change: "+14%", type: "positive" },
-            { label: "Avg Margin", value: `${data.length ? (data.reduce((acc, row) => acc + (row.margin || 0), 0) / data.length).toFixed(1) : 0}%`, change: "+2.4%", type: "positive" },
-            { label: "Total Units", value: data.reduce((acc, row) => acc + (row.quantity || 0), 0).toLocaleString(), change: "-5%", type: "negative" },
-            { label: "Data Points", value: data.length, change: "Live", type: "neutral" },
-          ].map((kpi, i) => (
+          {getDynamicKPIs().map((kpi, i) => (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -836,9 +955,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             {/* Data Keys Selector */}
             <div className="flex items-center gap-2 px-3 py-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl flex-wrap">
               <span className="text-xs text-muted-foreground">Show:</span>
-              {availableKeys.map(key => (
-                <button
-                  key={key}
+              {availableKeys.length > 0 ? (
+                availableKeys.map(key => (
+                  <button
+                    key={key}
                     onClick={() => {
                       setSelectedDataKeys(prev => {
                         if (prev.includes(key)) {
@@ -847,15 +967,18 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                         return [...prev, key];
                       });
                     }}
-                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                    selectedDataKeys.includes(key) 
-                      ? 'bg-primary/20 text-primary' 
-                      : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
+                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                      selectedDataKeys.includes(key) 
+                        ? 'bg-primary/20 text-primary' 
+                        : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">None found</span>
+              )}
             </div>
           </div>
         </div>

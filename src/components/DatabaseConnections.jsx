@@ -158,28 +158,31 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, i
       </div>
 
       {!isViewer && (
-        <div className="flex items-center gap-2 pt-3 border-t border-border/50 dark:border-white/5">
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-          >
-            {isSyncing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-            {isSyncing ? 'Syncing...' : 'Sync Now'}
-          </button>
-          <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
-            <ExternalLink className="w-4 h-4" />
-          </button>
+        <div className="flex flex-col gap-2 pt-3 border-t border-border/50 dark:border-white/5">
+          <div className="flex items-center gap-2 w-full">
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {isSyncing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {isSyncing ? 'Syncing...' : 'Sync Now'}
+            </button>
+            <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0">
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </div>
           {isAdmin && (
             <button 
               onClick={() => onDelete(connection.id)}
-              className="p-2 hover:bg-rose-500/10 rounded-lg text-muted-foreground hover:text-rose-500 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-lg text-sm font-medium transition-colors"
             >
               <Trash2 className="w-4 h-4" />
+              Disconnect
             </button>
           )}
         </div>

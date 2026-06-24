@@ -569,7 +569,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     const colors = selectedColors.colors;
     const xAxisProps = {
       dataKey: xAxisKey,
-      stroke: "#888888",
+      stroke: "var(--muted-foreground)",
       fontSize: isMobile ? 10 : 11,
       tickLine: false,
       axisLine: false,
@@ -579,7 +579,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       height: isMobile ? 50 : 60,
       interval: isMobile ? 0 : 'preserveStartEnd'
     };
-    const legendProps = { wrapperStyle: { fontSize: isMobile ? 10 : 12 } };
+    const legendProps = { wrapperStyle: { fontSize: isMobile ? 10 : 12, color: 'var(--foreground)' } };
 
     const formatYAxis = (value) => {
       if (typeof value !== 'number') return value;
@@ -603,10 +603,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       case 'line':
         return (
           <LineChart data={processedDataForChart}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical={false} />
             <XAxis {...xAxisProps} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
-            <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+              labelStyle={{ color: 'var(--foreground)' }}
+              itemStyle={{ color: 'var(--foreground)' }}
+            />
             <Legend {...legendProps} />
             {selectedDataKeys.map((key, i) => (
               <Line key={key} type="monotone" dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} stroke={colors[i % colors.length]} strokeWidth={2} dot={{ fill: colors[i % colors.length], r: 4 }} />
@@ -617,10 +621,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       case 'area':
         return (
           <AreaChart data={processedDataForChart}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical={false} />
             <XAxis {...xAxisProps} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
-            <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+              labelStyle={{ color: 'var(--foreground)' }}
+              itemStyle={{ color: 'var(--foreground)' }}
+            />
             <Legend {...legendProps} />
             {selectedDataKeys.map((key, i) => (
               <Area key={key} type="monotone" dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} fill={colors[i % colors.length]} fillOpacity={0.3} stroke={colors[i % colors.length]} strokeWidth={2} />
@@ -648,7 +656,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>
-            <Tooltip contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+              labelStyle={{ color: 'var(--foreground)' }}
+              itemStyle={{ color: 'var(--foreground)' }}
+            />
             <Legend {...legendProps} />
           </RechartsPie>
         );
@@ -656,10 +668,15 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       case 'scatter':
         return (
           <ScatterChart>
-            <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} />
-            <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} />
-            <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} />
-            <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+            <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+            <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+            <Tooltip 
+              cursor={{ strokeDasharray: '3 3' }} 
+              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+              labelStyle={{ color: 'var(--foreground)' }}
+              itemStyle={{ color: 'var(--foreground)' }}
+            />
             <Scatter name="Data" data={processedDataForChart} fill={colors[0]} />
           </ScatterChart>
         );
@@ -667,10 +684,15 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       default: // bar
         return (
           <BarChart data={processedDataForChart}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#888888" strokeOpacity={0.1} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical={false} />
             <XAxis {...xAxisProps} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
-            <Tooltip cursor={{fill: '#888888', opacity: 0.1}} contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
+            <Tooltip 
+              cursor={{ fill: 'var(--muted)', opacity: 0.1 }} 
+              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+              labelStyle={{ color: 'var(--foreground)' }}
+              itemStyle={{ color: 'var(--foreground)' }}
+            />
             <Legend {...legendProps} />
             {selectedDataKeys.map((key, i) => (
               <Bar key={key} dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} />

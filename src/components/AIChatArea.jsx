@@ -2,8 +2,9 @@ import { Paperclip, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, Tr
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
+import { queryApi } from "../services/api";
 
-const suggestions = [
+const DEFAULT_SUGGESTIONS = [
   {
     category: "AP & Suppliers",
     prompts: [
@@ -50,6 +51,21 @@ export default function AIChatArea({ onSearch }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState(0);
   const [showConnectionBadge, setShowConnectionBadge] = useState(true);
+  const [suggestions, setSuggestions] = useState(DEFAULT_SUGGESTIONS);
+
+  useEffect(() => {
+    let active = true;
+    queryApi.getSuggestions()
+      .then((data) => {
+        if (active && Array.isArray(data) && data.length > 0) {
+          setSuggestions(data);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch dynamic suggestions, using fallbacks:", err);
+      });
+    return () => { active = false; };
+  }, []);
 
   const activeConn = connections.find(c => c.id === activeConnection);
   const isViewer = user?.role === 'viewer';

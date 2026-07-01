@@ -460,6 +460,9 @@ export const queryApi = {
   async getTemplates() {
     return request('/query/templates');
   },
+  async getSuggestions() {
+    return request('/query/suggestions');
+  },
 };
 
 // ── Template API ──────────────────────────────────────────────────────

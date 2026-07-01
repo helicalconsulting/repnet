@@ -146,43 +146,23 @@ export default function AIChatArea({ onSearch }) {
       {/* Center Content */}
       <div className="w-full flex flex-col items-center relative z-20">
         
-        {/* Glowy Morphing Assistant Orb */}
+        {/* Glowy Assistant Orb (Reverted to Normal Rounded) */}
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ 
-            opacity: 1,
-            scale: isListening ? [1, 1.15, 0.95, 1.2, 0.9, 1.15, 1] : [1, 1.05, 0.98, 1.02, 1],
-            borderRadius: isListening 
-              ? ["40% 60% 40% 60% / 40% 40% 60% 60%", "60% 40% 60% 40% / 60% 60% 40% 40%", "45% 55% 50% 50% / 50% 45% 55% 50%", "40% 60% 40% 60% / 40% 40% 60% 60%"]
-              : ["50% 50% 50% 50%", "42% 58% 70% 30% / 45% 45% 55% 55%", "70% 30% 52% 48% / 60% 40% 60% 40%", "50% 50% 50% 50%"],
-            rotate: isListening ? [0, 90, 180, 270, 360] : [0, 120, 240, 360],
-          }}
-          transition={{ 
-            duration: isListening ? 1.5 : 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className={`w-16 h-16 mb-4 relative cursor-pointer select-none transition-all duration-300 ${
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className={`w-16 h-16 rounded-full mb-4 relative cursor-pointer select-none transition-all duration-300 ${
             isListening 
               ? "shadow-[0_0_80px_rgba(239,68,68,0.7)] bg-gradient-to-b from-white via-rose-300 to-rose-600" 
               : "shadow-[0_0_60px_rgba(37,99,235,0.4)] bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb]"
           }`}
           onClick={toggleListening}
         >
-          {/* Outer Ripple / Breathing Glow */}
+          {/* Inner Breathing Glow */}
           <motion.div 
-            animate={{ 
-              scale: isListening ? [1, 1.35, 1] : [1, 1.25, 1],
-              borderRadius: isListening 
-                ? ["60% 40% 60% 40% / 60% 60% 40% 40%", "40% 60% 40% 60% / 40% 40% 60% 60%", "60% 40% 60% 40% / 60% 60% 40% 40%"]
-                : ["50% 50% 50% 50%", "70% 30% 52% 48% / 60% 40% 60% 40%", "50% 50% 50% 50%"],
-            }}
-            transition={{ 
-              repeat: Infinity, 
-              duration: isListening ? 1.2 : 4, 
-              ease: "easeInOut" 
-            }}
-            className={`absolute inset-0 blur-xl opacity-60 transition-all duration-300 ${
+            animate={{ scale: isListening ? [1, 1.3, 1] : [1, 1.2, 1] }}
+            transition={{ repeat: Infinity, duration: isListening ? 1.5 : 3, ease: "easeInOut" }}
+            className={`absolute inset-0 rounded-full blur-xl opacity-50 transition-all duration-300 ${
               isListening 
                 ? "bg-gradient-to-b from-white via-rose-300 to-rose-600" 
                 : "bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb]"

@@ -1,4 +1,4 @@
-import { Paperclip, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, Users, BookOpen, ChevronRight } from "lucide-react";
+import { Mic, MicOff, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, Users, BookOpen, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
@@ -67,6 +67,57 @@ export default function AIChatArea({ onSearch }) {
     return () => { active = false; };
   }, []);
 
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        if (text) {
+          setQuery(prev => prev ? `${prev} ${text}` : text);
+        }
+      };
+
+      rec.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(rec);
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognition) {
+      alert("Speech recognition is not supported in your browser. Please try Chrome, Safari, or Edge.");
+      return;
+    }
+    if (isListening) {
+      recognition.stop();
+    } else {
+      try {
+        recognition.start();
+      } catch (err) {
+        console.warn("Recognition already started:", err);
+      }
+    }
+  };
+
   const activeConn = connections.find(c => c.id === activeConnection);
   const isViewer = user?.role === 'viewer';
 
@@ -95,17 +146,46 @@ export default function AIChatArea({ onSearch }) {
       {/* Center Content */}
       <div className="w-full flex flex-col items-center relative z-20">
         
-        {/* Glowy Orb */}
+        {/* Glowy Morphing Assistant Orb */}
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-16 h-16 rounded-full mb-4 shadow-[0_0_60px_rgba(37,99,235,0.4)] bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] relative"
+          animate={{ 
+            scale: isListening ? [1, 1.15, 0.95, 1.2, 0.9, 1.15, 1] : [1, 1.05, 0.98, 1.02, 1],
+            borderRadius: isListening 
+              ? ["40% 60% 40% 60% / 40% 40% 60% 60%", "60% 40% 60% 40% / 60% 60% 40% 40%", "45% 55% 50% 50% / 50% 45% 55% 50%", "40% 60% 40% 60% / 40% 40% 60% 60%"]
+              : ["50% 50% 50% 50%", "42% 58% 70% 30% / 45% 45% 55% 55%", "70% 30% 52% 48% / 60% 40% 60% 40%", "50% 50% 50% 50%"],
+            rotate: isListening ? [0, 90, 180, 270, 360] : [0, 120, 240, 360],
+          }}
+          transition={{ 
+            duration: isListening ? 1.5 : 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className={`w-16 h-16 mb-4 relative cursor-pointer select-none transition-all duration-300 ${
+            isListening 
+              ? "shadow-[0_0_80px_rgba(239,68,68,0.7)] bg-gradient-to-tr from-rose-500 via-indigo-500 to-cyan-400" 
+              : "shadow-[0_0_60px_rgba(37,99,235,0.4)] bg-gradient-to-tr from-[#2563eb] via-[#8b5cf6] to-[#06b6d4]"
+          }`}
+          onClick={toggleListening}
         >
+          {/* Outer Ripple / Breathing Glow */}
           <motion.div 
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-            className="absolute inset-0 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] blur-xl opacity-50"
+            animate={{ 
+              scale: isListening ? [1, 1.35, 1] : [1, 1.25, 1],
+              borderRadius: isListening 
+                ? ["60% 40% 60% 40% / 60% 60% 40% 40%", "40% 60% 40% 60% / 40% 40% 60% 60%", "60% 40% 60% 40% / 60% 60% 40% 40%"]
+                : ["50% 50% 50% 50%", "70% 30% 52% 48% / 60% 40% 60% 40%", "50% 50% 50% 50%"],
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: isListening ? 1.2 : 4, 
+              ease: "easeInOut" 
+            }}
+            className={`absolute inset-0 blur-xl opacity-60 transition-all duration-300 ${
+              isListening 
+                ? "bg-gradient-to-tr from-rose-500 via-indigo-500 to-cyan-400" 
+                : "bg-gradient-to-tr from-[#2563eb] via-[#8b5cf6] to-[#06b6d4]"
+            }`}
           />
         </motion.div>
 
@@ -234,8 +314,25 @@ export default function AIChatArea({ onSearch }) {
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
-                <button type="button" disabled={isViewer} className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-30">
-                  <Paperclip className="w-4 h-4" />
+                <button 
+                  type="button" 
+                  onClick={toggleListening}
+                  disabled={isViewer} 
+                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-all relative ${
+                    isListening 
+                      ? "bg-rose-500 text-white shadow-lg shadow-rose-500/50 animate-pulse scale-110" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                  } disabled:opacity-30`}
+                  title={isListening ? "Listening... Click to stop" : "Voice input (Speech to text)"}
+                >
+                  {isListening ? (
+                    <MicOff className="w-4 h-4 text-white" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                  {isListening && (
+                    <span className="absolute inset-0 rounded-full border border-rose-500 animate-ping opacity-75" />
+                  )}
                 </button>
                 <button 
                   type="submit" 

@@ -869,28 +869,31 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `}`,
                                 ``,
                                 `Write-Host ''`,
-                                `Write-Host 'Registering Windows Task Scheduler auto-start...' -ForegroundColor Cyan`,
+                                `Write-Host 'Setting up auto-start via Windows Startup Folder...' -ForegroundColor Cyan`,
                                 `$pyExe = (Get-Command $py -EA SilentlyContinue).Source`,
                                 `if (-not $pyExe) { $pyExe = (Get-Command $py).Source }`,
-                                `$agentArgs = "--server \`"${serverWs}\`" --token \`"${token}\`" --agent-name \`"${agentName}\`" --db-type \`"${selectedType}\`" --db-host \`"${localDbHost}\`" --db-port \`"${port}\`" --db-user \`"${localDbUser}\`" --db-password \`"${localDbPassword}\`""`,
-                                `try { Unregister-ScheduledTask -TaskName 'RepnexGatewayAgent' -Confirm:$false -EA SilentlyContinue } catch {}`,
-                                `$action   = New-ScheduledTaskAction -Execute $pyExe -Argument "$agentPath $agentArgs" -WorkingDirectory $dir`,
-                                `$trigger  = New-ScheduledTaskTrigger -AtStartup`,
-                                `$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1)`,
-                                `Register-ScheduledTask -TaskName 'RepnexGatewayAgent' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null`,
-                                `Start-ScheduledTask -TaskName 'RepnexGatewayAgent'`,
+                                `$agentArgs = '--server \"${serverWs}\" --token \"${token}\" --agent-name \"${agentName}\" --db-type \"${selectedType}\" --db-host \"${localDbHost}\" --db-port \"${port}\" --db-user \"${localDbUser}\" --db-password \"${localDbPassword}\"'`,
+                                `# Write a launcher .bat that opens a visible CMD window`,
+                                `$launcherContent = "@echo off`r`ntitle Repnex Gateway Agent`r`necho Starting Repnex Gateway Agent...`r`ntimeout /t 5 /nobreak >nul`r`n:loop`r`n`"$pyExe`" `"$agentPath`" $agentArgs`r`necho Agent stopped. Restarting in 10s...`r`ntimeout /t 10 /nobreak >nul`r`ngoto loop"`,
+                                `$launcherPath = Join-Path $dir 'start-repnex-agent.bat'`,
+                                `[IO.File]::WriteAllText($launcherPath, $launcherContent, [Text.Encoding]::ASCII)`,
+                                `# Copy launcher to Windows Startup folder so it auto-runs on every login`,
+                                `$startupFolder = [Environment]::GetFolderPath('Startup')`,
+                                `Copy-Item $launcherPath (Join-Path $startupFolder 'start-repnex-agent.bat') -Force`,
                                 ``,
                                 `Write-Host ''`,
                                 `Write-Host '=====================================================' -ForegroundColor Green`,
-                                `Write-Host '  SUCCESS! Repnex Agent is running.' -ForegroundColor Green`,
-                                `Write-Host '  It will auto-start every time Windows boots.' -ForegroundColor Green`,
+                                `Write-Host '  SUCCESS! Agent installed.' -ForegroundColor Green`,
+                                `Write-Host '  Launching agent now in a new window...' -ForegroundColor Green`,
                                 `Write-Host '=====================================================' -ForegroundColor Green`,
                                 `Write-Host ''`,
-                                `Write-Host '  To check status : Get-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
-                                `Write-Host '  To stop         : Stop-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
-                                `Write-Host '  To uninstall    : Unregister-ScheduledTask -TaskName RepnexGatewayAgent' -ForegroundColor Gray`,
+                                `Write-Host '  Auto-starts every login via Startup Folder.' -ForegroundColor Gray`,
+                                `Write-Host '  To stop: close the Repnex Agent window.' -ForegroundColor Gray`,
+                                `Write-Host '  To uninstall: delete start-repnex-agent.bat from shell:startup' -ForegroundColor Gray`,
                                 `Write-Host ''`,
-                                `Read-Host 'Done! Press Enter to close'`,
+                                `# Launch agent NOW in a visible CMD window`,
+                                `Start-Process 'cmd.exe' -ArgumentList "/k `"$launcherPath`""`,
+                                `Read-Host 'Done! Press Enter to close this setup window'`,
                               ].join('\r\n');
 
                               // Encode as UTF-16LE base64 (PowerShell -EncodedCommand format)
@@ -910,20 +913,11 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                               }
 
                               const encoded = toUtf16LeBase64(ps1);
-                              // Simple 3-line .bat — impossible to crash
+                              // No admin needed — Startup Folder works under current user
                               const batContent = [
                                 '@echo off',
-                                ':: Check for Administrator privileges',
-                                'net session >nul 2>&1',
-                                'if %errorLevel% neq 0 (',
-                                '  echo Requesting Administrator privileges...',
-                                '  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process \'%~f0\' -Verb RunAs"',
-                                '  exit /b',
-                                ')',
-                                '',
                                 'set "REPNEX_DIR=%~dp0"',
                                 `powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encoded}`,
-                                'pause',
                               ].join('\r\n');
 
                               const blob = new Blob([batContent], { type: 'text/plain' });

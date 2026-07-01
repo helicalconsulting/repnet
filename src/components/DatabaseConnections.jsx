@@ -874,7 +874,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `if (-not $pyExe) { $pyExe = (Get-Command $py).Source }`,
                                 `$agentArgs = '--server \"${serverWs}\" --token \"${token}\" --agent-name \"${agentName}\" --db-type \"${selectedType}\" --db-host \"${localDbHost}\" --db-port \"${port}\" --db-user \"${localDbUser}\" --db-password \"${localDbPassword}\"'`,
                                 `# Write a launcher .bat that opens a visible CMD window`,
-                                `$launcherContent = "@echo off`r`ntitle Repnex Gateway Agent`r`necho Starting Repnex Gateway Agent...`r`ntimeout /t 5 /nobreak >nul`r`n:loop`r`n`"$pyExe`" `"$agentPath`" $agentArgs`r`necho Agent stopped. Restarting in 10s...`r`ntimeout /t 10 /nobreak >nul`r`ngoto loop"`,
+                                `$launcherContent = "@echo off\`r\`ntitle Repnex Gateway Agent\`r\`necho Starting Repnex Gateway Agent...\`r\`ntimeout /t 5 /nobreak >nul\`r\`n:loop\`r\`n\`"$pyExe\`" \`"$agentPath\`" $agentArgs\`r\`necho Agent stopped. Restarting in 10s...\`r\`ntimeout /t 10 /nobreak >nul\`r\`ngoto loop"`,
                                 `$launcherPath = Join-Path $dir 'start-repnex-agent.bat'`,
                                 `[IO.File]::WriteAllText($launcherPath, $launcherContent, [Text.Encoding]::ASCII)`,
                                 `# Copy launcher to Windows Startup folder so it auto-runs on every login`,
@@ -892,7 +892,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                                 `Write-Host '  To uninstall: delete start-repnex-agent.bat from shell:startup' -ForegroundColor Gray`,
                                 `Write-Host ''`,
                                 `# Launch agent NOW in a visible CMD window`,
-                                `Start-Process 'cmd.exe' -ArgumentList "/k `"$launcherPath`""`,
+                                `Start-Process 'cmd.exe' -ArgumentList "/k '$launcherPath'"`,
                                 `Read-Host 'Done! Press Enter to close this setup window'`,
                               ].join('\r\n');
 

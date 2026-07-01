@@ -150,6 +150,7 @@ export default function AIChatArea({ onSearch }) {
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ 
+            opacity: 1,
             scale: isListening ? [1, 1.15, 0.95, 1.2, 0.9, 1.15, 1] : [1, 1.05, 0.98, 1.02, 1],
             borderRadius: isListening 
               ? ["40% 60% 40% 60% / 40% 40% 60% 60%", "60% 40% 60% 40% / 60% 60% 40% 40%", "45% 55% 50% 50% / 50% 45% 55% 50%", "40% 60% 40% 60% / 40% 40% 60% 60%"]

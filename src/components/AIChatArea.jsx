@@ -163,8 +163,8 @@ export default function AIChatArea({ onSearch }) {
           }}
           className={`w-16 h-16 mb-4 relative cursor-pointer select-none transition-all duration-300 ${
             isListening 
-              ? "shadow-[0_0_80px_rgba(239,68,68,0.7)] bg-gradient-to-tr from-rose-500 via-indigo-500 to-cyan-400" 
-              : "shadow-[0_0_60px_rgba(37,99,235,0.4)] bg-gradient-to-tr from-[#2563eb] via-[#8b5cf6] to-[#06b6d4]"
+              ? "shadow-[0_0_80px_rgba(239,68,68,0.7)] bg-gradient-to-b from-white via-rose-300 to-rose-600" 
+              : "shadow-[0_0_60px_rgba(37,99,235,0.4)] bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb]"
           }`}
           onClick={toggleListening}
         >
@@ -183,8 +183,8 @@ export default function AIChatArea({ onSearch }) {
             }}
             className={`absolute inset-0 blur-xl opacity-60 transition-all duration-300 ${
               isListening 
-                ? "bg-gradient-to-tr from-rose-500 via-indigo-500 to-cyan-400" 
-                : "bg-gradient-to-tr from-[#2563eb] via-[#8b5cf6] to-[#06b6d4]"
+                ? "bg-gradient-to-b from-white via-rose-300 to-rose-600" 
+                : "bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb]"
             }`}
           />
         </motion.div>

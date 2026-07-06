@@ -80,7 +80,7 @@ export default function ChatPage() {
 
   /** "View Interactive Report" button inside chat */
   const handleOpenReport = (query, data = null) => {
-    navigate('/report/new', { state: { query, data } });
+    navigate('/report/new', { state: { query, data, fromChat: true, sessionId: selectedSessionId } });
   };
 
   // ── Render ─────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Table as TableIcon, 
   BarChart2, 
@@ -147,6 +147,7 @@ function SortableRow({ rowId, row, columns }) {
 
 export default function ReportBuilder({ query, onClose, reportData, onToggleInsights }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { togglePinReport, saveReport, addNotification, pinnedReports, user } = useApp();
   const isViewer = user?.role === 'viewer';
   
@@ -393,9 +394,15 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
       setShowSaveModal(false);
       if (newReport?.id) {
-        navigate(`/report/${newReport.id}`, { state: { data: { ...newReport, rows: data, sql: reportData?.sql } } });
+        navigate(`/report/${newReport.id}`, { 
+          state: { 
+            data: { ...newReport, rows: data, sql: reportData?.sql },
+            fromChat: location.state?.fromChat,
+            sessionId: location.state?.sessionId
+          } 
+        });
       } else {
-        navigate('/report');
+        navigate(location.state?.fromChat ? (location.state?.sessionId ? `/chat/${location.state.sessionId}` : '/chat') : '/report');
       }
     } catch (err) {
       addNotification("error", err.message || "Failed to save report");

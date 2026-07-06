@@ -115,6 +115,16 @@ export default function ReportPage() {
     setShowSchedule(false);
   };
 
+  const handleBack = () => {
+    const fromChat = location.state?.fromChat;
+    const sessionId = location.state?.sessionId;
+    if (fromChat) {
+      navigate(sessionId ? `/chat/${sessionId}` : '/chat');
+    } else {
+      navigate('/report');
+    }
+  };
+
   // ── Loading / Error states ─────────────────────────────────────────────────
   if (loading) {
     return (
@@ -136,10 +146,10 @@ export default function ReportPage() {
           </div>
           <p className="text-sm text-muted-foreground">{error}</p>
           <button
-            onClick={() => navigate('/report')}
+            onClick={handleBack}
             className="text-sm text-primary hover:underline font-medium"
           >
-            ← Back to Reports
+            {location.state?.fromChat ? '← Back to Chat' : '← Back to Reports'}
           </button>
         </div>
       </div>
@@ -155,11 +165,11 @@ export default function ReportPage() {
           {/* Left: back + tabs */}
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/report')}
+              onClick={handleBack}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
-              Reports
+              {location.state?.fromChat ? 'Back to Chat' : 'Reports'}
             </button>
             <div className="flex items-center bg-muted/40 rounded-xl p-1 gap-0.5">
               {TABS.map((tab) => {
@@ -234,7 +244,7 @@ export default function ReportPage() {
             <ReportBuilder
               query={query}
               reportData={reportData}
-              onClose={() => navigate('/report')}
+              onClose={handleBack}
             />
           </div>
         )}

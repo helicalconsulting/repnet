@@ -724,32 +724,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
-          {/* View Toggles */}
-          <div className="flex items-center bg-black/5 dark:bg-black/40 p-1 rounded-lg border border-black/5 dark:border-white/5">
-            <button 
-              onClick={() => setActiveTab("table")} 
-              className={`p-1.5 rounded-md transition-all ${displayedTab === "table" ? "bg-white dark:bg-white/10 text-foreground dark:text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              title="Table View"
-            >
-              <TableIcon className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setActiveTab("chart")} 
-              className={`p-1.5 rounded-md transition-all ${displayedTab === "chart" ? "bg-white dark:bg-white/10 text-foreground dark:text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              title="Chart View"
-            >
-              <BarChart2 className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setActiveTab("split")} 
-              className={`hidden lg:inline-flex p-1.5 rounded-md transition-all ${displayedTab === "split" ? "bg-white dark:bg-white/10 text-foreground dark:text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              title="Split View"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div className="hidden sm:block h-6 w-px bg-border/50"></div>
           
 
           
@@ -878,6 +852,30 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         {/* Chart Customization Bar */}
         <div className="pb-1">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {/* View Toggles */}
+            <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-1 rounded-xl border border-border/50 dark:border-white/10">
+              <button 
+                onClick={() => setActiveTab("table")} 
+                className={`p-1.5 rounded-lg transition-all ${displayedTab === "table" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                title="Table View"
+              >
+                <TableIcon className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setActiveTab("chart")} 
+                className={`p-1.5 rounded-lg transition-all ${displayedTab === "chart" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                title="Chart View"
+              >
+                <BarChart2 className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setActiveTab("split")} 
+                className={`hidden lg:inline-flex p-1.5 rounded-lg transition-all ${displayedTab === "split" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                title="Split View"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+              </button>
+            </div>
             {/* Chart Type Selector */}
             <div className="relative">
               <button

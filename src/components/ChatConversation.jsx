@@ -597,7 +597,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 const hasRows = msg.rows && msg.rows.length > 0;
                 const activeTab = visualTabs[msg.id] || (hasRows ? 'chart' : 'table');
                 return (
-                  <div className="mt-4 bg-slate-900/40 dark:bg-black/30 border border-slate-800/60 dark:border-white/5 rounded-2xl p-4 overflow-hidden">
+                  <div className="mt-4 w-full bg-slate-900/40 dark:bg-black/30 border border-slate-800/60 dark:border-white/5 rounded-2xl p-4 overflow-hidden">
                     <div className="flex items-center justify-between mb-4 border-b border-slate-800/60 dark:border-white/5 pb-2">
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Quick Visuals

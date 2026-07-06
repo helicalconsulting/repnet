@@ -30,8 +30,9 @@ import { databaseApi } from "../services/api";
 
 const dbTypes = [
   { id: "postgres", name: "PostgreSQL", icon: "🐘", color: "#336791", port: "5432" },
-  { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
+  { id: "supabase", name: "Supabase (Helios ERP)", icon: "⚡", color: "#3ECF8E", port: "5432", dialect: "postgres", hint: "postgresql://user:pass@db.xxx.supabase.co:5432/postgres" },
   { id: "mssql", name: "SQL Server / Syspro", icon: "🔷", color: "#CC2927", port: "1433" },
+  { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
   { id: "oracle", name: "Oracle", icon: "🔴", color: "#F80000", port: "1521" },
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
 ];
@@ -441,19 +442,19 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     } else if (inputMode === 'string') {
       payload = {
         name: formData.name || 'Test Connection',
-        db_type: selectedType || 'mssql',
+        db_type: (selectedType === 'supabase' ? 'postgres' : selectedType) || 'mssql',
         connection_string: formData.connectionString,
         host: '',
         port: 0,
         db_name: '',
         username: '',
         password: '',
-        ssl_enabled: false,
+        ssl_enabled: selectedType === 'supabase',
       };
     } else {
       payload = {
         name: formData.name || 'Test Connection',
-        db_type: selectedType,
+        db_type: selectedType === 'supabase' ? 'postgres' : selectedType,
         host: formData.host,
         port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
         db_name: formData.database,
@@ -485,19 +486,19 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     } else if (inputMode === 'string') {
       payload = {
         name: formData.name,
-        db_type: selectedType || 'mssql',
+        db_type: (selectedType === 'supabase' ? 'postgres' : selectedType) || 'mssql',
         connection_string: formData.connectionString,
         host: '',
         port: 0,
         db_name: '',
         username: '',
         password: '',
-        ssl_enabled: false,
+        ssl_enabled: selectedType === 'supabase',
       };
     } else {
       payload = {
         name: formData.name,
-        db_type: selectedType,
+        db_type: selectedType === 'supabase' ? 'postgres' : selectedType,
         host: formData.host,
         port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
         db_name: formData.database,
@@ -582,7 +583,12 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     key={db.id}
                     onClick={() => {
                       setSelectedType(db.id);
-                      setFormData(prev => ({ ...prev, port: defaultPorts[db.id] }));
+                      setFormData(prev => ({ ...prev, port: db.port }));
+                      // Supabase → force connection-string mode
+                      if (db.id === 'supabase') {
+                        setInputMode('string');
+                        setConnectionMode('direct');
+                      }
                       setStep(2);
                     }}
                     className="flex items-center gap-3 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
@@ -590,7 +596,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     <span className="text-3xl">{db.icon}</span>
                     <div className="text-left">
                       <p className="font-medium text-foreground">{db.name}</p>
-                      <p className="text-xs text-muted-foreground">Click to connect</p>
+                      <p className="text-xs text-muted-foreground">{db.id === 'supabase' ? 'Paste connection string' : 'Click to connect'}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </button>
@@ -617,13 +623,25 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
                 <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl">
                   <span className="text-2xl">{dbTypes.find(d => d.id === selectedType)?.icon}</span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium">{dbTypes.find(d => d.id === selectedType)?.name}</p>
-                    <p className="text-xs text-muted-foreground">Enter your connection details below</p>
+                    <p className="text-xs text-muted-foreground">{selectedType === 'supabase' ? 'Paste your Supabase PostgreSQL connection string below' : 'Enter your connection details below'}</p>
                   </div>
+                  {selectedType === 'supabase' && (
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">Helios ERP</span>
+                  )}
                 </div>
 
-                {/* Connection Mode toggle */}
+                {/* Supabase info banner */}
+                {selectedType === 'supabase' && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-400">
+                    <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>Use the PostgreSQL connection string from your Supabase project dashboard. Format: <code className="font-mono bg-black/10 dark:bg-white/10 px-1 rounded">postgresql://postgres:[PASSWORD]@db.[ID].supabase.co:5432/postgres</code></span>
+                  </div>
+                )}
+
+                {/* Connection Mode toggle — hide for Supabase (always direct) */}
+                {selectedType !== 'supabase' && (
                 <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-sm">
                   <button
                     type="button"
@@ -665,9 +683,10 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     Secure Gateway
                   </button>
                 </div>
+                )}
 
-                {/* Sub-mode toggle for Direct Mode */}
-                {connectionMode === 'direct' && (
+                {/* Sub-mode toggle for Direct Mode — hide for Supabase (always string) */}
+                {connectionMode === 'direct' && selectedType !== 'supabase' && (
                   <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-xs w-fit">
                     <button
                       type="button"

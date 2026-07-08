@@ -44,6 +44,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [visualTabs, setVisualTabs] = useState({});
   const isViewer = user?.role === 'viewer';
 
+  // Dynamic theme detection
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const checkTheme = () => {
+      const isDarkClass = document.documentElement.classList.contains('dark');
+      const storedTheme = window.localStorage.getItem('repnex-theme');
+      setIsDark(storedTheme === 'dark' || (storedTheme !== 'light' && isDarkClass));
+    };
+
+    checkTheme();
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   const getKeysForVisuals = (rows) => {
     try {
       if (!Array.isArray(rows) || rows.length === 0 || !rows[0]) {
@@ -55,14 +70,24 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       for (const key of keys) {
         const val = rows[0][key];
-        if (typeof val === 'string' && !xAxisKey) {
+        if (typeof val === 'string' && isNaN(Number(val)) && !xAxisKey) {
           xAxisKey = key;
-        } else if (typeof val === 'number' && !yAxisKey) {
-          yAxisKey = key;
         }
       }
       if (!xAxisKey) xAxisKey = keys[0] || '';
-      if (!yAxisKey) yAxisKey = keys.find(k => typeof rows[0][k] === 'number') || keys[1] || keys[0] || '';
+
+      for (const key of keys) {
+        if (key === xAxisKey) continue;
+        const val = rows[0][key];
+        const numVal = Number(val);
+        if (val !== null && val !== undefined && !isNaN(numVal) && typeof val !== 'boolean') {
+          yAxisKey = key;
+          break;
+        }
+      }
+      if (!yAxisKey) {
+        yAxisKey = keys.find(k => k !== xAxisKey) || keys[0] || '';
+      }
       return { xAxisKey, yAxisKey };
     } catch (e) {
       console.error("Error in getKeysForVisuals:", e);
@@ -605,12 +630,20 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 const hasRows = msg.rows && msg.rows.length > 0;
                 const activeTab = visualTabs[msg.id] || (hasRows ? 'chart' : 'table');
                 return (
-                  <div className="mt-4 w-full bg-slate-900/40 dark:bg-black/30 border border-slate-800/60 dark:border-white/5 rounded-2xl p-4 overflow-hidden">
-                    <div className="flex items-center justify-between mb-4 border-b border-slate-800/60 dark:border-white/5 pb-2">
+                  <div className={`mt-4 w-full rounded-2xl p-4 overflow-hidden ${
+                    isDark 
+                      ? 'bg-black/30 border border-white/5' 
+                      : 'bg-slate-50 border border-slate-200'
+                  }`}>
+                    <div className={`flex items-center justify-between mb-4 border-b pb-2 ${
+                      isDark ? 'border-white/5' : 'border-slate-200'
+                    }`}>
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Quick Visuals
                       </span>
-                      <div className="flex gap-1 bg-black/20 dark:bg-white/5 p-1 rounded-lg">
+                      <div className={`flex gap-1 p-1 rounded-lg ${
+                        isDark ? 'bg-white/5' : 'bg-slate-200/60'
+                      }`}>
                         {hasRows && (
                           <button
                             onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'chart' }))}
@@ -636,50 +669,70 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       </div>
                     </div>
 
-                    {activeTab === 'chart' && hasRows ? (
-                      <div className="h-48 w-full mt-2">
-                        <ResponsiveContainer width="99%" height="100%">
-                          <BarChart data={msg.rows.slice(0, 8)}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis 
-                              dataKey={getKeysForVisuals(msg.rows).xAxisKey} 
-                              stroke="rgba(255,255,255,0.4)" 
-                              fontSize={10}
-                              tickLine={false}
-                            />
-                            <YAxis 
-                              stroke="rgba(255,255,255,0.4)" 
-                              fontSize={10}
-                              tickLine={false}
-                            />
-                            <Tooltip 
-                              contentStyle={{ 
-                                backgroundColor: '#1E293B', 
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '8px',
-                                fontSize: '11px',
-                                color: '#fff'
-                              }} 
-                            />
-                            <Bar 
-                              dataKey={getKeysForVisuals(msg.rows).yAxisKey} 
-                              fill="url(#primaryGradient)" 
-                              radius={[4, 4, 0, 0]} 
-                            />
-                            <defs>
-                              <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.3}/>
-                              </linearGradient>
-                            </defs>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto w-full border border-slate-800/60 dark:border-white/5 rounded-xl mt-2 max-h-48 overflow-y-auto">
+                    {activeTab === 'chart' && hasRows ? (() => {
+                      const { xAxisKey, yAxisKey } = getKeysForVisuals(msg.rows);
+                      const formattedData = msg.rows.slice(0, 8).map(row => {
+                        const val = row[yAxisKey];
+                        const numVal = (val !== null && val !== undefined) ? Number(val) : 0;
+                        return {
+                          ...row,
+                          [yAxisKey]: isNaN(numVal) ? 0 : numVal
+                        };
+                      });
+
+                      return (
+                        <div className="h-48 w-full mt-2">
+                          <ResponsiveContainer width="99%" height="100%">
+                            <BarChart data={formattedData}>
+                              <CartesianGrid 
+                                strokeDasharray="3 3" 
+                                stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} 
+                              />
+                              <XAxis 
+                                dataKey={xAxisKey} 
+                                stroke={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)"} 
+                                fontSize={10}
+                                tickLine={false}
+                              />
+                              <YAxis 
+                                stroke={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)"} 
+                                fontSize={10}
+                                tickLine={false}
+                              />
+                              <Tooltip 
+                                contentStyle={{ 
+                                  backgroundColor: isDark ? '#1E293B' : '#ffffff', 
+                                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                                  borderRadius: '8px',
+                                  fontSize: '11px',
+                                  color: isDark ? '#ffffff' : '#000000'
+                                }} 
+                                labelStyle={{ color: isDark ? '#ffffff' : '#000000' }}
+                              />
+                              <Bar 
+                                dataKey={yAxisKey} 
+                                fill="url(#primaryGradient)" 
+                                radius={[4, 4, 0, 0]} 
+                              />
+                              <defs>
+                                <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0.3}/>
+                                </linearGradient>
+                              </defs>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      );
+                    })() : (
+                      <div className={`overflow-x-auto w-full border rounded-xl mt-2 max-h-48 overflow-y-auto ${
+                        isDark ? 'border-white/5' : 'border-slate-200'
+                      }`}>
                         <table className="w-full text-left border-collapse text-xs">
                           <thead>
-                            <tr className="bg-black/20 dark:bg-white/5 border-b border-slate-800/60 dark:border-white/5 text-muted-foreground font-medium">
+                            <tr className={`border-b text-muted-foreground font-medium ${
+                              isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200'
+                            }`}>
                               {(msg.columns || Object.keys(msg.rows[0] || {})).filter(k => k !== 'id' && k !== '__rowId').map(col => (
                                 <th key={col} className="px-3 py-2 uppercase tracking-wider">{col}</th>
                               ))}
@@ -688,9 +741,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                           <tbody>
                             {hasRows ? (
                               msg.rows.slice(0, 5).map((row, idx) => (
-                                <tr key={idx} className="border-b border-slate-800/40 dark:border-white/5 hover:bg-white/5 transition-colors">
+                                <tr key={idx} className={`border-b transition-colors ${
+                                  isDark ? 'border-white/5 hover:bg-white/5' : 'border-slate-100 hover:bg-slate-50'
+                                }`}>
                                   {(msg.columns || Object.keys(row)).filter(k => k !== 'id' && k !== '__rowId').map((col, colIdx) => (
-                                    <td key={colIdx} className="px-3 py-2 text-slate-300 font-mono">
+                                    <td key={colIdx} className={`px-3 py-2 font-mono ${
+                                      isDark ? 'text-slate-300' : 'text-slate-700'
+                                    }`}>
                                       {typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col] ?? '')}
                                     </td>
                                   ))}
@@ -700,7 +757,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               <tr>
                                 <td 
                                   colSpan={(msg.columns || []).filter(k => k !== 'id' && k !== '__rowId').length || 1} 
-                                  className="px-3 py-4 text-center text-muted-foreground font-medium bg-black/10 dark:bg-white/5"
+                                  className={`px-3 py-4 text-center text-muted-foreground font-medium ${
+                                    isDark ? 'bg-white/5' : 'bg-slate-50'
+                                  }`}
                                 >
                                   No records found
                                 </td>

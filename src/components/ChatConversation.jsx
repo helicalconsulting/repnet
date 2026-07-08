@@ -362,6 +362,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, pipelineStep]);
 
+  // Fix Recharts ResponsiveContainer rendering zero width/height inside flex/animated components
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [messages, visualTabs]);
+
   // ── Execute with user-provided params ───────────────────────────────
   const handleParamSubmit = useCallback(
     async (templateId, params) => {
@@ -630,7 +638,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
                     {activeTab === 'chart' && hasRows ? (
                       <div className="h-48 w-full mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="99%" height="100%">
                           <BarChart data={msg.rows.slice(0, 8)}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                             <XAxis 

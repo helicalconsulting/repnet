@@ -924,32 +924,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 </div>
               )}
 
-              {/* Quick Visuals & Data Table Preview */}
-              {msg.type === "executable" && (
-                <button
-                  type="button"
-                  onClick={() => toggleVisuals(msg.id)}
-                  className="w-full mt-3 flex items-center justify-between px-5 py-3.5 bg-[#f8fafc]/50 hover:bg-[#f1f5f9]/80 dark:bg-white/[0.02] dark:hover:bg-white/[0.06] text-foreground rounded-2xl transition-all border border-slate-200/50 dark:border-white/5 font-semibold text-xs select-none tracking-wide"
-                >
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
-                    <span>{expandedVisuals[msg.id] ? "Hide Report Preview" : "Quick View Report & Data"}</span>
-                  </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 text-muted-foreground shrink-0 ${expandedVisuals[msg.id] ? "rotate-180" : ""}`} />
-                </button>
-              )}
-
-              {msg.type === "executable" && expandedVisuals[msg.id] && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full"
-                >
-                  <QuickVisuals msg={msg} />
-                </motion.div>
-              )}
-
               {/* Parameter Card for params_needed */}
               {msg.type === "params_needed" && (
                 <div className="mt-4">
@@ -980,11 +954,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       templateId: msg.templateId, 
                       extractedParams: msg.extractedParams 
                     })}
-                    className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 group font-medium text-sm"
+                    className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/20 group font-semibold text-sm select-none"
                   >
-                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                    <span>View Interactive Report</span>
-                    <span className="px-2 py-0.5 bg-white/20 rounded text-xs">with charts & data</span>
+                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-white animate-pulse" />
+                    <span>View Interactive Report with Data</span>
                   </button>
                 </motion.div>
               )}

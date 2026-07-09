@@ -170,7 +170,11 @@ const request = async (path, options = {}, _isRetry = false) => {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const errMsg = payload?.error?.message || payload?.error || payload?.detail || 'Request failed.';
-    throw new Error(errMsg);
+    const error = new Error(errMsg);
+    if (payload?.history_id) {
+      error.historyId = payload.history_id;
+    }
+    throw error;
   }
   return payload;
 };
@@ -496,6 +500,16 @@ export const queryApi = {
         ],
       },
     ];
+  },
+  async submitFeedback(historyId, { isPositive, category = null, comment = null }) {
+    return request(`/query/history/${historyId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({
+        is_positive: isPositive,
+        category: category,
+        comment: comment,
+      }),
+    });
   },
 };
 

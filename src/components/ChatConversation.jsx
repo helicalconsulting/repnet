@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown,
-  Edit2, Pause, Play, Square, Paperclip
+  Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -37,6 +37,69 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [editingText, setEditingText] = useState("");
   const [isPaused, setIsPaused] = useState(false);
   const socketRef = useRef(null);
+  const [feedbacks, setFeedbacks] = useState({});
+
+  const handleFeedbackSubmit = async (msgId, historyId, isPositive) => {
+    try {
+      await queryApi.submitFeedback(historyId, { isPositive });
+      setFeedbacks((prev) => ({
+        ...prev,
+        [msgId]: { submitted: true, isPositive },
+      }));
+      addNotification("success", "Feedback submitted successfully.");
+    } catch (err) {
+      console.error("Failed to submit feedback:", err);
+      addNotification("error", "Failed to submit feedback.");
+    }
+  };
+
+  const handleFeedbackNegativeClick = (msgId) => {
+    setFeedbacks((prev) => ({
+      ...prev,
+      [msgId]: { ...prev[msgId], [msgId]: true, submitted: false, isPositive: false, category: "Wrong SQL", comment: "" },
+    }));
+  };
+
+  const handleFeedbackCategoryChange = (msgId, category) => {
+    setFeedbacks((prev) => ({
+      ...prev,
+      [msgId]: { ...prev[msgId], category },
+    }));
+  };
+
+  const handleFeedbackCommentChange = (msgId, comment) => {
+    setFeedbacks((prev) => ({
+      ...prev,
+      [msgId]: { ...prev[msgId], comment },
+    }));
+  };
+
+  const handleFeedbackCancel = (msgId) => {
+    setFeedbacks((prev) => {
+      const copy = { ...prev };
+      delete copy[msgId];
+      return copy;
+    });
+  };
+
+  const handleFeedbackNegativeSubmit = async (msgId, historyId) => {
+    const fb = feedbacks[msgId];
+    try {
+      await queryApi.submitFeedback(historyId, {
+        isPositive: false,
+        category: fb.category,
+        comment: fb.comment,
+      });
+      setFeedbacks((prev) => ({
+        ...prev,
+        [msgId]: { ...fb, submitted: true },
+      }));
+      addNotification("success", "Feedback submitted successfully.");
+    } catch (err) {
+      console.error("Failed to submit feedback:", err);
+      addNotification("error", "Failed to submit feedback.");
+    }
+  };
 
   const activeConn = connections.find((c) => c.id === activeConnection);
   const { isDark } = useTheme();
@@ -235,6 +298,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   showReportBtn: true,
                   rowsReturned: event.rows_returned,
                   executionTime: event.exec_time_ms,
+                  historyId: event.history_id,
                 };
                 if (exists) {
                   return prev.map((m) => {
@@ -258,6 +322,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       executionTime: event.exec_time_ms,
                       isStreaming: false,
                       showReportBtn: true,
+                      historyId: event.history_id,
                     },
                   ];
                 }
@@ -276,6 +341,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 type: isValidation ? "conversational" : "error",
                 content: userFriendlyMsg,
                 isStreaming: false,
+                historyId: event.history_id || null,
               });
               ws.close();
               setIsProcessing(false);
@@ -393,6 +459,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 templateDescription: response.template_description,
                 extractedParams: response.extracted_params || {},
                 showReportBtn: true,
+                historyId: response.history_id,
               },
             ]);
             setCurrentSuggestions(getCombinedSuggestions(response));
@@ -412,6 +479,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 templateId: response.template_id,
                 templateDescription: response.template_description,
                 templateModule: response.template_module,
+                historyId: response.history_id || null,
               },
             ]);
             setCurrentSuggestions(getCombinedSuggestions(response));
@@ -427,6 +495,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 type: "error",
                 content: response.message || "Access denied to this module.",
                 templateModule: response.template_module,
+                historyId: response.history_id || null,
               },
             ]);
             setCurrentSuggestions(response.suggestions || []);
@@ -442,6 +511,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 role: "ai",
                 type: "error",
                 content: response.message || "Something went wrong.",
+                historyId: response.history_id || null,
               },
             ]);
             setCurrentSuggestions(getCombinedSuggestions(response));
@@ -457,6 +527,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             role: "ai",
             type: "error",
             content: `Error: ${err.message}`,
+            historyId: err.historyId || null,
           },
         ]);
       } finally {
@@ -887,6 +958,97 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     <span className="px-2 py-0.5 bg-white/20 rounded text-xs">with charts & data</span>
                   </button>
                 </motion.div>
+              )}
+
+              {/* Feedback section */}
+              {msg.role === "ai" && msg.historyId && (
+                <div className="mt-4 pt-3 border-t border-border/30 dark:border-white/5 flex flex-col gap-2 w-full">
+                  {!feedbacks[msg.id] && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>Was this helpful?</span>
+                      <button
+                        onClick={() => handleFeedbackSubmit(msg.id, msg.historyId, true)}
+                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors text-muted-foreground hover:text-foreground"
+                        title="Helpful"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackNegativeClick(msg.id)}
+                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors text-muted-foreground hover:text-foreground"
+                        title="Not Helpful"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {feedbacks[msg.id] && !feedbacks[msg.id].submitted && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="flex flex-col gap-3 p-3 bg-black/[0.02] dark:bg-black/20 border border-border/40 dark:border-white/5 rounded-xl w-full max-w-md mt-1"
+                    >
+                      <div className="text-xs font-semibold text-foreground">Why wasn't it helpful?</div>
+                      
+                      {/* Category selection */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {["Wrong SQL", "Didn't understand", "Slow", "Other"].map((cat) => {
+                          const isSelected = feedbacks[msg.id].category === cat;
+                          return (
+                            <button
+                              key={cat}
+                              onClick={() => handleFeedbackCategoryChange(msg.id, cat)}
+                              className={`px-2.5 py-1 rounded-full text-xs transition-all border ${
+                                isSelected
+                                  ? "bg-blue-600 border-blue-600 text-white"
+                                  : "bg-white/5 hover:bg-white/10 dark:bg-black/20 dark:hover:bg-black/35 text-muted-foreground hover:text-foreground border-border/50 dark:border-white/5"
+                              }`}
+                            >
+                              {cat}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Text feedback comment */}
+                      <textarea
+                        placeholder="Describe the issue or how we can improve..."
+                        value={feedbacks[msg.id].comment || ""}
+                        onChange={(e) => handleFeedbackCommentChange(msg.id, e.target.value)}
+                        className="w-full bg-white dark:bg-black/25 border border-border/60 dark:border-white/5 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground resize-none"
+                        rows={2}
+                      />
+
+                      {/* Action Buttons */}
+                      <div className="flex justify-end gap-2 text-[11px]">
+                        <button
+                          onClick={() => handleFeedbackCancel(msg.id)}
+                          className="px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleFeedbackNegativeSubmit(msg.id, msg.historyId)}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
+                        >
+                          Submit Feedback
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {feedbacks[msg.id] && feedbacks[msg.id].submitted && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center gap-1.5 text-xs text-emerald-500 font-medium mt-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Thank you for your feedback!</span>
+                    </motion.div>
+                  )}
+                </div>
               )}
             </div>
 

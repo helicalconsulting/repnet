@@ -141,7 +141,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               id: aiMsgId,
               role: "ai",
               type: "conversational",
-              content: "Connecting to database...",
+              content: "Analyzing query...",
               sql: null,
               rows: [],
               columns: null,
@@ -161,24 +161,26 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           ws.onmessage = (e) => {
             const event = JSON.parse(e.data);
             if (event.type === "status") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === aiMsgId ? { ...m, content: event.message } : m
-                )
-              );
+              if (event.message && !event.message.toLowerCase().includes("database")) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === aiMsgId ? { ...m, content: event.message } : m
+                  )
+                );
+              }
             } else if (event.type === "progress") {
               if (event.step === "intent_extraction") {
                 setPipelineStep("classify");
                 setCompletedSteps([]);
               } else if (event.step === "sql_build") {
-                setPipelineStep("search");
-                setCompletedSteps(["classify"]);
+                setPipelineStep("extract");
+                setCompletedSteps(["classify", "search"]);
               } else if (event.step === "execute") {
                 setPipelineStep("execute");
-                setCompletedSteps(["classify", "search"]);
+                setCompletedSteps(["classify", "search", "extract"]);
               } else if (event.step === "insight") {
                 setPipelineStep("insight");
-                setCompletedSteps(["classify", "search", "execute"]);
+                setCompletedSteps(["classify", "search", "extract", "execute"]);
               }
             } else if (event.type === "sql") {
               setMessages((prev) =>
@@ -230,13 +232,18 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setPipelineStep(null);
               window.dispatchEvent(new Event("repnex-sessions-updated"));
             } else if (event.type === "error") {
+              const isValidation = event.code === "validation_failed";
+              const userFriendlyMsg = isValidation
+                ? event.message
+                : "Could not process. An error occurred while executing the query. Please verify your query or database schema and try again.";
+
               setMessages((prev) =>
                 prev.map((m) => {
                   if (m.id === aiMsgId) {
                     return {
                       ...m,
-                      type: event.code === "validation_failed" ? "conversational" : "error",
-                      content: event.message,
+                      type: isValidation ? "conversational" : "error",
+                      content: userFriendlyMsg,
                       isStreaming: false,
                     };
                   }

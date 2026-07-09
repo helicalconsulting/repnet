@@ -896,42 +896,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           </motion.div>
         )}
 
-        {/* WebSocket Real-time Stream Controls (Pause/Resume/Cancel) */}
-        {isProcessing && socketRef.current && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 pl-12 mb-6"
-          >
-            {isPaused ? (
-              <button
-                onClick={handleResume}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Resume Execution
-              </button>
-            ) : (
-              <button
-                onClick={handlePause}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all animate-pulse"
-              >
-                <Pause className="w-3.5 h-3.5 fill-current" />
-                Pause Stream
-              </button>
-            )}
-            <button
-              onClick={handleCancel}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
-            >
-              <Square className="w-3.5 h-3.5 fill-current" />
-              Cancel Query
-            </button>
-            <span className="text-xs text-muted-foreground animate-pulse">
-              {isPaused ? "Execution suspended manually" : "Streaming results live..."}
-            </span>
-          </motion.div>
-        )}
+
 
         {/* Follow-up suggestions */}
         <AnimatePresence>
@@ -1028,11 +993,20 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
-                type="submit"
-                disabled={isViewer || !inputValue.trim() || isProcessing}
-                className="w-8 h-8 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-30 disabled:bg-muted-foreground rounded-full transition-all shadow-lg shadow-primary/30 disabled:shadow-none group"
+                type={isProcessing ? "button" : "submit"}
+                onClick={isProcessing ? handleCancel : undefined}
+                disabled={isViewer || (!inputValue.trim() && !isProcessing)}
+                className={`w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-lg group ${
+                  isProcessing 
+                    ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/30" 
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30 disabled:opacity-30 disabled:bg-muted-foreground disabled:shadow-none"
+                }`}
               >
-                <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />
+                {isProcessing ? (
+                  <Square className="w-3.5 h-3.5 fill-current animate-pulse text-white" />
+                ) : (
+                  <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />
+                )}
               </button>
             </div>
           </div>

@@ -605,6 +605,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             extractedParams: turn.extracted_params || turn.extractedParams || {},
             suggestions: turn.suggestions || [],
             showReportBtn: turn.type === "executable",
+            historyId: turn.history_id || turn.historyId || null,
           }));
           setMessages(loaded);
           loadedSessionIdRef.current = sessionId;

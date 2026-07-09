@@ -998,12 +998,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 disabled={isViewer || (!inputValue.trim() && !isProcessing)}
                 className={`w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-lg group ${
                   isProcessing 
-                    ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/30" 
+                    ? "bg-neutral-800 dark:bg-neutral-200 hover:bg-neutral-700 dark:hover:bg-neutral-300 text-neutral-100 dark:text-neutral-900 shadow-sm" 
                     : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30 disabled:opacity-30 disabled:bg-muted-foreground disabled:shadow-none"
                 }`}
               >
                 {isProcessing ? (
-                  <Square className="w-3.5 h-3.5 fill-current animate-pulse text-white" />
+                  <Pause className="w-4 h-4 text-current fill-current" />
                 ) : (
                   <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />
                 )}

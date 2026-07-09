@@ -755,16 +755,56 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const formatContent = (content) => {
     if (!content) return null;
     return content.split("\n").map((line, i) => {
-      line = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      if (line.startsWith("• ")) {
-        return <li key={i} className="ml-4 list-disc" dangerouslySetInnerHTML={{ __html: line.slice(2) }} />;
+      // 1. Parse bold text (**text** -> <strong>text</strong>)
+      let processedLine = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+      // 2. Parse headers (### Header -> <h3>Header</h3>)
+      if (processedLine.startsWith("### ")) {
+        return (
+          <h3 key={i} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: processedLine.slice(4) }} />
+        );
       }
-      const numberedMatch = line.match(/^(\d+)\.\s(.+)/);
+      if (processedLine.startsWith("## ")) {
+        return (
+          <h2 key={i} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: processedLine.slice(3) }} />
+        );
+      }
+      if (processedLine.startsWith("# ")) {
+        return (
+          <h1 key={i} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: processedLine.slice(2) }} />
+        );
+      }
+
+      // 3. Parse horizontal separators (-- or ---)
+      if (processedLine.trim() === "--" || processedLine.trim() === "---") {
+        return <hr key={i} className="my-4 border-t border-border/40 dark:border-white/5" />;
+      }
+
+      // 4. Parse bullet points starting with "- " or "• "
+      if (processedLine.startsWith("- ") || processedLine.startsWith("• ")) {
+        const itemContent = processedLine.slice(2);
+        return (
+          <li key={i} className="ml-5 list-disc mb-1.5 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: itemContent }} />
+        );
+      }
+
+      // 5. Parse numbered lists (1. Item)
+      const numberedMatch = processedLine.match(/^(\d+)\.\s(.+)/);
       if (numberedMatch) {
-        return <li key={i} className="ml-4 list-decimal" dangerouslySetInnerHTML={{ __html: numberedMatch[2] }} />;
+        return (
+          <li key={i} className="ml-5 list-decimal mb-1.5 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: numberedMatch[2] }} />
+        );
       }
-      if (!line.trim()) return <br key={i} />;
-      return <p key={i} className="mb-2" dangerouslySetInnerHTML={{ __html: line }} />;
+
+      // 6. Empty lines
+      if (!processedLine.trim()) {
+        return <div key={i} className="h-2" />;
+      }
+
+      // 7. Regular paragraphs
+      return (
+        <p key={i} className="mb-2 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: processedLine }} />
+      );
     });
   };
 

@@ -459,10 +459,42 @@ export const queryApi = {
   },
   async getSuggestions() {
     return [
-      { text: 'Show AP ageing report', icon: '📊' },
-      { text: 'List overdue invoices', icon: '⚠️' },
-      { text: 'Top customers by revenue', icon: '💰' },
-      { text: 'Stock on hand summary', icon: '📦' },
+      {
+        category: "AP & Suppliers",
+        prompts: [
+          { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
+          { text: "List overdue supplier invoices as of today", icon: "⚠️" },
+          { text: "Top 10 suppliers by outstanding amount", icon: "🏆" },
+          { text: "Supplier payment history last 3 months", icon: "💳" },
+        ],
+      },
+      {
+        category: "AR & Customers",
+        prompts: [
+          { text: "Customer ageing report with overdue buckets", icon: "📋" },
+          { text: "Top 10 customers by outstanding receivables", icon: "📈" },
+          { text: "Overdue customer invoices older than 60 days", icon: "⚠️" },
+          { text: "Customer payment collection trend this quarter", icon: "💰" },
+        ],
+      },
+      {
+        category: "Cashbook & GL",
+        prompts: [
+          { text: "Cashbook summary for current month", icon: "💵" },
+          { text: "GL journal entries posted today", icon: "📝" },
+          { text: "Trial balance for current period", icon: "📑" },
+          { text: "Bank reconciliation status report", icon: "🏦" },
+        ],
+      },
+      {
+        category: "Sales & Revenue",
+        prompts: [
+          { text: "Sales orders by customer this month", icon: "🛒" },
+          { text: "Top 10 customers by revenue", icon: "🏆" },
+          { text: "Monthly revenue trend last 6 months", icon: "📈" },
+          { text: "Outstanding sales orders summary", icon: "📦" },
+        ],
+      },
     ];
   },
 };

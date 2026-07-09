@@ -573,7 +573,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       addNotification("error", "Failed to edit query: " + err.message);
       setIsProcessing(false);
     }
-  }, [messages, currentSessionId, processQuery, addNotification]);
+  }, [messages, currentSessionId, processQuery, addNotification, editingText]);
 
   // ── Load session history ───────────────────────────────────────────
   useEffect(() => {
@@ -807,83 +807,86 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 ? "w-full max-w-full" 
                 : "max-w-[85%]"
             }`}>
-              <div
-                className={`relative group ${
-                  msg.role === "user"
-                    ? "px-5 py-3 bg-blue-600 dark:bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm"
-                    : msg.type === "error"
-                    ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
-                    : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
-                    ? "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
-                    : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
-                }`}
-              >
-                {msg.role === "user" ? (
-                  editingMessageId === msg.id ? (
-                    <div className="flex flex-col gap-2 w-full min-w-[300px]">
-                      <textarea
-                        value={editingText}
-                        onChange={(e) => setEditingText(e.target.value)}
-                        className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
-                        rows={2}
-                      />
-                      <div className="flex justify-end gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setEditingMessageId(null)}
-                          className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEditSave(msg.id)}
-                          className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
-                        >
-                          Save & Submit
-                        </button>
+              {/* Only render message content container box if there is actual content, an error, or it's a user message */}
+              {(msg.content || msg.type === "error" || msg.role === "user") && (
+                <div
+                  className={`relative group ${
+                    msg.role === "user"
+                      ? "px-5 py-3 bg-blue-600 dark:bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm"
+                      : msg.type === "error"
+                      ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
+                      : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
+                      ? "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
+                      : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
+                  }`}
+                >
+                  {msg.role === "user" ? (
+                    editingMessageId === msg.id ? (
+                      <div className="flex flex-col gap-2 w-full min-w-[300px]">
+                        <textarea
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
+                          rows={2}
+                        />
+                        <div className="flex justify-end gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setEditingMessageId(null)}
+                            className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditSave(msg.id)}
+                            className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
+                          >
+                            Save & Submit
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <span className="text-[15px] leading-relaxed">{msg.content}</span>
-                  )
-                ) : (
-                  <div className="text-[15px] leading-relaxed text-foreground">
-                    {msg.type === "error" && (
-                      <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
-                        <AlertCircle className="w-4 h-4" />
-                        <span className="text-xs font-semibold uppercase">Could not process</span>
-                      </div>
-                    )}
-                    {formatContent(msg.content)}
-                  </div>
-                )}
-
-                {/* Copy button */}
-                {msg.role === "ai" && msg.content && (
-                  <button
-                    onClick={() => handleCopy(msg.content, msg.id)}
-                    className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
-                  >
-                    {copiedId === msg.id ? (
-                      <Check className="w-4 h-4 text-emerald-500" />
                     ) : (
-                      <Copy className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </button>
-                )}
+                      <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                    )
+                  ) : (
+                    <div className="text-[15px] leading-relaxed text-foreground">
+                      {msg.type === "error" && (
+                        <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                          <AlertCircle className="w-4 h-4" />
+                          <span className="text-xs font-semibold uppercase">Could not process</span>
+                        </div>
+                      )}
+                      {formatContent(msg.content)}
+                    </div>
+                  )}
 
-                {/* Edit button for user message */}
-                {msg.role === "user" && editingMessageId !== msg.id && (
-                  <button
-                    onClick={() => handleEditStart(msg)}
-                    className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-blue-700 rounded-md transition-all text-blue-200"
-                    title="Edit Query"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+                  {/* Copy button */}
+                  {msg.role === "ai" && msg.content && (
+                    <button
+                      onClick={() => handleCopy(msg.content, msg.id)}
+                      className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
+                    >
+                      {copiedId === msg.id ? (
+                        <Check className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  )}
+
+                  {/* Edit button for user message */}
+                  {msg.role === "user" && editingMessageId !== msg.id && (
+                    <button
+                      onClick={() => handleEditStart(msg)}
+                      className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-blue-700 rounded-md transition-all text-blue-200"
+                      title="Edit Query"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* SQL display */}
               {msg.sql && (
@@ -954,9 +957,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       templateId: msg.templateId, 
                       extractedParams: msg.extractedParams 
                     })}
-                    className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/20 group font-semibold text-sm select-none"
+                    className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-blue-50/60 hover:bg-blue-100/80 dark:bg-blue-950/10 dark:hover:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-200/40 dark:border-blue-800/30 rounded-xl transition-all shadow-sm group font-semibold text-sm select-none"
                   >
-                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-white animate-pulse" />
+                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-blue-500 dark:text-blue-400 animate-pulse" />
                     <span>View Interactive Report with Data</span>
                   </button>
                 </motion.div>

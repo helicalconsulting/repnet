@@ -457,6 +457,14 @@ export const queryApi = {
       body: JSON.stringify({ session_id: sessionId, natural_language: naturalLanguage }),
     });
   },
+  async getSuggestions() {
+    return [
+      { text: 'Show AP ageing report', icon: '📊' },
+      { text: 'List overdue invoices', icon: '⚠️' },
+      { text: 'Top customers by revenue', icon: '💰' },
+      { text: 'Stock on hand summary', icon: '📦' },
+    ];
+  },
 };
 
 // ── Report API ────────────────────────────────────────────────────────

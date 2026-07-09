@@ -38,6 +38,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isPaused, setIsPaused] = useState(false);
   const socketRef = useRef(null);
   const [feedbacks, setFeedbacks] = useState({});
+  const [expandedVisuals, setExpandedVisuals] = useState({});
+
+  const toggleVisuals = (msgId) => {
+    setExpandedVisuals((prev) => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
 
   const handleFeedbackSubmit = async (msgId, historyId, isPositive) => {
     try {
@@ -918,7 +926,28 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
               {/* Quick Visuals & Data Table Preview */}
               {msg.type === "executable" && (
-                <QuickVisuals msg={msg} />
+                <button
+                  type="button"
+                  onClick={() => toggleVisuals(msg.id)}
+                  className="w-full mt-3 flex items-center justify-between px-5 py-3.5 bg-[#f8fafc]/50 hover:bg-[#f1f5f9]/80 dark:bg-white/[0.02] dark:hover:bg-white/[0.06] text-foreground rounded-2xl transition-all border border-slate-200/50 dark:border-white/5 font-semibold text-xs select-none tracking-wide"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
+                    <span>{expandedVisuals[msg.id] ? "Hide Report Preview" : "Quick View Report & Data"}</span>
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 text-muted-foreground shrink-0 ${expandedVisuals[msg.id] ? "rotate-180" : ""}`} />
+                </button>
+              )}
+
+              {msg.type === "executable" && expandedVisuals[msg.id] && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full"
+                >
+                  <QuickVisuals msg={msg} />
+                </motion.div>
               )}
 
               {/* Parameter Card for params_needed */}

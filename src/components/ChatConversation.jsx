@@ -752,43 +752,55 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   };
 
   // ── Format message content ──────────────────────────────────────────
+  // ── Format message content ──────────────────────────────────────────
   const formatContent = (content) => {
     if (!content) return null;
     return content.split("\n").map((line, i) => {
       // 1. Parse bold text (**text** -> <strong>text</strong>)
       let processedLine = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
 
-      // 2. Parse headers (### Header -> <h3>Header</h3>)
-      if (processedLine.startsWith("### ")) {
+      // 2. Parse italic/emphasized text (*text* -> <em>text</em>)
+      processedLine = processedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+      // 3. Parse inline code (`code` -> <code>code</code>)
+      processedLine = processedLine.replace(/`(.*?)`/g, "<code class='px-1.5 py-0.5 bg-black/5 dark:bg-white/10 rounded font-mono text-xs text-blue-600 dark:text-blue-400'>$1</code>");
+
+      // 4. Parse headers (### Header -> <h3>Header</h3>)
+      if (processedLine.trimStart().startsWith("### ")) {
+        const hContent = processedLine.trimStart().slice(4);
         return (
-          <h3 key={i} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: processedLine.slice(4) }} />
+          <h3 key={i} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
         );
       }
-      if (processedLine.startsWith("## ")) {
+      if (processedLine.trimStart().startsWith("## ")) {
+        const hContent = processedLine.trimStart().slice(3);
         return (
-          <h2 key={i} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: processedLine.slice(3) }} />
+          <h2 key={i} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
         );
       }
-      if (processedLine.startsWith("# ")) {
+      if (processedLine.trimStart().startsWith("# ")) {
+        const hContent = processedLine.trimStart().slice(2);
         return (
-          <h1 key={i} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: processedLine.slice(2) }} />
+          <h1 key={i} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
         );
       }
 
-      // 3. Parse horizontal separators (-- or ---)
+      // 5. Parse horizontal separators (-- or ---)
       if (processedLine.trim() === "--" || processedLine.trim() === "---") {
         return <hr key={i} className="my-4 border-t border-border/40 dark:border-white/5" />;
       }
 
-      // 4. Parse bullet points starting with "- " or "• "
-      if (processedLine.startsWith("- ") || processedLine.startsWith("• ")) {
-        const itemContent = processedLine.slice(2);
+      // 6. Parse bullet points starting with "- ", "* " or "• " (including nested ones)
+      const trimmedLine = processedLine.trimStart();
+      if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") || trimmedLine.startsWith("• ")) {
+        const itemContent = trimmedLine.slice(2);
+        const isNested = line.startsWith("  ") || line.startsWith("    ") || line.startsWith("\t");
         return (
-          <li key={i} className="ml-5 list-disc mb-1.5 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: itemContent }} />
+          <li key={i} className={`${isNested ? "ml-10" : "ml-5"} list-disc mb-1.5 text-foreground/90 leading-relaxed`} dangerouslySetInnerHTML={{ __html: itemContent }} />
         );
       }
 
-      // 5. Parse numbered lists (1. Item)
+      // 7. Parse numbered lists (1. Item)
       const numberedMatch = processedLine.match(/^(\d+)\.\s(.+)/);
       if (numberedMatch) {
         return (
@@ -796,12 +808,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         );
       }
 
-      // 6. Empty lines
+      // 8. Empty lines
       if (!processedLine.trim()) {
         return <div key={i} className="h-2" />;
       }
 
-      // 7. Regular paragraphs
+      // 9. Regular paragraphs
       return (
         <p key={i} className="mb-2 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: processedLine }} />
       );

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { databaseApi, reportApi, aiApi, queryApi, templateApi } from '../services/api';
+import { databaseApi, reportApi, aiApi, queryApi } from '../services/api';
 
 const AppContext = createContext(null);
 

@@ -457,22 +457,6 @@ export const queryApi = {
       body: JSON.stringify({ session_id: sessionId, natural_language: naturalLanguage }),
     });
   },
-  async getTemplates() {
-    return request('/query/templates');
-  },
-  async getSuggestions() {
-    return request('/query/suggestions');
-  },
-};
-
-// ── Template API ──────────────────────────────────────────────────────
-
-export const templateApi = {
-  async getStatus() { return request('/templates/status'); },
-  async ingest()    { return request('/templates/ingest', { method: 'POST' }); },
-  async search(query, topK = 5) {
-    return request('/templates/search', { method: 'POST', body: JSON.stringify({ query, top_k: topK }) });
-  },
 };
 
 // ── Report API ────────────────────────────────────────────────────────
@@ -562,6 +546,9 @@ export const sessionsApi = {
   async create(data)      { return request('/sessions', { method: 'POST', body: JSON.stringify(data) }); },
   async get(sessionId)    { return request(`/sessions/${sessionId}`); },
   async delete(sessionId) { return request(`/sessions/${sessionId}`, { method: 'DELETE' }); },
+  async editTurn(sessionId, turnIndex) {
+    return request(`/sessions/${sessionId}/turns/${turnIndex}/edit`, { method: 'POST' });
+  },
 };
 
 // ── Export API ────────────────────────────────────────────────────────

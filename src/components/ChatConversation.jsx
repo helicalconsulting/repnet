@@ -1,24 +1,18 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Paperclip, ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
-  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown
+  ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
+  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown,
+  Edit2, Pause, Play, Square, Paperclip
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
-import { queryApi, sessionsApi, organizationApi } from "../services/api";
+import { queryApi, sessionsApi, organizationApi, getToken } from "../services/api";
+import { useTheme } from "../hooks/useTheme";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from 'recharts';
+import { QuickVisuals } from "./chat/QuickVisuals";
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, addNotification, user } = useApp();
@@ -39,61 +33,44 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const loadedSessionIdRef = useRef(null);
   const hasProcessedInitialRef = useRef(false);
   const [requestedModules, setRequestedModules] = useState([]);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
+  const socketRef = useRef(null);
 
   const activeConn = connections.find((c) => c.id === activeConnection);
-  const [visualTabs, setVisualTabs] = useState({});
+  const { isDark } = useTheme();
   const isViewer = user?.role === 'viewer';
 
-  // Dynamic theme detection
-  const [isDark, setIsDark] = useState(false);
-  useEffect(() => {
-    const checkTheme = () => {
-      const isDarkClass = document.documentElement.classList.contains('dark');
-      const storedTheme = window.localStorage.getItem('repnex-theme');
-      setIsDark(storedTheme === 'dark' || (storedTheme !== 'light' && isDarkClass));
-    };
+  const getWsServerUrl = () => {
+    const apiBase = import.meta.env.VITE_API_BASE || 'https://repnex-production.up.railway.app/v1';
+    let wsBase = apiBase.replace(/\/v1\/?$/, '');
+    wsBase = wsBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+    return wsBase;
+  };
 
-    checkTheme();
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
+  const handlePause = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: "pause" }));
+      setIsPaused(true);
+    }
   }, []);
 
-  const getKeysForVisuals = (rows) => {
-    try {
-      if (!Array.isArray(rows) || rows.length === 0 || !rows[0]) {
-        return { xAxisKey: '', yAxisKey: '' };
-      }
-      const keys = Object.keys(rows[0]).filter(k => k !== 'id' && k !== '__rowId');
-      let xAxisKey = '';
-      let yAxisKey = '';
-
-      for (const key of keys) {
-        const val = rows[0][key];
-        if (typeof val === 'string' && isNaN(Number(val)) && !xAxisKey) {
-          xAxisKey = key;
-        }
-      }
-      if (!xAxisKey) xAxisKey = keys[0] || '';
-
-      for (const key of keys) {
-        if (key === xAxisKey) continue;
-        const val = rows[0][key];
-        const numVal = Number(val);
-        if (val !== null && val !== undefined && !isNaN(numVal) && typeof val !== 'boolean') {
-          yAxisKey = key;
-          break;
-        }
-      }
-      if (!yAxisKey) {
-        yAxisKey = keys.find(k => k !== xAxisKey) || keys[0] || '';
-      }
-      return { xAxisKey, yAxisKey };
-    } catch (e) {
-      console.error("Error in getKeysForVisuals:", e);
-      return { xAxisKey: '', yAxisKey: '' };
+  const handleResume = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: "resume" }));
+      setIsPaused(false);
     }
-  };
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: "cancel" }));
+      socketRef.current.close();
+    }
+    setIsProcessing(false);
+    setPipelineStep(null);
+  }, []);
 
   // ── Process a user query ────────────────────────────────────────────
   const processQuery = useCallback(
@@ -150,151 +127,292 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           }
         }
 
-        // Simulate pipeline progression
-        await new Promise((r) => setTimeout(r, 400));
-        setCompletedSteps(["classify"]);
-        setPipelineStep("search");
+        if (activeConnection) {
+          // WebSocket execution path (for live streaming, pausing, resuming, cancelling)
+          setIsPaused(false);
+          const wsUrl = `${getWsServerUrl()}/ws/query/${activeSessionId}?token=${getToken()}`;
+          const ws = new WebSocket(wsUrl);
+          socketRef.current = ws;
 
-        await new Promise((r) => setTimeout(r, 300));
-        setCompletedSteps(["classify", "search"]);
-        setPipelineStep("extract");
-
-        // Call the real backend
-        const response = await queryApi.chat({
-          naturalLanguage: query,
-          connectionId: activeConnection || null,
-          sessionId: activeSessionId || null,
-          personalization: {
-            display_name: profile.displayName || '',
-            preferred_name: profile.preferredName || '',
-            greeting_style: profile.greetingStyle || 'time-based',
-            ai_tone: profile.aiTone || 'friendly',
-          },
-        });
-
-        setCompletedSteps(["classify", "search", "extract"]);
-
-        const getCombinedSuggestions = (res) => {
-          const sim = (res.candidates || [])
-            .map((c) => c.description)
-            .filter((d) => d && d !== res.template_description);
-          const all = [...new Set([...sim.slice(0, 3), ...(res.suggestions || [])])];
-          return all.slice(0, 5);
-        };
-
-        if (response.type === "conversational") {
-          // Conversational response
-          setPipelineStep(null);
+          const aiMsgId = Date.now().toString();
           setMessages((prev) => [
             ...prev,
             {
-              id: Date.now().toString(),
+              id: aiMsgId,
               role: "ai",
               type: "conversational",
-              content: response.message,
+              content: "Connecting to database...",
+              sql: null,
+              rows: [],
+              columns: null,
+              rowsReturned: 0,
+              executionTime: 0,
+              isStreaming: true,
             },
           ]);
-          setCurrentSuggestions(getCombinedSuggestions(response));
-          setShowSuggestions(true);
 
-        } else if (response.type === "params_needed") {
-          // Need user input for params
-          setPipelineStep(null);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              role: "ai",
-              type: "params_needed",
-              content: response.message,
-              templateId: response.template_id,
-              templateDescription: response.template_description,
-              extractedParams: response.extracted_params || {},
-              missingParams: response.missing_params || [],
-            },
-          ]);
-          setCurrentSuggestions(getCombinedSuggestions(response));
-          setShowSuggestions(true);
+          ws.onopen = () => {
+            ws.send(JSON.stringify({
+              action: "run_query",
+              natural_language: query,
+            }));
+          };
 
-        } else if (response.type === "executable") {
-          // Query executed successfully
-          setPipelineStep("execute");
-          await new Promise((r) => setTimeout(r, 300));
-          setCompletedSteps(["classify", "search", "extract", "execute"]);
-          setPipelineStep("insight");
-          await new Promise((r) => setTimeout(r, 200));
-          setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
-          setPipelineStep(null);
+          ws.onmessage = (e) => {
+            const event = JSON.parse(e.data);
+            if (event.type === "status") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId ? { ...m, content: event.message } : m
+                )
+              );
+            } else if (event.type === "progress") {
+              if (event.step === "intent_extraction") {
+                setPipelineStep("classify");
+                setCompletedSteps([]);
+              } else if (event.step === "sql_build") {
+                setPipelineStep("search");
+                setCompletedSteps(["classify"]);
+              } else if (event.step === "execute") {
+                setPipelineStep("execute");
+                setCompletedSteps(["classify", "search"]);
+              } else if (event.step === "insight") {
+                setPipelineStep("insight");
+                setCompletedSteps(["classify", "search", "execute"]);
+              }
+            } else if (event.type === "sql") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId ? { ...m, type: "executable", sql: event.sql } : m
+                )
+              );
+            } else if (event.type === "data") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id === aiMsgId) {
+                    const newRows = [...m.rows, ...event.rows];
+                    const cols = m.columns || (event.rows[0] ? Object.keys(event.rows[0]) : null);
+                    return {
+                      ...m,
+                      type: "executable",
+                      rows: newRows,
+                      columns: cols,
+                      rowsReturned: newRows.length,
+                    };
+                  }
+                  return m;
+                })
+              );
+            } else if (event.type === "insight") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId ? { ...m, content: event.summary } : m
+                )
+              );
+            } else if (event.type === "complete") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id === aiMsgId) {
+                    return {
+                      ...m,
+                      isStreaming: false,
+                      showReportBtn: true,
+                      rowsReturned: event.rows_returned,
+                      executionTime: event.exec_time_ms,
+                      columns: event.columns || m.columns,
+                    };
+                  }
+                  return m;
+                })
+              );
+              ws.close();
+              setIsProcessing(false);
+              setPipelineStep(null);
+              window.dispatchEvent(new Event("repnex-sessions-updated"));
+            } else if (event.type === "error") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id === aiMsgId) {
+                    return {
+                      ...m,
+                      type: event.code === "validation_failed" ? "conversational" : "error",
+                      content: event.message,
+                      isStreaming: false,
+                    };
+                  }
+                  return m;
+                })
+              );
+              ws.close();
+              setIsProcessing(false);
+              setPipelineStep(null);
+            }
+          };
 
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              role: "ai",
-              type: "executable",
-              content: response.summary || response.message,
-              sql: response.sql,
-              rows: response.rows,
-              columns: response.columns,
-              rowsReturned: response.rows_returned,
-              executionTime: response.execution_time_ms,
-              templateId: response.template_id,
-              templateDescription: response.template_description,
-              extractedParams: response.extracted_params || {},
-              showReportBtn: true,
-            },
-          ]);
-          setCurrentSuggestions(getCombinedSuggestions(response));
-          setShowSuggestions(true);
+          ws.onerror = (err) => {
+            console.error("WS error:", err);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === aiMsgId
+                  ? { ...m, type: "error", content: "Connection error. Failed to stream results.", isStreaming: false }
+                  : m
+              )
+            );
+            setIsProcessing(false);
+            setPipelineStep(null);
+          };
 
-        } else if (response.type === "template_preview") {
-          // No DB connected - show template preview + SQL
-          setPipelineStep(null);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              role: "ai",
-              type: "template_preview",
-              content: response.message,
-              sql: response.sql,
-              templateId: response.template_id,
-              templateDescription: response.template_description,
-              templateModule: response.template_module,
-            },
-          ]);
-          setCurrentSuggestions(getCombinedSuggestions(response));
-          setShowSuggestions(true);
-
-        } else if (response.type === "access_denied") {
-          setPipelineStep(null);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              role: "ai",
-              type: "error",
-              content: response.message || "Access denied to this module.",
-              templateModule: response.template_module,
-            },
-          ]);
-          setCurrentSuggestions(response.suggestions || []);
-          setShowSuggestions(response.suggestions?.length > 0);
-
+          ws.onclose = () => {
+            socketRef.current = null;
+            setIsProcessing(false);
+            setPipelineStep(null);
+          };
         } else {
-          // Error
-          setPipelineStep(null);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              role: "ai",
-              type: "error",
-              content: response.message || "Something went wrong.",
+          // REST Fallback (Direct execution when no connection is active)
+          await new Promise((r) => setTimeout(r, 400));
+          setCompletedSteps(["classify"]);
+          setPipelineStep("search");
+
+          await new Promise((r) => setTimeout(r, 300));
+          setCompletedSteps(["classify", "search"]);
+          setPipelineStep("extract");
+
+          const response = await queryApi.chat({
+            naturalLanguage: query,
+            connectionId: activeConnection || null,
+            sessionId: activeSessionId || null,
+            personalization: {
+              display_name: profile.displayName || '',
+              preferred_name: profile.preferredName || '',
+              greeting_style: profile.greetingStyle || 'time-based',
+              ai_tone: profile.aiTone || 'friendly',
             },
-          ]);
-          setCurrentSuggestions(getCombinedSuggestions(response));
-          setShowSuggestions(true);
+          });
+
+          setCompletedSteps(["classify", "search", "extract"]);
+
+          const getCombinedSuggestions = (res) => {
+            const sim = (res.candidates || [])
+              .map((c) => c.description)
+              .filter((d) => d && d !== res.template_description);
+            const all = [...new Set([...sim.slice(0, 3), ...(res.suggestions || [])])];
+            return all.slice(0, 5);
+          };
+
+          if (response.type === "conversational") {
+            // Conversational response
+            setPipelineStep(null);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                role: "ai",
+                type: "conversational",
+                content: response.message,
+              },
+            ]);
+            setCurrentSuggestions(getCombinedSuggestions(response));
+            setShowSuggestions(true);
+
+          } else if (response.type === "params_needed") {
+            // Need user input for params
+            setPipelineStep(null);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                role: "ai",
+                type: "params_needed",
+                content: response.message,
+                templateId: response.template_id,
+                templateDescription: response.template_description,
+                extractedParams: response.extracted_params || {},
+                missingParams: response.missing_params || [],
+              },
+            ]);
+            setCurrentSuggestions(getCombinedSuggestions(response));
+            setShowSuggestions(true);
+
+          } else if (response.type === "executable") {
+            // Query executed successfully
+            setPipelineStep("execute");
+            await new Promise((r) => setTimeout(r, 300));
+            setCompletedSteps(["classify", "search", "extract", "execute"]);
+            setPipelineStep("insight");
+            await new Promise((r) => setTimeout(r, 200));
+            setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
+            setPipelineStep(null);
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                role: "ai",
+                type: "executable",
+                content: response.summary || response.message,
+                sql: response.sql,
+                rows: response.rows,
+                columns: response.columns,
+                rowsReturned: response.rows_returned,
+                executionTime: response.execution_time_ms,
+                templateId: response.template_id,
+                templateDescription: response.template_description,
+                extractedParams: response.extracted_params || {},
+                showReportBtn: true,
+              },
+            ]);
+            setCurrentSuggestions(getCombinedSuggestions(response));
+            setShowSuggestions(true);
+
+          } else if (response.type === "template_preview") {
+            // No DB connected - show template preview + SQL
+            setPipelineStep(null);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                role: "ai",
+                type: "template_preview",
+                content: response.message,
+                sql: response.sql,
+                templateId: response.template_id,
+                templateDescription: response.template_description,
+                templateModule: response.template_module,
+              },
+            ]);
+            setCurrentSuggestions(getCombinedSuggestions(response));
+            setShowSuggestions(true);
+
+          } else if (response.type === "access_denied") {
+            setPipelineStep(null);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                role: "ai",
+                type: "error",
+                content: response.message || "Access denied to this module.",
+                templateModule: response.template_module,
+              },
+            ]);
+            setCurrentSuggestions(response.suggestions || []);
+            setShowSuggestions(response.suggestions?.length > 0);
+
+          } else {
+            // Error
+            setPipelineStep(null);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                role: "ai",
+                type: "error",
+                content: response.message || "Something went wrong.",
+              },
+            ]);
+            setCurrentSuggestions(getCombinedSuggestions(response));
+            setShowSuggestions(true);
+          }
         }
       } catch (err) {
         setPipelineStep(null);
@@ -308,11 +426,41 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           },
         ]);
       } finally {
-        setIsProcessing(false);
+        if (!activeConnection) {
+          setIsProcessing(false);
+        }
       }
     },
     [activeConnection, sessionId, addNotification, profile]
   );
+
+  const handleEditStart = useCallback((msg) => {
+    setEditingMessageId(msg.id);
+    setEditingText(msg.content);
+  }, []);
+
+  const handleEditSave = useCallback(async (msgId) => {
+    const msgIdx = messages.findIndex((m) => m.id === msgId);
+    if (msgIdx === -1) return;
+
+    const textToSubmit = editingText.trim();
+    if (!textToSubmit) return;
+
+    setEditingMessageId(null);
+    setIsProcessing(true);
+
+    try {
+      if (currentSessionId) {
+        await sessionsApi.editTurn(currentSessionId, msgIdx);
+      }
+      setMessages((prev) => prev.slice(0, msgIdx));
+      await processQuery(textToSubmit);
+    } catch (err) {
+      console.error("Failed to edit turn:", err);
+      addNotification("error", "Failed to edit query: " + err.message);
+      setIsProcessing(false);
+    }
+  }, [messages, currentSessionId, processQuery, addNotification]);
 
   // ── Load session history ───────────────────────────────────────────
   useEffect(() => {
@@ -393,7 +541,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       window.dispatchEvent(new Event("resize"));
     }, 250);
     return () => clearTimeout(timer);
-  }, [messages, visualTabs]);
+  }, [messages]);
 
   // ── Execute with user-provided params ───────────────────────────────
   const handleParamSubmit = useCallback(
@@ -558,7 +706,34 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 }`}
               >
                 {msg.role === "user" ? (
-                  <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                  editingMessageId === msg.id ? (
+                    <div className="flex flex-col gap-2 w-full min-w-[300px]">
+                      <textarea
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
+                        rows={2}
+                      />
+                      <div className="flex justify-end gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setEditingMessageId(null)}
+                          className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleEditSave(msg.id)}
+                          className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
+                        >
+                          Save & Submit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                  )
                 ) : (
                   <div className="text-[15px] leading-relaxed text-foreground">
                     {msg.type === "error" && (
@@ -582,6 +757,17 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     ) : (
                       <Copy className="w-4 h-4 text-muted-foreground" />
                     )}
+                  </button>
+                )}
+
+                {/* Edit button for user message */}
+                {msg.role === "user" && editingMessageId !== msg.id && (
+                  <button
+                    onClick={() => handleEditStart(msg)}
+                    className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-blue-700 rounded-md transition-all text-blue-200"
+                    title="Edit Query"
+                  >
+                    <Edit2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -626,152 +812,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Quick Visuals & Data Table Preview */}
-              {msg.type === "executable" && ((msg.rows && msg.rows.length > 0) || (msg.columns && msg.columns.length > 0)) && (() => {
-                const hasRows = msg.rows && msg.rows.length > 0;
-                const activeTab = visualTabs[msg.id] || (hasRows ? 'chart' : 'table');
-                return (
-                  <div className={`mt-4 w-full rounded-2xl p-4 overflow-hidden ${
-                    isDark 
-                      ? 'bg-black/30 border border-white/5' 
-                      : 'bg-slate-50 border border-slate-200'
-                  }`}>
-                    <div className={`flex items-center justify-between mb-4 border-b pb-2 ${
-                      isDark ? 'border-white/5' : 'border-slate-200'
-                    }`}>
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Quick Visuals
-                      </span>
-                      <div className={`flex gap-1 p-1 rounded-lg ${
-                        isDark ? 'bg-white/5' : 'bg-slate-200/60'
-                      }`}>
-                        {hasRows && (
-                          <button
-                            onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'chart' }))}
-                            className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
-                              activeTab === 'chart'
-                                ? 'bg-primary text-primary-foreground shadow'
-                                : 'text-muted-foreground hover:text-foreground'
-                            }`}
-                          >
-                            Chart
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setVisualTabs(prev => ({ ...prev, [msg.id]: 'table' }))}
-                          className={`px-2.5 py-1 text-xs rounded-md transition-all font-medium ${
-                            activeTab === 'table'
-                              ? 'bg-primary text-primary-foreground shadow'
-                              : 'text-muted-foreground hover:text-foreground'
-                          }`}
-                        >
-                          Table
-                        </button>
-                      </div>
-                    </div>
-
-                    {activeTab === 'chart' && hasRows ? (() => {
-                      const { xAxisKey, yAxisKey } = getKeysForVisuals(msg.rows);
-                      const formattedData = msg.rows.slice(0, 8).map(row => {
-                        const val = row[yAxisKey];
-                        const numVal = (val !== null && val !== undefined) ? Number(val) : 0;
-                        return {
-                          ...row,
-                          [yAxisKey]: isNaN(numVal) ? 0 : numVal
-                        };
-                      });
-
-                      return (
-                        <div className="h-48 w-full mt-2">
-                          <ResponsiveContainer width="99%" height="100%">
-                            <BarChart data={formattedData}>
-                              <CartesianGrid 
-                                strokeDasharray="3 3" 
-                                stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} 
-                              />
-                              <XAxis 
-                                dataKey={xAxisKey} 
-                                stroke={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)"} 
-                                fontSize={10}
-                                tickLine={false}
-                              />
-                              <YAxis 
-                                stroke={isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)"} 
-                                fontSize={10}
-                                tickLine={false}
-                              />
-                              <Tooltip 
-                                contentStyle={{ 
-                                  backgroundColor: isDark ? '#1E293B' : '#ffffff', 
-                                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-                                  borderRadius: '8px',
-                                  fontSize: '11px',
-                                  color: isDark ? '#ffffff' : '#000000'
-                                }} 
-                                labelStyle={{ color: isDark ? '#ffffff' : '#000000' }}
-                              />
-                              <Bar 
-                                dataKey={yAxisKey} 
-                                fill="url(#primaryGradient)" 
-                                radius={[4, 4, 0, 0]} 
-                              />
-                              <defs>
-                                <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.8}/>
-                                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0.3}/>
-                                </linearGradient>
-                              </defs>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      );
-                    })() : (
-                      <div className={`overflow-x-auto w-full border rounded-xl mt-2 max-h-48 overflow-y-auto ${
-                        isDark ? 'border-white/5' : 'border-slate-200'
-                      }`}>
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead>
-                            <tr className={`border-b text-muted-foreground font-medium ${
-                              isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200'
-                            }`}>
-                              {(msg.columns || Object.keys(msg.rows[0] || {})).filter(k => k !== 'id' && k !== '__rowId').map(col => (
-                                <th key={col} className="px-3 py-2 uppercase tracking-wider">{col}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {hasRows ? (
-                              msg.rows.slice(0, 5).map((row, idx) => (
-                                <tr key={idx} className={`border-b transition-colors ${
-                                  isDark ? 'border-white/5 hover:bg-white/5' : 'border-slate-100 hover:bg-slate-50'
-                                }`}>
-                                  {(msg.columns || Object.keys(row)).filter(k => k !== 'id' && k !== '__rowId').map((col, colIdx) => (
-                                    <td key={colIdx} className={`px-3 py-2 font-mono ${
-                                      isDark ? 'text-slate-300' : 'text-slate-700'
-                                    }`}>
-                                      {typeof row[col] === 'number' ? row[col].toLocaleString() : String(row[col] ?? '')}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td 
-                                  colSpan={(msg.columns || []).filter(k => k !== 'id' && k !== '__rowId').length || 1} 
-                                  className={`px-3 py-4 text-center text-muted-foreground font-medium ${
-                                    isDark ? 'bg-white/5' : 'bg-slate-50'
-                                  }`}
-                                >
-                                  No records found
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {msg.type === "executable" && (
+                <QuickVisuals msg={msg} />
+              )}
 
               {/* Parameter Card for params_needed */}
               {msg.type === "params_needed" && (
@@ -850,6 +893,43 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
               <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
             </div>
+          </motion.div>
+        )}
+
+        {/* WebSocket Real-time Stream Controls (Pause/Resume/Cancel) */}
+        {isProcessing && socketRef.current && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 pl-12 mb-6"
+          >
+            {isPaused ? (
+              <button
+                onClick={handleResume}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Resume Execution
+              </button>
+            ) : (
+              <button
+                onClick={handlePause}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all animate-pulse"
+              >
+                <Pause className="w-3.5 h-3.5 fill-current" />
+                Pause Stream
+              </button>
+            )}
+            <button
+              onClick={handleCancel}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+              Cancel Query
+            </button>
+            <span className="text-xs text-muted-foreground animate-pulse">
+              {isPaused ? "Execution suspended manually" : "Streaming results live..."}
+            </span>
           </motion.div>
         )}
 

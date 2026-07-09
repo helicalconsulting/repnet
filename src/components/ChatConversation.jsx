@@ -135,21 +135,31 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           socketRef.current = ws;
 
           const aiMsgId = Date.now().toString();
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: aiMsgId,
-              role: "ai",
-              type: "conversational",
-              content: "Analyzing query...",
-              sql: null,
-              rows: [],
-              columns: null,
-              rowsReturned: 0,
-              executionTime: 0,
-              isStreaming: true,
-            },
-          ]);
+          const upsertAIMessage = (fields) => {
+            setMessages((prev) => {
+              const exists = prev.some((m) => m.id === aiMsgId);
+              if (exists) {
+                return prev.map((m) => (m.id === aiMsgId ? { ...m, ...fields } : m));
+              } else {
+                return [
+                  ...prev,
+                  {
+                    id: aiMsgId,
+                    role: "ai",
+                    type: "conversational",
+                    content: "",
+                    sql: null,
+                    rows: [],
+                    columns: null,
+                    rowsReturned: 0,
+                    executionTime: 0,
+                    isStreaming: true,
+                    ...fields,
+                  },
+                ];
+              }
+            });
+          };
 
           ws.onopen = () => {
             ws.send(JSON.stringify({
@@ -161,13 +171,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           ws.onmessage = (e) => {
             const event = JSON.parse(e.data);
             if (event.type === "status") {
-              if (event.message && !event.message.toLowerCase().includes("database")) {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === aiMsgId ? { ...m, content: event.message } : m
-                  )
-                );
-              }
+              // Status events (e.g. database connections) are ignored to avoid showing connection text
             } else if (event.type === "progress") {
               if (event.step === "intent_extraction") {
                 setPipelineStep("classify");
@@ -183,50 +187,81 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 setCompletedSteps(["classify", "search", "extract", "execute"]);
               }
             } else if (event.type === "sql") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === aiMsgId ? { ...m, type: "executable", sql: event.sql } : m
-                )
-              );
+              upsertAIMessage({ type: "executable", sql: event.sql });
             } else if (event.type === "data") {
-              setMessages((prev) =>
-                prev.map((m) => {
-                  if (m.id === aiMsgId) {
-                    const newRows = [...m.rows, ...event.rows];
-                    const cols = m.columns || (event.rows[0] ? Object.keys(event.rows[0]) : null);
-                    return {
-                      ...m,
+              setMessages((prev) => {
+                const exists = prev.some((m) => m.id === aiMsgId);
+                if (exists) {
+                  return prev.map((m) => {
+                    if (m.id === aiMsgId) {
+                      const newRows = [...m.rows, ...event.rows];
+                      const cols = m.columns || (event.rows[0] ? Object.keys(event.rows[0]) : null);
+                      return {
+                        ...m,
+                        type: "executable",
+                        rows: newRows,
+                        columns: cols,
+                        rowsReturned: newRows.length,
+                      };
+                    }
+                    return m;
+                  });
+                } else {
+                  const cols = event.rows[0] ? Object.keys(event.rows[0]) : null;
+                  return [
+                    ...prev,
+                    {
+                      id: aiMsgId,
+                      role: "ai",
                       type: "executable",
-                      rows: newRows,
+                      content: "",
+                      sql: null,
+                      rows: event.rows,
                       columns: cols,
-                      rowsReturned: newRows.length,
-                    };
-                  }
-                  return m;
-                })
-              );
+                      rowsReturned: event.rows.length,
+                      executionTime: 0,
+                      isStreaming: true,
+                    },
+                  ];
+                }
+              });
             } else if (event.type === "insight") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === aiMsgId ? { ...m, content: event.summary } : m
-                )
-              );
+              upsertAIMessage({ content: event.summary });
             } else if (event.type === "complete") {
-              setMessages((prev) =>
-                prev.map((m) => {
-                  if (m.id === aiMsgId) {
-                    return {
-                      ...m,
-                      isStreaming: false,
-                      showReportBtn: true,
+              setMessages((prev) => {
+                const exists = prev.some((m) => m.id === aiMsgId);
+                const updatedFields = {
+                  isStreaming: false,
+                  showReportBtn: true,
+                  rowsReturned: event.rows_returned,
+                  executionTime: event.exec_time_ms,
+                };
+                if (exists) {
+                  return prev.map((m) => {
+                    if (m.id === aiMsgId) {
+                      return { ...m, ...updatedFields, columns: event.columns || m.columns };
+                    }
+                    return m;
+                  });
+                } else {
+                  return [
+                    ...prev,
+                    {
+                      id: aiMsgId,
+                      role: "ai",
+                      type: "conversational",
+                      content: "",
+                      sql: null,
+                      rows: [],
+                      columns: event.columns,
                       rowsReturned: event.rows_returned,
                       executionTime: event.exec_time_ms,
-                      columns: event.columns || m.columns,
-                    };
-                  }
-                  return m;
-                })
-              );
+                      isStreaming: false,
+                      showReportBtn: true,
+                    },
+                  ];
+                }
+              });
               ws.close();
               setIsProcessing(false);
               setPipelineStep(null);
@@ -237,19 +272,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 ? event.message
                 : "Could not process. An error occurred while executing the query. Please verify your query or database schema and try again.";
 
-              setMessages((prev) =>
-                prev.map((m) => {
-                  if (m.id === aiMsgId) {
-                    return {
-                      ...m,
-                      type: isValidation ? "conversational" : "error",
-                      content: userFriendlyMsg,
-                      isStreaming: false,
-                    };
-                  }
-                  return m;
-                })
-              );
+              upsertAIMessage({
+                type: isValidation ? "conversational" : "error",
+                content: userFriendlyMsg,
+                isStreaming: false,
+              });
               ws.close();
               setIsProcessing(false);
               setPipelineStep(null);

@@ -495,12 +495,14 @@ export const reportApi = {
     return Array.isArray(response) ? response : response.reports || [];
   },
 
-  // ── Scheduled Refresh ────────────────────────────────────────────────
-  /** Set or clear auto-refresh schedule. intervalDays: 0/null=off, 1/2/3=days */
-  async setSchedule(id, { intervalDays, connectionId }) {
+  async setSchedule(id, { intervalDays, intervalMinutes, connectionId }) {
     return request(`/reports/${id}/schedule`, {
       method: 'PATCH',
-      body: JSON.stringify({ interval_days: intervalDays ?? null, connection_id: connectionId ?? null }),
+      body: JSON.stringify({
+        interval_days: intervalDays ?? null,
+        interval_minutes: intervalMinutes ?? null,
+        connection_id: connectionId ?? null,
+      }),
     });
   },
 

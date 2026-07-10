@@ -60,21 +60,42 @@ export default function ReportPage() {
       reportApi.getReport(id)
         .then(async (config) => {
           setReportConfig(config);
+          
+          let hasSnapshotData = false;
           try {
-            const connId = activeConnection || (connections && connections[0]?.id);
-            if (connId) {
-              const runResult = await reportApi.runReport(id, connId);
-              setReportData({
-                ...config,
-                rows: runResult.rows,
-                sql: config.sql || runResult.sql,
-              });
-            } else {
+            const snapshots = await reportApi.getSnapshots(id, 1);
+            if (snapshots && snapshots.length > 0) {
+              const latestSnap = await reportApi.getSnapshotDetail(id, snapshots[0].id);
+              if (latestSnap && latestSnap.rows_data) {
+                setReportData({
+                  ...config,
+                  rows: latestSnap.rows_data,
+                  sql: config.parameters?.sql || latestSnap.sql || '',
+                });
+                hasSnapshotData = true;
+              }
+            }
+          } catch (snapErr) {
+            console.error('Failed to load snapshot:', snapErr);
+          }
+
+          if (!hasSnapshotData) {
+            try {
+              const connId = activeConnection || (connections && connections[0]?.id);
+              if (connId) {
+                const runResult = await reportApi.runReport(id, connId);
+                setReportData({
+                  ...config,
+                  rows: runResult.rows,
+                  sql: config.sql || runResult.sql || config.parameters?.sql,
+                });
+              } else {
+                setReportData(config);
+              }
+            } catch (runErr) {
+              console.error('Failed to run report:', runErr);
               setReportData(config);
             }
-          } catch (runErr) {
-            console.error('Failed to run report:', runErr);
-            setReportData(config);
           }
           setQuery(config.name || 'Report');
         })
@@ -285,10 +306,13 @@ export default function ReportPage() {
               {!isViewer && (
                 <div className="flex items-center gap-2">
                   {/* Schedule badge/info */}
-                  {reportConfig?.refresh_interval_days > 0 && (
+                  {((reportConfig?.refresh_interval_days > 0) || (reportConfig?.refresh_interval_minutes > 0)) && (
                     <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded-xl text-xs text-primary font-medium">
                       <CalendarClock className="w-3.5 h-3.5" />
-                      {reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`}
+                      {reportConfig.refresh_interval_days > 0 
+                        ? (reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`)
+                        : `Every ${reportConfig.refresh_interval_minutes}m`
+                      }
                     </div>
                   )}
 

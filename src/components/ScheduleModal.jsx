@@ -19,7 +19,7 @@ import {
 import { reportApi, databaseApi } from "../services/api";
 
 // ── Quick preset pills ─────────────────────────────────────────────────────────
-const PRESETS = [
+const DAY_PRESETS = [
   { label: "Off", value: 0, icon: Ban },
   { label: "1d", value: 1, icon: CalendarClock },
   { label: "2d", value: 2, icon: CalendarClock },
@@ -27,6 +27,16 @@ const PRESETS = [
   { label: "7d", value: 7, icon: CalendarClock },
   { label: "14d", value: 14, icon: CalendarClock },
   { label: "30d", value: 30, icon: CalendarClock },
+];
+
+const MINUTE_PRESETS = [
+  { label: "Off", value: 0, icon: Ban },
+  { label: "1m", value: 1, icon: Zap },
+  { label: "2m", value: 2, icon: Zap },
+  { label: "5m", value: 5, icon: Zap },
+  { label: "10m", value: 10, icon: Zap },
+  { label: "30m", value: 30, icon: Zap },
+  { label: "60m", value: 60, icon: Zap },
 ];
 
 function fmtDateTime(dateStr) {
@@ -54,13 +64,19 @@ function fmtRelative(date) {
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export default function ScheduleModal({ report, onClose, onSaved }) {
-  const initial = report?.refresh_interval_days ?? 0;
-  const [intervalDays, setIntervalDays] = useState(initial);
+  const initialDays = report?.refresh_interval_days ?? 0;
+  const initialMinutes = report?.refresh_interval_minutes ?? 0;
+
+  const [unit, setUnit] = useState(initialMinutes > 0 ? "minutes" : "days");
+  const [val, setVal] = useState(initialMinutes > 0 ? initialMinutes : initialDays);
+
+  const presets = unit === "days" ? DAY_PRESETS : MINUTE_PRESETS;
+
   const [customInput, setCustomInput] = useState(
-    initial > 0 && !PRESETS.some((p) => p.value === initial) ? String(initial) : ""
+    val > 0 && !presets.some((p) => p.value === val) ? String(val) : ""
   );
   const [useCustom, setUseCustom] = useState(
-    initial > 0 && !PRESETS.some((p) => p.value === initial)
+    val > 0 && !presets.some((p) => p.value === val)
   );
 
   const [connectionId, setConnectionId] = useState(
@@ -72,10 +88,10 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
   const [saveStatus, setSaveStatus] = useState(null);
   const [connDropOpen, setConnDropOpen] = useState(false);
 
-  // Effective interval days value
-  const effectiveDays = useCustom
-    ? Math.max(0, Math.min(365, parseInt(customInput) || 0))
-    : intervalDays;
+  // Effective interval value
+  const effectiveVal = useCustom
+    ? Math.max(0, Math.min(unit === "days" ? 365 : 1440, parseInt(customInput) || 0))
+    : val;
 
   useEffect(() => {
     databaseApi
@@ -87,25 +103,33 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
 
   const selectedConn = connections.find((c) => c.id === connectionId);
 
-  const handlePresetClick = (val) => {
+  const handleUnitChange = (newUnit) => {
+    setUnit(newUnit);
+    setVal(0);
+    setCustomInput("");
+    setUseCustom(false);
+  };
+
+  const handlePresetClick = (presetVal) => {
     setUseCustom(false);
     setCustomInput("");
-    setIntervalDays(val);
+    setVal(presetVal);
   };
 
   const handleCustomChange = (e) => {
     const raw = e.target.value.replace(/[^0-9]/g, "");
     setCustomInput(raw);
     setUseCustom(true);
-    setIntervalDays(0); // deselect preset
+    setVal(0);
   };
 
   const handleStepper = (delta) => {
-    const current = effectiveDays;
-    const next = Math.max(0, Math.min(365, current + delta));
+    const current = effectiveVal;
+    const maxVal = unit === "days" ? 365 : 1440;
+    const next = Math.max(0, Math.min(maxVal, current + delta));
     setUseCustom(true);
     setCustomInput(String(next));
-    setIntervalDays(0);
+    setVal(0);
   };
 
   const handleSave = async () => {
@@ -113,7 +137,8 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
     setSaveStatus(null);
     try {
       const updated = await reportApi.setSchedule(report.id, {
-        intervalDays: effectiveDays || null,
+        intervalDays: unit === "days" ? (effectiveVal || null) : null,
+        intervalMinutes: unit === "minutes" ? (effectiveVal || null) : null,
         connectionId: connectionId || null,
       });
       setSaveStatus("success");
@@ -127,12 +152,12 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
   };
 
   const nextPreview =
-    effectiveDays > 0 && connectionId
-      ? new Date(Date.now() + effectiveDays * 86400000)
+    effectiveVal > 0 && connectionId
+      ? new Date(Date.now() + effectiveVal * (unit === "days" ? 86400000 : 60000))
       : null;
 
-  const isOff = effectiveDays === 0;
-  const canSave = isOff || (effectiveDays > 0 && !!connectionId);
+  const isOff = effectiveVal === 0;
+  const canSave = isOff || (effectiveVal > 0 && !!connectionId);
 
   return (
     <AnimatePresence>
@@ -159,7 +184,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
         >
-          {/* ── Header ─────────────────────────────────────────────────── */}
+          {/* Header */}
           <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-violet-500/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -182,21 +207,50 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
             </button>
           </div>
 
-          {/* ── Body ───────────────────────────────────────────────────── */}
+          {/* Body */}
           <div className="p-6 space-y-5">
 
             {/* Refresh Interval */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5" />
-                Refresh Interval
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Refresh Interval
+                </label>
+
+                {/* Unit Switcher */}
+                <div className="flex bg-muted/65 p-0.5 rounded-lg border border-border/40">
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange("days")}
+                    className={`px-2.5 py-0.5 text-center text-[10px] font-bold rounded transition-all ${
+                      unit === "days"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange("minutes")}
+                    className={`px-2 py-0.5 text-center text-[10px] font-bold rounded transition-all flex items-center gap-0.5 ${
+                      unit === "minutes"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Zap className="w-2.5 h-2.5 text-amber-500" />
+                    Minutes
+                  </button>
+                </div>
+              </div>
 
               {/* Quick presets */}
               <div className="flex flex-wrap gap-1.5">
-                {PRESETS.map((p) => {
+                {presets.map((p) => {
                   const Icon = p.icon;
-                  const isActive = !useCustom && intervalDays === p.value;
+                  const isActive = !useCustom && val === p.value;
                   return (
                     <button
                       key={p.value}
@@ -216,20 +270,20 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                 })}
               </div>
 
-              {/* Custom days input */}
+              {/* Custom input */}
               <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground">
                   Or enter a custom interval:
                 </p>
                 <div className={`flex items-center gap-0 border rounded-xl overflow-hidden transition-colors ${
-                  useCustom && effectiveDays > 0
+                  useCustom && effectiveVal > 0
                     ? "border-primary/50 bg-primary/3"
                     : "border-border bg-background"
                 }`}>
                   {/* Minus */}
                   <button
                     onClick={() => handleStepper(-1)}
-                    disabled={effectiveDays <= 0}
+                    disabled={effectiveVal <= 0}
                     className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <Minus className="w-3.5 h-3.5" />
@@ -240,34 +294,40 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                     <input
                       type="text"
                       inputMode="numeric"
-                      value={useCustom ? customInput : intervalDays > 0 ? String(intervalDays) : ""}
+                      value={useCustom ? customInput : val > 0 ? String(val) : ""}
                       onChange={handleCustomChange}
-                      placeholder="e.g. 5"
+                      placeholder={unit === "days" ? "e.g. 5" : "e.g. 15"}
                       className="w-16 text-center text-sm font-semibold bg-transparent outline-none text-foreground placeholder:text-muted-foreground/40"
                     />
                     <span className="text-xs text-muted-foreground font-medium">
-                      {effectiveDays === 1 ? "day" : "days"}
+                      {unit === "days"
+                        ? effectiveVal === 1 ? "day" : "days"
+                        : effectiveVal === 1 ? "minute" : "minutes"
+                      }
                     </span>
                   </div>
 
                   {/* Plus */}
                   <button
                     onClick={() => handleStepper(1)}
-                    disabled={effectiveDays >= 365}
+                    disabled={effectiveVal >= (unit === "days" ? 365 : 1440)}
                     className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <p className="text-[11px] text-muted-foreground/60">
-                  Min: 1 day · Max: 365 days
+                  {unit === "days"
+                    ? "Min: 1 day · Max: 365 days"
+                    : "Min: 1 minute · Max: 1440 minutes"
+                  }
                 </p>
               </div>
             </div>
 
             {/* Connection selector — only when interval > 0 */}
             <AnimatePresence>
-              {effectiveDays > 0 && (
+              {effectiveVal > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -378,7 +438,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
             <div className="rounded-xl bg-muted/30 border border-border p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Zap className="w-3.5 h-3.5" />
+                  <Zap className="w-3.5 h-3.5 text-amber-500/80" />
                   Next scheduled refresh
                 </div>
                 <span
@@ -405,7 +465,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
             </div>
 
             {/* Validation warning */}
-            {effectiveDays > 0 && !connectionId && (
+            {effectiveVal > 0 && !connectionId && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -417,7 +477,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
             )}
           </div>
 
-          {/* ── Footer ─────────────────────────────────────────────────── */}
+          {/* Footer */}
           <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
             <button
               onClick={onClose}

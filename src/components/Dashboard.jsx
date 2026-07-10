@@ -192,7 +192,7 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
             onClick={() => onSchedule?.(report)}
             title="Schedule auto-refresh"
             className={`p-1.5 rounded-lg transition-colors ${
-              report.refresh_interval_days > 0
+              (report.refresh_interval_days > 0 || report.refresh_interval_minutes > 0)
                 ? "text-primary bg-primary/10"
                 : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
             }`}
@@ -269,15 +269,21 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
             <span>{fmtDate(report.createdAt || report.created_at)}</span>
           </div>
           {/* Schedule badge */}
-          {report.refresh_interval_days > 0 && (
+          {((report.refresh_interval_days > 0) || (report.refresh_interval_minutes > 0)) && (
             <div className="flex items-center gap-1 text-primary/70">
               <CalendarClock className="w-3 h-3 shrink-0" />
               <span>
-                {report.refresh_interval_days === 1 ? "Daily" : `Every ${report.refresh_interval_days}d`}
+                {report.refresh_interval_days > 0 
+                  ? (report.refresh_interval_days === 1 ? "Daily" : `Every ${report.refresh_interval_days}d`)
+                  : `Every ${report.refresh_interval_minutes}m`
+                }
                 {report.next_refresh_at && (
                   <span className="text-muted-foreground/50 ml-1">
                     · next {new Date(report.next_refresh_at) > new Date()
-                      ? `in ${Math.ceil((new Date(report.next_refresh_at) - Date.now()) / 86400000)}d`
+                      ? (report.refresh_interval_days > 0 
+                          ? `in ${Math.ceil((new Date(report.next_refresh_at) - Date.now()) / 86400000)}d`
+                          : `in ${Math.ceil((new Date(report.next_refresh_at) - Date.now()) / 60000)}m`
+                        )
                       : "soon"
                     }
                   </span>

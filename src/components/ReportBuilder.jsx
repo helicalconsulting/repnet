@@ -387,7 +387,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         name: saveName.trim(),
         description: saveDescription.trim(),
         query_template_id: reportData?.templateId || "sales_overview",
-        parameters: reportData?.extractedParams || {},
+        parameters: {
+          ...(reportData?.extractedParams || {}),
+          sql: reportData?.sql || "",
+        },
         is_public: false,
         columns: columnsPayload
       });

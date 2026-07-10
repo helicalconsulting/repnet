@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
-  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown,
+  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp,
   Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -25,6 +25,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isProcessing, setIsProcessing] = useState(false);
   const [pipelineStep, setPipelineStep] = useState(null);
   const [completedSteps, setCompletedSteps] = useState([]);
+  const [currentStatusText, setCurrentStatusText] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentSuggestions, setCurrentSuggestions] = useState([]);
@@ -39,7 +40,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isPaused, setIsPaused] = useState(false);
   const socketRef = useRef(null);
   const [feedbacks, setFeedbacks] = useState({});
+  const [collapsedMessages, setCollapsedMessages] = useState({});
   const [expandedVisuals, setExpandedVisuals] = useState({});
+
+  const toggleCollapse = (id) => {
+    setCollapsedMessages(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
 
   const toggleVisuals = (msgId) => {
     setExpandedVisuals((prev) => ({
@@ -142,6 +149,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }
     setIsProcessing(false);
     setPipelineStep(null);
+    setCurrentStatusText("");
   }, []);
 
   // ── Process a user query ────────────────────────────────────────────
@@ -168,6 +176,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       setPipelineStep("classify");
       setCompletedSteps([]);
+      setCurrentStatusText("Classifying intent");
 
       // Add user message
       const userMsg = { id: Date.now().toString(), role: "user", content: query };
@@ -243,20 +252,24 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           ws.onmessage = (e) => {
             const event = JSON.parse(e.data);
             if (event.type === "status") {
-              // Status events (e.g. database connections) are ignored to avoid showing connection text
+              setCurrentStatusText(event.message);
             } else if (event.type === "progress") {
               if (event.step === "intent_extraction") {
                 setPipelineStep("classify");
                 setCompletedSteps([]);
+                setCurrentStatusText("Classifying intent");
               } else if (event.step === "sql_build") {
                 setPipelineStep("extract");
                 setCompletedSteps(["classify", "search"]);
+                setCurrentStatusText("Building query");
               } else if (event.step === "execute") {
                 setPipelineStep("execute");
                 setCompletedSteps(["classify", "search", "extract"]);
+                setCurrentStatusText("Executing query");
               } else if (event.step === "insight") {
                 setPipelineStep("insight");
                 setCompletedSteps(["classify", "search", "extract", "execute"]);
+                setCurrentStatusText("Generating insights");
               }
             } else if (event.type === "sql") {
               upsertAIMessage({ type: "executable", sql: event.sql });
@@ -344,6 +357,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               ws.close();
               setIsProcessing(false);
               setPipelineStep(null);
+              setCurrentStatusText("");
               window.dispatchEvent(new Event("repnex-sessions-updated"));
             } else if (event.type === "error") {
               const isValidation = event.code === "validation_failed";
@@ -360,6 +374,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               ws.close();
               setIsProcessing(false);
               setPipelineStep(null);
+              setCurrentStatusText("");
             }
           };
 
@@ -374,12 +389,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             );
             setIsProcessing(false);
             setPipelineStep(null);
+            setCurrentStatusText("");
           };
 
           ws.onclose = () => {
             socketRef.current = null;
             setIsProcessing(false);
             setPipelineStep(null);
+            setCurrentStatusText("");
             
             // Safety cleanup: stop streaming indicator & display report button if executable SQL exists
             setMessages((prev) =>
@@ -1023,6 +1040,34 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
                   }`}
                 >
+                  {/* Collapsible Header for AI messages */}
+                  {msg.role === "ai" && (
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/30 dark:border-white/5 select-none">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {msg.type === "error" ? "Execution Error" : "AI Insights & Report Summary"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => toggleCollapse(msg.id)}
+                        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-[10px] font-semibold text-blue-500 hover:text-blue-600 transition-colors"
+                      >
+                        {collapsedMessages[msg.id] ? (
+                          <>
+                            <span>Expand</span>
+                            <ChevronDown className="w-3 h-3" />
+                          </>
+                        ) : (
+                          <>
+                            <span>Collapse</span>
+                            <ChevronUp className="w-3 h-3" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
                   {msg.role === "user" ? (
                     editingMessageId === msg.id ? (
                       <div className="flex flex-col gap-2 w-full min-w-[300px]">
@@ -1053,19 +1098,38 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       <span className="text-[15px] leading-relaxed">{msg.content}</span>
                     )
                   ) : (
-                    <div className="text-[15px] leading-relaxed text-foreground">
-                      {msg.type === "error" && (
-                        <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
-                          <AlertCircle className="w-4 h-4" />
-                          <span className="text-xs font-semibold uppercase">Could not process</span>
-                        </div>
-                      )}
-                      {formatContent(msg.content)}
-                    </div>
+                    /* AI message block */
+                    collapsedMessages[msg.id] ? (
+                      <div className="text-xs text-muted-foreground italic flex items-center justify-between gap-4">
+                        <span>
+                          {msg.type === "error" 
+                            ? "Error: Click expand to view details" 
+                            : msg.content 
+                              ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...` 
+                              : "Click expand to view details"
+                          }
+                        </span>
+                        {msg.rowsReturned != null && (
+                          <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
+                            {msg.rowsReturned} rows
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-[15px] leading-relaxed text-foreground">
+                        {msg.type === "error" && (
+                          <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                            <AlertCircle className="w-4 h-4" />
+                            <span className="text-xs font-semibold uppercase">Could not process</span>
+                          </div>
+                        )}
+                        {formatContent(msg.content)}
+                      </div>
+                    )
                   )}
 
                   {/* Copy button */}
-                  {msg.role === "ai" && msg.content && (
+                  {msg.role === "ai" && msg.content && !collapsedMessages[msg.id] && (
                     <button
                       onClick={() => handleCopy(msg.content, msg.id)}
                       className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
@@ -1092,7 +1156,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* SQL display */}
-              {msg.sql && (
+              {!collapsedMessages[msg.id] && msg.sql && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1134,7 +1198,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Execution stats */}
-              {msg.type === "executable" && (
+              {!collapsedMessages[msg.id] && msg.type === "executable" && (
                 <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                   {msg.rowsReturned != null && (
                     <span className="flex items-center gap-1">
@@ -1152,7 +1216,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Parameter Card for params_needed */}
-              {msg.type === "params_needed" && (
+              {!collapsedMessages[msg.id] && msg.type === "params_needed" && (
                 <div className="mt-4">
                   <ParameterCard
                     templateId={msg.templateId}
@@ -1166,7 +1230,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Report Button */}
-              {msg.showReportBtn && (
+              {!collapsedMessages[msg.id] && (msg.showReportBtn || (msg.type === "executable" && !!msg.sql && msg.rowsReturned > 0)) && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -1190,7 +1254,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Feedback section */}
-              {msg.role === "ai" && msg.historyId && (
+              {!collapsedMessages[msg.id] && msg.role === "ai" && msg.historyId && (
                 <div className="mt-4 pt-3 border-t border-border/30 dark:border-white/5 flex flex-col gap-2 w-full">
                   {!feedbacks[msg.id] && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1300,7 +1364,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
               <Bot className="w-4 h-4 text-blue-700" />
             </div>
-            <PipelineStatus currentStep={pipelineStep} completedSteps={completedSteps} />
+            <PipelineStatus currentStep={pipelineStep} completedSteps={completedSteps} statusText={currentStatusText} />
           </motion.div>
         )}
 

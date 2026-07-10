@@ -461,45 +461,9 @@ export const queryApi = {
       body: JSON.stringify({ session_id: sessionId, natural_language: naturalLanguage }),
     });
   },
-  async getSuggestions() {
-    return [
-      {
-        category: "AP & Suppliers",
-        prompts: [
-          { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
-          { text: "List overdue supplier invoices as of today", icon: "⚠️" },
-          { text: "Top 10 suppliers by outstanding amount", icon: "🏆" },
-          { text: "Supplier payment history last 3 months", icon: "💳" },
-        ],
-      },
-      {
-        category: "AR & Customers",
-        prompts: [
-          { text: "Customer ageing report with overdue buckets", icon: "📋" },
-          { text: "Top 10 customers by outstanding receivables", icon: "📈" },
-          { text: "Overdue customer invoices older than 60 days", icon: "⚠️" },
-          { text: "Customer payment collection trend this quarter", icon: "💰" },
-        ],
-      },
-      {
-        category: "Cashbook & GL",
-        prompts: [
-          { text: "Cashbook summary for current month", icon: "💵" },
-          { text: "GL journal entries posted today", icon: "📝" },
-          { text: "Trial balance for current period", icon: "📑" },
-          { text: "Bank reconciliation status report", icon: "🏦" },
-        ],
-      },
-      {
-        category: "Sales & Revenue",
-        prompts: [
-          { text: "Sales orders by customer this month", icon: "🛒" },
-          { text: "Top 10 customers by revenue", icon: "🏆" },
-          { text: "Monthly revenue trend last 6 months", icon: "📈" },
-          { text: "Outstanding sales orders summary", icon: "📦" },
-        ],
-      },
-    ];
+  async getSuggestions(connectionId = null) {
+    const url = connectionId ? `/query/suggestions?connection_id=${connectionId}` : '/query/suggestions';
+    return request(url);
   },
   async submitFeedback(historyId, { isPositive, category = null, comment = null }) {
     return request(`/query/history/${historyId}/feedback`, {

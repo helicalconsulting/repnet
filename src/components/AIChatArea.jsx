@@ -1,4 +1,4 @@
-import { Mic, MicOff, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, Users, BookOpen, ChevronRight } from "lucide-react";
+import { Mic, MicOff, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, Users, BookOpen, ChevronRight, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
@@ -52,20 +52,24 @@ export default function AIChatArea({ onSearch }) {
   const [activeCategory, setActiveCategory] = useState(0);
   const [showConnectionBadge, setShowConnectionBadge] = useState(true);
   const [suggestions, setSuggestions] = useState(DEFAULT_SUGGESTIONS);
+  const [showQueriesDrawer, setShowQueriesDrawer] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    queryApi.getSuggestions()
+    setIsLoadingSuggestions(true);
+    queryApi.getSuggestions(activeConnection || null)
       .then((data) => {
-        if (active && Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           setSuggestions(data);
         }
       })
       .catch((err) => {
         console.warn("Failed to fetch dynamic suggestions, using fallbacks:", err);
+      })
+      .finally(() => {
+        setIsLoadingSuggestions(false);
       });
-    return () => { active = false; };
-  }, []);
+  }, [activeConnection]);
 
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
@@ -185,75 +189,38 @@ export default function AIChatArea({ onSearch }) {
           </p>
         </motion.div>
 
-        {/* Connected Database Badge */}
-        <AnimatePresence>
-          {showConnectionBadge && activeConn && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                Connected to {activeConn.name}
-              </span>
-              <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
-                ({activeConn.tables} tables)
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Connected DB Badge & Explore Suggestions Toggle */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+          <AnimatePresence>
+            {showConnectionBadge && activeConn && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full shadow-sm"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  Connected to {activeConn.name}
+                </span>
+                <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
+                  ({activeConn.tables} tables)
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {/* Category Tabs */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="flex flex-wrap justify-center gap-2 mb-4 w-full max-w-3xl"
-        >
-          {suggestions.map((cat, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveCategory(i)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                activeCategory === i 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
-                  : 'bg-black/5 dark:bg-white/5 text-foreground/70 hover:bg-black/10 dark:hover:bg-white/10'
-              }`}
-            >
-              {categoryIcons[cat.category] || <Sparkles className="w-4 h-4" />}
-              {cat.category}
-            </button>
-          ))}
-        </motion.div>
-
-        {/* Suggestion Chips */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex flex-col gap-2 w-full max-w-3xl mb-4"
-        >
-          {suggestions[activeCategory]?.prompts.slice(0, 3).map((sug, i) => (
-            <motion.button 
-              key={i}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 * i }}
-              onClick={() => { if (!isViewer && onSearch) { setQuery(sug.text); onSearch(sug.text); } }}
-              disabled={isViewer}
-              className={`px-5 py-3.5 text-left rounded-xl bg-card hover:bg-muted transition-all text-[13px] font-medium text-foreground/80 flex items-center justify-between leading-relaxed border border-border hover:border-primary/30 group shadow-sm ${isViewer ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span className="flex items-center gap-2 flex-1">
-                <span className="text-base shrink-0">{sug.icon}</span>
-                <span className="flex-1">{sug.text}</span>
-              </span>
-              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all ml-3 shrink-0" />
-            </motion.button>
-          ))}
-        </motion.div>
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => setShowQueriesDrawer(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/30 rounded-full text-blue-600 dark:text-blue-400 text-sm font-medium transition-all cursor-pointer shadow-sm select-none"
+          >
+            <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />
+            <span>Explore Schema Queries</span>
+          </motion.button>
+        </div>
 
 
 
@@ -340,6 +307,94 @@ export default function AIChatArea({ onSearch }) {
         </motion.form>
 
       </div>
+
+      {/* Dynamic Suggestions Drawer */}
+      <AnimatePresence>
+        {showQueriesDrawer && (
+          <>
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowQueriesDrawer(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 cursor-pointer"
+            />
+            {/* Drawer container */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-card dark:bg-[#151515] border-l border-border dark:border-white/5 shadow-2xl z-50 flex flex-col p-6 overflow-hidden text-left"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-border/50 dark:border-white/5 mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
+                    Schema Suggestions
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Recommended queries based on connected database
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowQueriesDrawer(false)}
+                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Suggestions Loading/Content */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6 pr-1">
+                {isLoadingSuggestions ? (
+                  <div className="flex flex-col gap-4 py-8 items-center justify-center text-muted-foreground">
+                    <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+                    <span className="text-sm">Analyzing schema and generating queries...</span>
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No suggestions found. Connect a database schema to get started.
+                  </div>
+                ) : (
+                  suggestions.map((cat, catIdx) => (
+                    <div key={catIdx} className="flex flex-col gap-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2 mb-1">
+                        {categoryIcons[cat.category] || <Sparkles className="w-3.5 h-3.5" />}
+                        {cat.category}
+                      </h4>
+                      <div className="flex flex-col gap-2">
+                        {cat.prompts.map((sug, sugIdx) => (
+                          <button
+                            key={sugIdx}
+                            onClick={() => {
+                              if (!isViewer && onSearch) {
+                                setQuery(sug.text);
+                                onSearch(sug.text);
+                                setShowQueriesDrawer(false);
+                              }
+                            }}
+                            disabled={isViewer}
+                            className="w-full p-3.5 text-left rounded-xl bg-muted/30 hover:bg-muted dark:bg-white/[0.02] dark:hover:bg-white/[0.06] border border-border/50 dark:border-white/5 hover:border-blue-500/30 transition-all text-xs font-medium text-foreground/90 flex items-start justify-between gap-3 group"
+                          >
+                            <span className="flex items-start gap-2.5">
+                              <span className="text-sm select-none shrink-0 mt-0.5">{sug.icon || "📊"}</span>
+                              <span className="leading-relaxed">{sug.text}</span>
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

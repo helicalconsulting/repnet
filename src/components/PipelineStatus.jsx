@@ -13,7 +13,7 @@ const STEPS = [
  * Visual pipeline progress indicator that shows the query processing stages.
  * Displays animated step icons with status (pending / active / done).
  */
-export default function PipelineStatus({ currentStep = "classify", completedSteps = [] }) {
+export default function PipelineStatus({ currentStep = "classify", completedSteps = [], statusText = "" }) {
   const currentIdx = STEPS.findIndex((s) => s.id === currentStep);
 
   return (
@@ -27,6 +27,8 @@ export default function PipelineStatus({ currentStep = "classify", completedStep
         const isCompleted = completedSteps.includes(step.id);
         const isActive = step.id === currentStep;
         const isPending = !isCompleted && !isActive;
+
+        const displayLabel = (isActive && statusText) ? statusText : step.label;
 
         return (
           <div key={step.id} className="flex items-center">
@@ -67,7 +69,7 @@ export default function PipelineStatus({ currentStep = "classify", completedStep
                     : "text-muted-foreground/50"
                 }`}
               >
-                {step.label}
+                {displayLabel}
               </span>
             </motion.div>
 

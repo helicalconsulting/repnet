@@ -44,17 +44,26 @@ export default function MainLayout({ user, onSignOut }) {
     }
   }, [location.pathname]);
 
-  // Handle initial screen size and resizes
+  // Handle initial screen size and resizes with threshold check
   useEffect(() => {
+    let prevWidth = window.innerWidth;
+    
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      const currentWidth = window.innerWidth;
+      if (prevWidth >= 768 && currentWidth < 768) {
         setIsSidebarOpen(false);
-      } else {
+      } else if (prevWidth < 768 && currentWidth >= 768) {
         setIsSidebarOpen(true);
       }
+      prevWidth = currentWidth;
     };
     
-    handleResize(); // Initial check
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    } else {
+      setIsSidebarOpen(true);
+    }
+    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

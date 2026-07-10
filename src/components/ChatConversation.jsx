@@ -266,8 +266,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 if (exists) {
                   return prev.map((m) => {
                     if (m.id === aiMsgId) {
-                      const newRows = [...m.rows, ...event.rows];
-                      const cols = m.columns || (event.rows[0] ? Object.keys(event.rows[0]) : null);
+                      const newRows = [...(m.rows || []), ...(event.rows || [])];
+                      const cols = m.columns || ((event.rows && event.rows[0]) ? Object.keys(event.rows[0]) : null);
                       return {
                         ...m,
                         type: "executable",
@@ -279,7 +279,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     return m;
                   });
                 } else {
-                  const cols = event.rows[0] ? Object.keys(event.rows[0]) : null;
+                  const cols = (event.rows && event.rows[0]) ? Object.keys(event.rows[0]) : null;
                   return [
                     ...prev,
                     {
@@ -288,9 +288,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       type: "executable",
                       content: "",
                       sql: null,
-                      rows: event.rows,
+                      rows: event.rows || [],
                       columns: cols,
-                      rowsReturned: event.rows.length,
+                      rowsReturned: (event.rows || []).length,
                       executionTime: 0,
                       isStreaming: true,
                     },

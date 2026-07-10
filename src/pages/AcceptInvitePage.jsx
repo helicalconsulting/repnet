@@ -15,6 +15,7 @@ import {
   Lock,
   CheckCircle2,
 } from 'lucide-react';
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import { authApi } from '../services/api';
 
 // ── Password strength ──────────────────────────────────────────────────
@@ -320,8 +321,58 @@ export default function AcceptInvitePage({ onAuthSuccess }) {
   // ── Validating ──
   if (status === STATUS.VALIDATING) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden flex items-center justify-center p-4">
+        {/* Ambient glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-100px] left-[15%] h-[320px] w-[320px] rounded-full bg-primary/15 blur-[120px]" />
+          <div className="absolute bottom-[-120px] right-[8%] h-[360px] w-[360px] rounded-full bg-blue-500/10 blur-[140px]" />
+        </div>
+
+        <Motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative z-10 w-full max-w-5xl"
+        >
+          <SmartSkeleton loading={true}>
+            <div className="grid overflow-hidden rounded-3xl border border-border/50 bg-card/85 shadow-2xl backdrop-blur-xl md:grid-cols-2">
+              {/* Left panel skeleton */}
+              <div className="hidden md:flex flex-col justify-between bg-gradient-to-br from-primary/50 to-blue-700/50 p-10 text-white min-h-[500px]">
+                <div>
+                  <div className="h-12 w-32 bg-white/10 rounded-xl mb-8 animate-pulse" />
+                  <div className="h-8 bg-white/20 rounded w-3/4 mb-3 animate-pulse" />
+                  <div className="h-4 bg-white/10 rounded w-full mb-2 animate-pulse" />
+                  <div className="h-4 bg-white/10 rounded w-2/3 animate-pulse" />
+                </div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-white/10 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+              {/* Right panel skeleton */}
+              <div className="p-7 sm:p-9 md:p-10 space-y-6">
+                <div>
+                  <div className="h-6 bg-muted rounded w-1/4 mb-4 animate-pulse" />
+                  <div className="h-8 bg-muted rounded w-2/3 mb-2 animate-pulse" />
+                  <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+                </div>
+                <div className="h-16 bg-muted rounded-2xl animate-pulse" />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
+                    <div className="h-10 bg-muted rounded-xl animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
+                    <div className="h-10 bg-muted rounded-xl animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-12 bg-muted rounded-xl animate-pulse" />
+              </div>
+            </div>
+          </SmartSkeleton>
+        </Motion.div>
       </div>
     );
   }

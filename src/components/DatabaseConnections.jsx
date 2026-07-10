@@ -246,65 +246,80 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, i
                     className="w-full bg-black/5 dark:bg-white/[0.03] border border-border/40 dark:border-white/5 rounded-xl px-3 py-2 text-xs mb-3 text-foreground focus:outline-none focus:border-primary/50 transition-colors"
                   />
 
-                  {loadingTables ? (
-                    <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                      <Loader2 className="w-5 h-5 animate-spin mb-2 text-primary" />
-                      <span className="text-xs">Loading tables list...</span>
-                    </div>
-                  ) : (
-                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs">
-                      {tables
-                        .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                        .map((table) => {
-                          const isExpanded = expandedTable === table.name;
-                          const isLoadingColumns = loadingColumnsTable === table.name;
-                          const cols = columnsMap[table.name] || [];
-
-                          return (
-                            <div key={table.name} className="bg-black/5 dark:bg-white/[0.02] border border-border/30 dark:border-white/5 rounded-xl p-2.5">
-                              <button
-                                onClick={() => handleTableClick(table.name)}
-                                className="w-full text-left font-semibold text-foreground flex items-center justify-between"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span>📋</span>
-                                  <span className="truncate max-w-[200px]" title={table.name}>{table.name}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-normal shrink-0">
-                                  <span>{table.columns_count} cols</span>
-                                  <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                </div>
-                              </button>
-
-                              {isExpanded && (
-                                <div className="mt-2.5 pt-2.5 border-t border-border/10 dark:border-white/[0.03]">
-                                  {isLoadingColumns ? (
-                                    <div className="flex items-center gap-2 py-1 text-muted-foreground pl-5 text-[10px]">
-                                      <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                                      <span>Loading column structures...</span>
-                                    </div>
-                                  ) : cols.length > 0 ? (
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-5 text-[11px] text-muted-foreground">
-                                      {cols.map((col) => (
-                                        <div key={col.name} className="flex items-center justify-between py-0.5 border-b border-border/10 dark:border-white/[0.02] truncate">
-                                          <span className="font-medium text-foreground/80 truncate pr-2" title={col.name}>{col.name}</span>
-                                          <span className="text-[9px] uppercase px-1 bg-black/10 dark:bg-white/5 rounded text-muted-foreground shrink-0">{col.type}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="text-[10px] text-muted-foreground pl-5 py-1">No columns found.</div>
-                                  )}
-                                </div>
-                              )}
+                  <SmartSkeleton loading={loadingTables}>
+                    {loadingTables ? (
+                      <div className="space-y-2 max-h-60 overflow-hidden pr-1">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="bg-black/5 dark:bg-white/[0.02] border border-border/30 dark:border-white/5 rounded-xl p-2.5 flex items-center justify-between animate-pulse">
+                            <div className="flex items-center gap-2 w-2/3">
+                              <div className="w-3.5 h-3.5 bg-muted rounded shrink-0" />
+                              <div className="h-3 bg-muted rounded w-3/4" />
                             </div>
-                          );
-                        })}
-                      {tables.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                        <div className="text-center py-4 text-xs text-muted-foreground">No matching tables found.</div>
-                      )}
-                    </div>
-                  )}
+                            <div className="h-3 bg-muted rounded w-1/4" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs">
+                        {tables
+                          .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                          .map((table) => {
+                            const isExpanded = expandedTable === table.name;
+                            const isLoadingColumns = loadingColumnsTable === table.name;
+                            const cols = columnsMap[table.name] || [];
+
+                            return (
+                              <div key={table.name} className="bg-black/5 dark:bg-white/[0.02] border border-border/30 dark:border-white/5 rounded-xl p-2.5">
+                                <button
+                                  onClick={() => handleTableClick(table.name)}
+                                  className="w-full text-left font-semibold text-foreground flex items-center justify-between"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span>📋</span>
+                                    <span className="truncate max-w-[200px]" title={table.name}>{table.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-normal shrink-0">
+                                    <span>{table.columns_count} cols</span>
+                                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  </div>
+                                </button>
+
+                                {isExpanded && (
+                                  <div className="mt-2.5 pt-2.5 border-t border-border/10 dark:border-white/[0.03]">
+                                    <SmartSkeleton loading={isLoadingColumns}>
+                                      {isLoadingColumns ? (
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-5">
+                                          {Array.from({ length: 4 }).map((_, i) => (
+                                            <div key={i} className="flex items-center justify-between py-1 border-b border-border/10 dark:border-white/[0.02] animate-pulse">
+                                              <div className="h-3 bg-muted rounded w-2/3" />
+                                              <div className="h-3 bg-muted rounded w-1/4" />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : cols.length > 0 ? (
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 pl-5 text-[11px] text-muted-foreground">
+                                          {cols.map((col) => (
+                                            <div key={col.name} className="flex items-center justify-between py-0.5 border-b border-border/10 dark:border-white/[0.02] truncate">
+                                              <span className="font-medium text-foreground/80 truncate pr-2" title={col.name}>{col.name}</span>
+                                              <span className="text-[9px] uppercase px-1 bg-black/10 dark:bg-white/5 rounded text-muted-foreground shrink-0">{col.type}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-[10px] text-muted-foreground pl-5 py-1">No columns found.</div>
+                                      )}
+                                    </SmartSkeleton>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        {tables.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                          <div className="text-center py-4 text-xs text-muted-foreground">No matching tables found.</div>
+                        )}
+                      </div>
+                    )}
+                  </SmartSkeleton>
                 </>
               ) : (
                 <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 text-center mt-2">

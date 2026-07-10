@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -238,60 +239,67 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-y-auto flex-1 space-y-0.5 pr-1 custom-scrollbar"
                   >
-                    {loadingSessions ? (
-                      <div className="flex items-center justify-center py-6">
-                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : sessionsError ? (
-                      <div className="px-3 py-4 text-center">
-                        <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
-                        <button
-                          onClick={fetchSessions}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    ) : sessions.length === 0 ? (
-                      <div className="px-3 py-4 text-center">
-                        <MessageSquare className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-                        <p className="text-xs text-muted-foreground">No chats yet. Start a new report chat above.</p>
-                      </div>
-                    ) : (
-                      sessions.map((session, i) => (
-                        <motion.button
-                          key={session.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.04 }}
-                          onClick={() => navigate(`/chat/${session.id}`)}
-                          className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
-                        >
-                          <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
-                            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                            <span className="truncate text-xs">{session.title || 'Untitled Chat'}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            <span className="text-[10px] text-muted-foreground hidden group-hover:hidden">
-                              {timeAgo(session.created_at)}
-                            </span>
-                            {!isViewer && (
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteSession(e, session.id)}
-                                disabled={deletingId === session.id}
-                                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
-                              >
-                                {deletingId === session.id
-                                  ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-                                  : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
-                                }
-                              </button>
-                            )}
-                          </div>
-                        </motion.button>
-                      ))
-                    )}
+                    <SmartSkeleton loading={loadingSessions}>
+                      {loadingSessions ? (
+                        <div className="space-y-1.5 py-1 px-1">
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-black/5 dark:bg-white/5 animate-pulse">
+                              <div className="w-3.5 h-3.5 bg-muted rounded shrink-0" />
+                              <div className="h-3 bg-muted rounded w-2/3" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : sessionsError ? (
+                        <div className="px-3 py-4 text-center">
+                          <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
+                          <button
+                            onClick={fetchSessions}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : sessions.length === 0 ? (
+                        <div className="px-3 py-4 text-center">
+                          <MessageSquare className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
+                          <p className="text-xs text-muted-foreground">No chats yet. Start a new report chat above.</p>
+                        </div>
+                      ) : (
+                        sessions.map((session, i) => (
+                          <motion.button
+                            key={session.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            onClick={() => navigate(`/chat/${session.id}`)}
+                            className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
+                              <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                              <span className="truncate text-xs">{session.title || 'Untitled Chat'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                              <span className="text-[10px] text-muted-foreground hidden group-hover:hidden">
+                                {timeAgo(session.created_at)}
+                              </span>
+                              {!isViewer && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteSession(e, session.id)}
+                                  disabled={deletingId === session.id}
+                                  className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
+                                >
+                                  {deletingId === session.id
+                                    ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                                    : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
+                                  }
+                                </button>
+                              )}
+                            </div>
+                          </motion.button>
+                        ))
+                      )}
+                    </SmartSkeleton>
                   </motion.div>
                 )}
               </AnimatePresence>

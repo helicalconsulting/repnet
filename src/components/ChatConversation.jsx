@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown,
@@ -859,13 +860,26 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       <div className="w-full flex-1 flex flex-col pt-20 pb-40 overflow-y-auto custom-scrollbar">
         <div className="w-full max-w-6xl mx-auto px-6 flex-1 flex flex-col">
-        {loadingHistory ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
-            <span className="text-sm">Loading chat history...</span>
-          </div>
-        ) : (
-          messages.map((msg) => (
+        <SmartSkeleton loading={loadingHistory}>
+          {loadingHistory ? (
+            <div className="flex-1 flex flex-col gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className={`flex w-full ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
+                  {i % 2 === 0 && (
+                    <div className="w-9 h-9 rounded-full bg-muted shrink-0 mr-3" />
+                  )}
+                  <div className={`flex flex-col ${i % 2 === 0 ? "items-start" : "items-end"} max-w-[70%] w-full gap-2`}>
+                    <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
+                    <div className="h-12 bg-muted rounded-2xl w-full animate-pulse" />
+                  </div>
+                  {i % 2 !== 0 && (
+                    <div className="w-9 h-9 rounded-full bg-muted shrink-0 ml-3" />
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            messages.map((msg) => (
             <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
@@ -1140,6 +1154,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             )}
           </motion.div>
         )))}
+        </SmartSkeleton>
 
         {/* Pipeline Status during processing */}
         {isProcessing && pipelineStep && (

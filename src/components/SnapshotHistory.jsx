@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   Clock,
   Bot,
@@ -221,11 +222,23 @@ function SnapshotRow({ snap, reportId, isFirst }) {
                 className="overflow-hidden"
               >
                 <div className="pt-2">
-                  {loadingDetail ? (
-                    <div className="flex items-center justify-center py-8 gap-2 text-sm text-muted-foreground border border-border rounded-xl bg-card">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Loading preview…
-                    </div>
+                   {loadingDetail ? (
+                    <SmartSkeleton loading={true}>
+                      <div className="border border-border rounded-xl bg-card p-4 space-y-3">
+                        <div className="flex gap-2">
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="h-6 bg-muted rounded w-1/4 animate-pulse" />
+                          ))}
+                        </div>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="flex gap-2 pt-2 border-t border-border/40">
+                            {Array.from({ length: 4 }).map((_, j) => (
+                              <div key={j} className="h-4 bg-muted/60 rounded w-1/4 animate-pulse" />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </SmartSkeleton>
                   ) : detailError ? (
                     <div className="flex items-center gap-2 px-4 py-3 text-sm text-rose-500 bg-rose-500/5 border border-rose-500/20 rounded-xl">
                       <AlertCircle className="w-4 h-4 shrink-0" />
@@ -298,45 +311,61 @@ export default function SnapshotHistory({
       </div>
 
       {/* States */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12 gap-2 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Loading history…
-        </div>
-      ) : error ? (
-        <div className="flex flex-col items-center justify-center py-10 gap-3">
-          <AlertCircle className="w-6 h-6 text-rose-500" />
-          <p className="text-sm text-muted-foreground">{error}</p>
-          <button onClick={load} className="text-xs text-primary hover:underline">
-            Try again
-          </button>
-        </div>
-      ) : snapshots.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3 border-2 border-dashed border-border rounded-xl">
-          <div className="w-12 h-12 rounded-xl bg-muted/60 flex items-center justify-center">
-            <Clock className="w-6 h-6 text-muted-foreground/50" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-foreground">No history yet</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Run this report manually or set up a schedule to start tracking history
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="relative pl-1">
-          <AnimatePresence>
-            {snapshots.map((snap, i) => (
-              <SnapshotRow
-                key={snap.id}
-                snap={snap}
-                reportId={report.id}
-                isFirst={i === 0}
-              />
+      <SmartSkeleton loading={loading}>
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
+                <div className="flex-1 p-4 rounded-xl border border-border bg-card space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 bg-muted rounded w-1/4 animate-pulse" />
+                    <div className="h-4 bg-muted rounded w-1/12 animate-pulse" />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <div className="h-3 bg-muted rounded w-1/5 animate-pulse" />
+                    <div className="h-3 bg-muted rounded w-1/6 animate-pulse" />
+                    <div className="h-3 bg-muted rounded w-1/6 animate-pulse" />
+                  </div>
+                </div>
+              </div>
             ))}
-          </AnimatePresence>
-        </div>
-      )}
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <AlertCircle className="w-6 h-6 text-rose-500" />
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <button onClick={load} className="text-xs text-primary hover:underline">
+              Try again
+            </button>
+          </div>
+        ) : snapshots.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 border-2 border-dashed border-border rounded-xl">
+            <div className="w-12 h-12 rounded-xl bg-muted/60 flex items-center justify-center">
+              <Clock className="w-6 h-6 text-muted-foreground/50" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">No history yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Run this report manually or set up a schedule to start tracking history
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="relative pl-1">
+            <AnimatePresence>
+              {snapshots.map((snap, i) => (
+                <SnapshotRow
+                  key={snap.id}
+                  snap={snap}
+                  reportId={report.id}
+                  isFirst={i === 0}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </SmartSkeleton>
     </div>
   );
 }

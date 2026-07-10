@@ -299,6 +299,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             } else if (event.type === "insight") {
               upsertAIMessage({ content: event.summary });
             } else if (event.type === "complete") {
+              const backendSugs = getCombinedSuggestions(event);
               setMessages((prev) => {
                 const exists = prev.some((m) => m.id === aiMsgId);
                 const updatedFields = {
@@ -307,6 +308,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   rowsReturned: event.rows_returned,
                   executionTime: event.exec_time_ms,
                   historyId: event.history_id,
+                  suggestions: backendSugs,
                 };
                 if (exists) {
                   return prev.map((m) => {
@@ -331,10 +333,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       isStreaming: false,
                       showReportBtn: true,
                       historyId: event.history_id,
+                      suggestions: backendSugs,
                     },
                   ];
                 }
               });
+              setCurrentSuggestions(backendSugs);
+              setShowSuggestions(backendSugs.length > 0);
               ws.close();
               setIsProcessing(false);
               setPipelineStep(null);
@@ -404,12 +409,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               .map((c) => c.description)
               .filter((d) => d && d !== res.template_description);
             const all = [...new Set([...sim.slice(0, 3), ...(res.suggestions || [])])];
-            return all.slice(0, 5);
+            return all.slice(0, 4);
           };
 
           if (response.type === "conversational") {
             // Conversational response
             setPipelineStep(null);
+            const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
               {
@@ -417,14 +423,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 role: "ai",
                 type: "conversational",
                 content: response.message,
+                suggestions: backendSugs,
               },
             ]);
-            setCurrentSuggestions(getCombinedSuggestions(response));
-            setShowSuggestions(true);
+            setCurrentSuggestions(backendSugs);
+            setShowSuggestions(backendSugs.length > 0);
 
           } else if (response.type === "params_needed") {
             // Need user input for params
             setPipelineStep(null);
+            const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
               {
@@ -436,10 +444,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 templateDescription: response.template_description,
                 extractedParams: response.extracted_params || {},
                 missingParams: response.missing_params || [],
+                suggestions: backendSugs,
               },
             ]);
-            setCurrentSuggestions(getCombinedSuggestions(response));
-            setShowSuggestions(true);
+            setCurrentSuggestions(backendSugs);
+            setShowSuggestions(backendSugs.length > 0);
 
           } else if (response.type === "executable") {
             // Query executed successfully
@@ -451,6 +460,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
             setPipelineStep(null);
 
+            const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
               {
@@ -468,14 +478,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 extractedParams: response.extracted_params || {},
                 showReportBtn: true,
                 historyId: response.history_id,
+                suggestions: backendSugs,
               },
             ]);
-            setCurrentSuggestions(getCombinedSuggestions(response));
-            setShowSuggestions(true);
+            setCurrentSuggestions(backendSugs);
+            setShowSuggestions(backendSugs.length > 0);
 
           } else if (response.type === "template_preview") {
             // No DB connected - show template preview + SQL
             setPipelineStep(null);
+            const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
               {
@@ -488,13 +500,15 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 templateDescription: response.template_description,
                 templateModule: response.template_module,
                 historyId: response.history_id || null,
+                suggestions: backendSugs,
               },
             ]);
-            setCurrentSuggestions(getCombinedSuggestions(response));
-            setShowSuggestions(true);
+            setCurrentSuggestions(backendSugs);
+            setShowSuggestions(backendSugs.length > 0);
 
           } else if (response.type === "access_denied") {
             setPipelineStep(null);
+            const backendSugs = (response.suggestions || []).slice(0, 4);
             setMessages((prev) => [
               ...prev,
               {
@@ -504,14 +518,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 content: response.message || "Access denied to this module.",
                 templateModule: response.template_module,
                 historyId: response.history_id || null,
+                suggestions: backendSugs,
               },
             ]);
-            setCurrentSuggestions(response.suggestions || []);
-            setShowSuggestions(response.suggestions?.length > 0);
+            setCurrentSuggestions(backendSugs);
+            setShowSuggestions(backendSugs.length > 0);
 
           } else {
             // Error
             setPipelineStep(null);
+            const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
               {
@@ -520,10 +536,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 type: "error",
                 content: response.message || "Something went wrong.",
                 historyId: response.history_id || null,
+                suggestions: backendSugs,
               },
             ]);
-            setCurrentSuggestions(getCombinedSuggestions(response));
-            setShowSuggestions(true);
+            setCurrentSuggestions(backendSugs);
+            setShowSuggestions(backendSugs.length > 0);
           }
         }
       } catch (err) {
@@ -614,8 +631,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           // Restore suggestions from the last AI message in history
           const lastAiMsg = [...loaded].reverse().find(m => m.role === "ai");
           if (lastAiMsg?.suggestions?.length > 0) {
-            setCurrentSuggestions(lastAiMsg.suggestions);
-            setShowSuggestions(true);
+            const cleanSuggestions = lastAiMsg.suggestions.slice(0, 4);
+            setCurrentSuggestions(cleanSuggestions);
+            setShowSuggestions(cleanSuggestions.length > 0);
+          } else {
+            setShowSuggestions(false);
           }
         } catch (err) {
           console.error("Failed to load session history:", err);
@@ -685,6 +705,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setPipelineStep(null);
 
         if (response.type === "executable") {
+          const backendSugs = (response.suggestions || []).slice(0, 4);
           setMessages((prev) => [
             ...prev,
             {
@@ -701,10 +722,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               templateDescription: response.template_description || "",
               extractedParams: params || {},
               showReportBtn: true,
+              suggestions: backendSugs,
             },
           ]);
-          setCurrentSuggestions(response.suggestions || []);
-          setShowSuggestions(true);
+          setCurrentSuggestions(backendSugs);
+          setShowSuggestions(backendSugs.length > 0);
         } else {
           setMessages((prev) => [
             ...prev,

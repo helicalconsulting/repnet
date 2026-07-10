@@ -774,7 +774,26 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     addNotification("success", "Copied to clipboard");
   };
 
-  // ── Format message content ──────────────────────────────────────────
+  const highlightSQL = (sql) => {
+    if (!sql) return "";
+    let html = sql
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const keywords = /\b(SELECT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|HAVING|LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|JOIN|ON|AS|AND|OR|UNION|ALL|INSERT|UPDATE|DELETE|CREATE|TABLE)\b/gi;
+    html = html.replace(keywords, '<span class="text-blue-500 dark:text-sky-400 font-bold">$1</span>');
+
+    const functions = /\b(COALESCE|CAST|SUM|AVG|COUNT|MAX|MIN|DECIMAL|CONCAT|NOW|DATE|IFNULL|NULLIF)\b/gi;
+    html = html.replace(functions, '<span class="text-amber-500 dark:text-amber-400 font-medium">$1</span>');
+
+    html = html.replace(/\b(\d+)\b/g, '<span class="text-emerald-500 dark:text-emerald-400">$1</span>');
+
+    html = html.replace(/(['"])(.*?)\1/g, '<span class="text-rose-500 dark:text-rose-400">\'$2\'</span>');
+
+    return html;
+  };
+
   // ── Format message content ──────────────────────────────────────────
   const formatContent = (content) => {
     if (!content) return null;
@@ -813,32 +832,77 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         return <hr key={i} className="my-4 border-t border-border/40 dark:border-white/5" />;
       }
 
-      // 6. Parse bullet points starting with "- ", "* " or "• " (including nested ones)
+      // 6. Detect Insight Cards (Emoji + Title: Description)
+      const emojiCardMatch = processedLine.match(/^(?:\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
+      if (emojiCardMatch) {
+        const emoji = emojiCardMatch[1];
+        const title = emojiCardMatch[2];
+        const desc = emojiCardMatch[3];
+        return (
+          <div key={i} className="my-3.5 p-4 bg-black/[0.02] dark:bg-white/[0.015] border border-border/40 dark:border-white/5 border-l-4 border-l-blue-500/80 rounded-xl rounded-l-none flex items-start gap-3.5 shadow-sm hover:border-l-blue-500 transition-all duration-300">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-lg shrink-0 border border-blue-500/15">
+              {emoji}
+            </div>
+            <div className="flex-1 space-y-1">
+              <h4 className="font-semibold text-foreground text-sm tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
+              <p className="text-sm text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+            </div>
+          </div>
+        );
+      }
+
+      // 7. Detect Title-Description Pairs (no emoji, e.g. Title: Description)
+      const textCardMatch = processedLine.match(/^(?:\d+\.\s*)?([A-Za-z0-9\s,\(\)\-\'\"]+):\s*(.+)$/);
+      if (textCardMatch && textCardMatch[1].length < 45 && textCardMatch[2].length > 15) {
+        const title = textCardMatch[1];
+        const desc = textCardMatch[2];
+        return (
+          <div key={i} className="my-3 p-3.5 bg-black/[0.01] dark:bg-white/[0.01] border border-border/40 dark:border-white/5 border-l-2 border-l-muted rounded-lg rounded-l-none flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 animate-pulse" />
+            <div className="flex-1 space-y-1">
+              <h4 className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{ __html: title }} />
+              <p className="text-sm text-foreground/85 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+            </div>
+          </div>
+        );
+      }
+
+      // 8. Parse bullet points starting with "- ", "* " or "• " (including nested ones)
       const trimmedLine = processedLine.trimStart();
       if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") || trimmedLine.startsWith("• ")) {
         const itemContent = trimmedLine.slice(2);
         const isNested = line.startsWith("  ") || line.startsWith("    ") || line.startsWith("\t");
         return (
-          <li key={i} className={`${isNested ? "ml-10" : "ml-5"} list-disc mb-1.5 text-foreground/90 leading-relaxed`} dangerouslySetInnerHTML={{ __html: itemContent }} />
+          <div key={i} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500/70 mt-2 shrink-0" />
+            <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
+          </div>
         );
       }
 
-      // 7. Parse numbered lists (1. Item)
+      // 9. Parse numbered lists (1. Item)
       const numberedMatch = processedLine.match(/^(\d+)\.\s(.+)/);
       if (numberedMatch) {
+        const num = numberedMatch[1];
+        const text = numberedMatch[2];
         return (
-          <li key={i} className="ml-5 list-decimal mb-1.5 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: numberedMatch[2] }} />
+          <div key={i} className="flex items-start gap-2.5 my-1.5 pl-3">
+            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
+              {num}
+            </span>
+            <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
+          </div>
         );
       }
 
-      // 8. Empty lines
+      // 10. Empty lines
       if (!processedLine.trim()) {
         return <div key={i} className="h-2" />;
       }
 
-      // 9. Regular paragraphs
+      // 11. Regular paragraphs
       return (
-        <p key={i} className="mb-2 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: processedLine }} />
+        <p key={i} className="mb-3 text-foreground/90 leading-relaxed text-[15px]" dangerouslySetInnerHTML={{ __html: processedLine }} />
       );
     });
   };
@@ -981,21 +1045,42 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               {/* SQL display */}
               {msg.sql && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="mt-3 w-full"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 w-full border border-border/40 dark:border-white/5 rounded-2xl overflow-hidden shadow-lg bg-[#0E121E]"
                 >
-                  <button
-                    onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
-                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1.5"
-                  >
-                    <Code className="w-3.5 h-3.5" />
-                    <span>SQL Query</span>
-                    {copiedId === `sql-${msg.id}` && <Check className="w-3 h-3 text-emerald-500" />}
-                  </button>
-                  <pre className="p-3 bg-slate-900 dark:bg-black/40 text-slate-300 text-xs rounded-xl overflow-x-auto font-mono leading-relaxed border border-slate-800/50">
-                    {msg.sql}
-                  </pre>
+                  {/* Code block header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-b border-border/30 dark:border-white/5 select-none">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-sky-400 border border-blue-500/15">
+                        SQL
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium font-sans">
+                        Query Execution
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-xs text-slate-300 hover:text-white transition-all font-sans"
+                    >
+                      {copiedId === `sql-${msg.id}` ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400 font-medium">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {/* Highlighted SQL pre code */}
+                  <pre 
+                    className="p-4 text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none"
+                    dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
+                  />
                 </motion.div>
               )}
 

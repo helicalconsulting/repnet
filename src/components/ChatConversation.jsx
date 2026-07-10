@@ -857,7 +857,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         </div>
       )}
 
-      <div className="w-full max-w-6xl flex-1 flex flex-col pt-20 pb-40 px-6 overflow-y-auto custom-scrollbar">
+      <div className="w-full flex-1 flex flex-col pt-20 pb-40 overflow-y-auto custom-scrollbar">
+        <div className="w-full max-w-6xl mx-auto px-6 flex-1 flex flex-col">
         {loadingHistory ? (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
@@ -1230,6 +1231,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         </AnimatePresence>
 
         <div ref={bottomRef} className="h-4 w-full shrink-0 block" />
+        </div>
       </div>
 
       {/* Fixed Bottom Input */}

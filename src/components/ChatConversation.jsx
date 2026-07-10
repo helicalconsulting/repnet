@@ -44,7 +44,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [expandedVisuals, setExpandedVisuals] = useState({});
 
   const toggleCollapse = (id) => {
-    setCollapsedMessages(prev => ({ ...prev, [id]: !prev[id] }));
+    setCollapsedMessages(prev => ({
+      ...prev,
+      [id]: prev[id] === false ? true : false
+    }));
+  };
+
+  const isMessageCollapsed = (id) => {
+    return collapsedMessages[id] !== false;
   };
 
 
@@ -1053,14 +1060,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         onClick={() => toggleCollapse(msg.id)}
                         className="flex items-center gap-1 px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-[10px] font-semibold text-blue-500 hover:text-blue-600 transition-colors"
                       >
-                        {collapsedMessages[msg.id] ? (
+                        {isMessageCollapsed(msg.id) ? (
                           <>
-                            <span>Expand</span>
+                            <span>Expand Summary</span>
                             <ChevronDown className="w-3 h-3" />
                           </>
                         ) : (
                           <>
-                            <span>Collapse</span>
+                            <span>Collapse Summary</span>
                             <ChevronUp className="w-3 h-3" />
                           </>
                         )}
@@ -1099,7 +1106,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     )
                   ) : (
                     /* AI message block */
-                    collapsedMessages[msg.id] ? (
+                    isMessageCollapsed(msg.id) ? (
                       <div className="text-xs text-muted-foreground italic flex items-center justify-between gap-4">
                         <span>
                           {msg.type === "error" 
@@ -1129,7 +1136,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   )}
 
                   {/* Copy button */}
-                  {msg.role === "ai" && msg.content && !collapsedMessages[msg.id] && (
+                  {msg.role === "ai" && msg.content && !isMessageCollapsed(msg.id) && (
                     <button
                       onClick={() => handleCopy(msg.content, msg.id)}
                       className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
@@ -1156,7 +1163,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* SQL display */}
-              {!collapsedMessages[msg.id] && msg.sql && (
+              {msg.sql && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1198,7 +1205,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Execution stats */}
-              {!collapsedMessages[msg.id] && msg.type === "executable" && (
+              {msg.type === "executable" && (
                 <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                   {msg.rowsReturned != null && (
                     <span className="flex items-center gap-1">
@@ -1216,7 +1223,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Parameter Card for params_needed */}
-              {!collapsedMessages[msg.id] && msg.type === "params_needed" && (
+              {msg.type === "params_needed" && (
                 <div className="mt-4">
                   <ParameterCard
                     templateId={msg.templateId}
@@ -1230,7 +1237,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Report Button */}
-              {!collapsedMessages[msg.id] && (msg.showReportBtn || (msg.type === "executable" && !!msg.sql && msg.rowsReturned > 0)) && (
+              {(msg.showReportBtn || (msg.type === "executable" && !!msg.sql && msg.rowsReturned > 0)) && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -1254,7 +1261,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Feedback section */}
-              {!collapsedMessages[msg.id] && msg.role === "ai" && msg.historyId && (
+              {msg.role === "ai" && msg.historyId && (
                 <div className="mt-4 pt-3 border-t border-border/30 dark:border-white/5 flex flex-col gap-2 w-full">
                   {!feedbacks[msg.id] && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

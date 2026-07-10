@@ -61,7 +61,7 @@ export default function AIChatArea({ onSearch }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState(0);
   const [showConnectionBadge, setShowConnectionBadge] = useState(true);
-  const [suggestions, setSuggestions] = useState(DEFAULT_SUGGESTIONS);
+  const [suggestions, setSuggestions] = useState([]);
   const [showQueriesDrawer, setShowQueriesDrawer] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [hasFetchedDynamic, setHasFetchedDynamic] = useState(false);
@@ -78,7 +78,7 @@ export default function AIChatArea({ onSearch }) {
           }
         })
         .catch((err) => {
-          console.warn("Failed to fetch dynamic suggestions, using default static suggestions:", err);
+          console.warn("Failed to fetch dynamic suggestions:", err);
         })
         .finally(() => {
           setIsLoadingSuggestions(false);
@@ -89,7 +89,7 @@ export default function AIChatArea({ onSearch }) {
   // Reset fetched flag when connection changes so it pulls fresh suggestions on next open
   useEffect(() => {
     setHasFetchedDynamic(false);
-    setSuggestions(DEFAULT_SUGGESTIONS);
+    setSuggestions([]);
   }, [activeConnection]);
 
   const [isListening, setIsListening] = useState(false);
@@ -376,8 +376,14 @@ export default function AIChatArea({ onSearch }) {
                     <span className="text-sm">Analyzing schema and generating queries...</span>
                   </div>
                 ) : suggestions.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No suggestions found. Connect a database schema to get started.
+                  <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
+                    <Database className="w-8 h-8 text-muted-foreground/40 mb-1" />
+                    <span>
+                      {!activeConnection 
+                        ? "Please select a database connection first to explore suggested queries."
+                        : "No dynamic suggestions generated for this database schema."
+                      }
+                    </span>
                   </div>
                 ) : (
                   suggestions.map((mod, modIdx) => (

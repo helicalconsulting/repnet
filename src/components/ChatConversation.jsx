@@ -1175,16 +1175,18 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex w-full mb-6 justify-start items-center"
+            className="flex w-full mb-6 justify-start"
           >
             <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
               <Bot className="w-4 h-4 text-blue-700" />
             </div>
-            <div className="flex gap-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 px-5 py-4 rounded-2xl rounded-tl-sm">
-              <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0s" }} />
-              <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.15s" }} />
-              <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0.3s" }} />
-            </div>
+            <SmartSkeleton loading={true}>
+              <div className="flex flex-col gap-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 p-5 rounded-2xl rounded-tl-sm w-72 animate-pulse">
+                <div className="h-4 bg-muted rounded w-2/3" />
+                <div className="h-3 bg-muted rounded w-5/6" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+              </div>
+            </SmartSkeleton>
           </motion.div>
         )}
 

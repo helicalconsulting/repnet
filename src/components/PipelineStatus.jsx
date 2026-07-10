@@ -47,7 +47,14 @@ export default function PipelineStatus({ currentStep = "classify", completedStep
               {isCompleted ? (
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
               ) : isActive ? (
-                <Loader2 className={`w-3.5 h-3.5 ${step.color} animate-spin`} />
+                <span className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
+                    step.color === 'text-primary' ? 'bg-primary' : step.color.replace('text-', 'bg-')
+                  }/45 opacity-75`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    step.color === 'text-primary' ? 'bg-primary' : step.color.replace('text-', 'bg-')
+                  }`} />
+                </span>
               ) : (
                 <Icon className={`w-3.5 h-3.5 text-muted-foreground/50`} />
               )}

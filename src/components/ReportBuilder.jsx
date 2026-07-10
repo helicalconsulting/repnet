@@ -390,6 +390,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         parameters: {
           ...(reportData?.extractedParams || {}),
           sql: reportData?.sql || "",
+          data: data || [],
         },
         is_public: false,
         columns: columnsPayload

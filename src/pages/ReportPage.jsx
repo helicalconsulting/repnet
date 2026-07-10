@@ -61,6 +61,18 @@ export default function ReportPage() {
         .then(async (config) => {
           setReportConfig(config);
           
+          // Use saved data/rows directly if present
+          const savedRows = config.data || config.parameters?.data;
+          if (savedRows && savedRows.length > 0) {
+            setReportData({
+              ...config,
+              rows: savedRows,
+              sql: config.sql || config.parameters?.sql || '',
+            });
+            setQuery(config.name || 'Report');
+            return;
+          }
+
           let hasSnapshotData = false;
           try {
             const snapshots = await reportApi.getSnapshots(id, 1);

@@ -151,6 +151,28 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
     }
   };
 
+  const hasActiveSchedule = (report?.refresh_interval_days && report.refresh_interval_days > 0) || 
+                            (report?.refresh_interval_minutes && report.refresh_interval_minutes > 0);
+
+  const handleDisableSchedule = async () => {
+    setSaving(true);
+    setSaveStatus(null);
+    try {
+      const updated = await reportApi.setSchedule(report.id, {
+        intervalDays: null,
+        intervalMinutes: null,
+        connectionId: null,
+      });
+      setSaveStatus("success");
+      onSaved?.(updated);
+      setTimeout(() => onClose(), 1000);
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const nextPreview =
     effectiveVal > 0 && connectionId
       ? new Date(Date.now() + effectiveVal * (unit === "days" ? 86400000 : 60000))
@@ -479,12 +501,23 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
 
           {/* Footer */}
           <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3 rounded-b-2xl">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              Cancel
-            </button>
+            {hasActiveSchedule ? (
+              <button
+                onClick={handleDisableSchedule}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Ban className="w-4 h-4" />
+                Delete Schedule
+              </button>
+            ) : (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+            )}
 
             <button
               onClick={handleSave}

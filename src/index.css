@@ -6,7 +6,7 @@
 /* Custom theme-aware SmartSkeleton styles */
 .skeleton-shimmer {
   position: relative !important;
-  background-color: rgb(39, 39, 42) !important; /* subtle dark gray matched with dark-theme bg-card/bg-muted */
+  background-color: rgba(0, 0, 0, 0.06) !important; /* light gray for light theme */
   overflow: hidden !important;
   border-radius: 12px !important;
 }
@@ -20,11 +20,24 @@
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.6) 50%,
     rgba(255, 255, 255, 0) 100%
   );
   transform: skewX(-20deg);
   animation: shimmer-move 1.8s infinite ease-in-out;
+}
+
+/* Dark theme overrides */
+.dark .skeleton-shimmer {
+  background-color: rgb(39, 39, 42) !important;
+}
+.dark .skeleton-shimmer:after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
 @keyframes shimmer-move {
   0% {

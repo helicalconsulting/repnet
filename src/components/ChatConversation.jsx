@@ -1163,7 +1163,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* SQL display */}
-              {msg.sql && (
+              {!isMessageCollapsed(msg.id) && msg.sql && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}

@@ -102,7 +102,6 @@ export default function ReportPage() {
         ...prev,
         rows: snap.rows_data,
       }));
-      // Switch to history tab briefly to show the new entry
     } catch (err) {
       setRefreshError(err.message || 'Refresh failed');
       setTimeout(() => setRefreshError(null), 4000);
@@ -161,124 +160,179 @@ export default function ReportPage() {
 
   return (
     <SmartSkeleton loading={loading}>
-      <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-
-      {/* ── Top action bar (only for saved reports) ─────────────────────── */}
-      {id && id !== 'new' && (
-        <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/80 backdrop-blur z-10 flex-shrink-0">
-          {/* Left: back + tabs */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              {location.state?.fromChat ? 'Back to Chat' : 'Reports'}
-            </button>
-            <div className="flex items-center bg-muted/40 rounded-xl p-1 gap-0.5">
-              {TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-background shadow-sm text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                  </button>
-                );
-              })}
+      {loading ? (
+        <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
+          {/* Top Bar Skeleton */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/80 backdrop-blur z-10 flex-shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="h-5 bg-muted rounded w-24 animate-pulse" />
+              <div className="h-8 bg-muted rounded-xl w-36 animate-pulse" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-8 bg-muted rounded-xl w-24 animate-pulse" />
+              <div className="h-8 bg-muted rounded-xl w-28 animate-pulse" />
             </div>
           </div>
+          {/* Content Area Skeleton */}
+          <div className="flex-1 p-6 space-y-6 overflow-hidden max-w-6xl mx-auto w-full">
+            {/* Header / Title block */}
+            <div className="flex justify-between items-center">
+              <div className="space-y-2 w-1/3">
+                <div className="h-7 bg-muted rounded w-3/4 animate-pulse" />
+                <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 bg-muted rounded-xl w-20 animate-pulse" />
+                <div className="h-9 bg-muted rounded-xl w-20 animate-pulse" />
+              </div>
+            </div>
+            {/* Chart Area Mockup */}
+            <div className="h-72 bg-card dark:bg-white/[0.02] border border-border/40 dark:border-white/5 rounded-2xl p-5 flex items-end justify-around gap-2">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className="bg-muted rounded-t-lg w-8 animate-pulse" 
+                  style={{ height: `${Math.max(15, Math.floor(Math.random() * 80))}%` }} 
+                />
+              ))}
+            </div>
+            {/* Table Area Mockup */}
+            <div className="border border-border/40 dark:border-white/5 rounded-2xl overflow-hidden bg-card">
+              <div className="bg-black/5 dark:bg-white/[0.02] border-b border-border/40 dark:border-white/5 px-4 py-3 flex gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-4 bg-muted rounded w-1/4 animate-pulse" />
+                ))}
+              </div>
+              <div className="divide-y divide-border/20 dark:divide-white/[0.02]">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="px-4 py-3.5 flex gap-4">
+                    {Array.from({ length: 4 }).map((_, j) => (
+                      <div key={j} className="h-4 bg-muted/65 rounded w-1/4 animate-pulse" />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
+          {/* ── Top action bar (only for saved reports) ─────────────────────── */}
+          {id && id !== 'new' && (
+            <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/80 backdrop-blur z-10 flex-shrink-0">
+              {/* Left: back + tabs */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleBack}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  {location.state?.fromChat ? 'Back to Chat' : 'Reports'}
+                </button>
+                <div className="flex items-center bg-muted/40 rounded-xl p-1 gap-0.5">
+                  {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          activeTab === tab.id
+                            ? 'bg-background shadow-sm text-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          {/* Right: actions */}
-          {!isViewer && (
-            <div className="flex items-center gap-2">
-              {/* Schedule badge/info */}
-              {reportConfig?.refresh_interval_days > 0 && (
-                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded-xl text-xs text-primary font-medium">
-                  <CalendarClock className="w-3.5 h-3.5" />
-                  {reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`}
+              {/* Right: actions */}
+              {!isViewer && (
+                <div className="flex items-center gap-2">
+                  {/* Schedule badge/info */}
+                  {reportConfig?.refresh_interval_days > 0 && (
+                    <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded-xl text-xs text-primary font-medium">
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`}
+                    </div>
+                  )}
+
+                  {/* Schedule button */}
+                  <button
+                    onClick={() => setShowSchedule(true)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                      reportConfig?.refresh_interval_days > 0
+                        ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
+                        : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                    }`}
+                  >
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    Schedule
+                  </button>
+
+                  {/* Refresh Now */}
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={refreshing || !connId}
+                    title={!connId ? 'No database connection available' : 'Refresh data now and save snapshot'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                      refreshError
+                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
+                  </button>
                 </div>
               )}
-
-              {/* Schedule button */}
-              <button
-                onClick={() => setShowSchedule(true)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                  reportConfig?.refresh_interval_days > 0
-                    ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                }`}
-              >
-                <CalendarClock className="w-3.5 h-3.5" />
-                Schedule
-              </button>
-
-              {/* Refresh Now */}
-              <button
-                onClick={handleManualRefresh}
-                disabled={refreshing || !connId}
-                title={!connId ? 'No database connection available' : 'Refresh data now and save snapshot'}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                  refreshError
-                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
-                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
-              </button>
             </div>
+          )}
+
+          {/* ── Tab content ──────────────────────────────────────────────────── */}
+          <div className="flex-1 overflow-hidden relative">
+            {/* Report tab */}
+            {activeTab === 'report' && (
+              <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative w-full absolute inset-0">
+                <ReportBuilder
+                  query={query}
+                  reportData={loading ? mockReportData : reportData}
+                  onClose={handleBack}
+                />
+              </div>
+            )}
+
+            {/* History tab */}
+            {activeTab === 'history' && id && id !== 'new' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="h-full overflow-y-auto p-6 custom-scrollbar"
+              >
+                <div className="max-w-2xl mx-auto">
+                  <SnapshotHistory
+                    report={reportConfig || { id }}
+                    connections={connections2}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Schedule Modal */}
+          {showSchedule && (reportConfig || id) && (
+            <ScheduleModal
+              report={reportConfig || { id, name: query }}
+              onClose={() => setShowSchedule(false)}
+              onSaved={handleScheduleSaved}
+            />
           )}
         </div>
       )}
-
-      {/* ── Tab content ──────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden relative">
-
-        {/* Report tab */}
-        {activeTab === 'report' && (
-          <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative w-full absolute inset-0">
-            <ReportBuilder
-              query={query}
-              reportData={loading ? mockReportData : reportData}
-              onClose={handleBack}
-            />
-          </div>
-        )}
-
-        {/* History tab */}
-        {activeTab === 'history' && id && id !== 'new' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="h-full overflow-y-auto p-6 custom-scrollbar"
-          >
-            <div className="max-w-2xl mx-auto">
-              <SnapshotHistory
-                report={reportConfig || { id }}
-                connections={connections2}
-              />
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Schedule Modal */}
-      {showSchedule && (reportConfig || id) && (
-        <ScheduleModal
-          report={reportConfig || { id, name: query }}
-          onClose={() => setShowSchedule(false)}
-          onSaved={handleScheduleSaved}
-        />
-      )}
-      </div>
     </SmartSkeleton>
   );
 }

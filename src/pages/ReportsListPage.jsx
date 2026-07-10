@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   BarChart3, Plus, Search, Loader2, Trash2, Play,
   Calendar, Database, FileText, AlertCircle, RefreshCw, CheckSquare, Square
@@ -159,145 +160,159 @@ export default function ReportsListPage() {
         </div>
 
         {/* States */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
-            <p className="text-sm text-muted-foreground">Loading reports...</p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 flex items-center justify-center">
-              <AlertCircle className="w-7 h-7 text-rose-500" />
+        {/* States */}
+        <SmartSkeleton loading={loading}>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-card rounded-2xl border border-border/50 p-5 flex flex-col gap-3 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-muted shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="h-3 bg-muted rounded w-1/4 pl-[36px]" />
+                  <div className="h-8 bg-muted rounded-xl w-full" />
+                </div>
+              ))}
             </div>
-            <p className="text-sm text-muted-foreground">{error}</p>
-            <button
-              onClick={fetchReports}
-              className="text-xs text-primary hover:underline font-medium"
-            >
-              Try again
-            </button>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center">
-              <FileText className="w-8 h-8 text-primary/40" />
-            </div>
-            <div className="text-center">
-              <p className="font-semibold text-foreground mb-1">
-                {search ? 'No reports match your search' : 'No reports yet'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {search ? 'Try a different search term.' : 'Run an AI chat query and save the results as a report.'}
-              </p>
-            </div>
-            {!search && !isViewer && (
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 flex items-center justify-center">
+                <AlertCircle className="w-7 h-7 text-rose-500" />
+              </div>
+              <p className="text-sm text-muted-foreground">{error}</p>
               <button
-                onClick={() => navigate('/chat')}
-                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-semibold hover:bg-primary/15 transition-colors"
+                onClick={fetchReports}
+                className="text-xs text-primary hover:underline font-medium"
               >
-                <Plus className="w-4 h-4" />
-                Start a new chat
+                Try again
               </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            <AnimatePresence>
-              {filtered.map((report, i) => {
-                const isSelected = selectedIds.includes(report.id);
-                return (
-                  <motion.div
-                    key={report.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.04 }}
-                    onClick={() => navigate(`/report/${report.id}`)}
-                    className={`group relative cursor-pointer rounded-2xl border bg-card transition-all p-5 flex flex-col gap-3 ${
-                      isSelected 
-                        ? 'border-primary shadow-md shadow-primary/5 bg-primary/[0.02]' 
-                        : 'border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5'
-                    }`}
-                  >
-                    {/* Header: Icon + Checkbox + Name */}
-                    <div className="flex items-start gap-3">
-                      {!isViewer && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIds(prev =>
-                              isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
-                            );
-                          }}
-                          className="p-1.5 -ml-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all cursor-pointer shrink-0 z-20 relative"
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-5 h-5 text-primary" />
-                          ) : (
-                            <Square className="w-5 h-5 text-muted-foreground/40 hover:text-primary transition-colors" />
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="flex-1 min-w-0 flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                          <BarChart3 className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground text-sm truncate leading-tight">
-                            {report.name}
-                          </h3>
-                          {report.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                              {report.description}
-                            </p>
-                          )}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center">
+                <FileText className="w-8 h-8 text-primary/40" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-foreground mb-1">
+                  {search ? 'No reports match your search' : 'No reports yet'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {search ? 'Try a different search term.' : 'Run an AI chat query and save the results as a report.'}
+                </p>
+              </div>
+              {!search && !isViewer && (
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-semibold hover:bg-primary/15 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Start a new chat
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <AnimatePresence>
+                {filtered.map((report, i) => {
+                  const isSelected = selectedIds.includes(report.id);
+                  return (
+                    <motion.div
+                      key={report.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ delay: i * 0.04 }}
+                      onClick={() => navigate(`/report/${report.id}`)}
+                      className={`group relative cursor-pointer rounded-2xl border bg-card transition-all p-5 flex flex-col gap-3 ${
+                        isSelected 
+                          ? 'border-primary shadow-md shadow-primary/5 bg-primary/[0.02]' 
+                          : 'border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5'
+                      }`}
+                    >
+                      {/* Header: Icon + Checkbox + Name */}
+                      <div className="flex items-start gap-3">
+                        {!isViewer && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIds(prev =>
+                                isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
+                              );
+                            }}
+                            className="p-1.5 -ml-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all cursor-pointer shrink-0 z-20 relative"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-5 h-5 text-primary" />
+                            ) : (
+                              <Square className="w-5 h-5 text-muted-foreground/40 hover:text-primary transition-colors" />
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="flex-1 min-w-0 flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <BarChart3 className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground text-sm truncate leading-tight">
+                              {report.name}
+                            </h3>
+                            {report.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                {report.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Meta */}
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground pl-[36px]">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {timeAgo(report.created_at)}
-                      </span>
-                      {report.query_template_id && (
-                        <span className="flex items-center gap-1 truncate">
-                          <Database className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{report.query_template_id}</span>
+                      {/* Meta */}
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground pl-[36px]">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {timeAgo(report.created_at)}
                         </span>
-                      )}
-                    </div>
+                        {report.query_template_id && (
+                          <span className="flex items-center gap-1 truncate">
+                            <Database className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{report.query_template_id}</span>
+                          </span>
+                        )}
+                      </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        onClick={() => navigate(`/report/${report.id}`)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                        Open Report
-                      </button>
-                      {!isViewer && (
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 mt-1">
                         <button
-                          onClick={(e) => handleDelete(e, report.id)}
-                          disabled={deletingId === report.id}
-                          className="p-2 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                          onClick={() => navigate(`/report/${report.id}`)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                         >
-                          {deletingId === report.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Trash2 className="w-3.5 h-3.5" />
-                          }
+                          <Play className="w-3.5 h-3.5" />
+                          Open Report
                         </button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        )}
+                        {!isViewer && (
+                          <button
+                            onClick={(e) => handleDelete(e, report.id)}
+                            disabled={deletingId === report.id}
+                            className="p-2 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                          >
+                            {deletingId === report.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Trash2 className="w-3.5 h-3.5" />
+                            }
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+        </SmartSkeleton>
       </div>
 
       {/* Floating Action Bar */}

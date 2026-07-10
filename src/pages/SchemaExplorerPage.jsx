@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import { 
   ArrowLeft, 
   Search, 
@@ -190,41 +191,47 @@ export default function SchemaExplorerPage() {
 
               {/* Table List */}
               <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
-                {loadingTables ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                    <Loader2 className="w-6 h-6 animate-spin mb-3 text-primary" />
-                    <span className="text-sm">Loading database tables...</span>
-                  </div>
-                ) : filteredTables.length === 0 ? (
-                  <div className="text-center py-10 text-sm text-muted-foreground">
-                    No matching tables found.
-                  </div>
-                ) : (
-                  filteredTables.map((t) => {
-                    const isSelected = selectedTable === t.name;
-                    return (
-                      <button
-                        key={t.name}
-                        onClick={() => handleTableSelect(t.name)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left relative group ${
-                          isSelected 
-                            ? 'bg-primary/10 text-primary font-semibold' 
-                            : 'hover:bg-black/5 dark:hover:bg-white/[0.02] text-foreground/80'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
+                <SmartSkeleton loading={loadingTables}>
+                  {loadingTables ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl">
+                        <div className="flex items-center gap-2.5 w-full">
                           <span className="text-base shrink-0">📋</span>
-                          <span className="truncate text-sm" title={t.name}>{t.name}</span>
+                          <div className="h-4 bg-muted rounded w-2/3" />
                         </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
-                          isSelected ? 'bg-primary/20 text-primary' : 'bg-black/10 dark:bg-white/5 text-muted-foreground'
-                        }`}>
-                          {t.columns_count} cols
-                        </span>
-                      </button>
-                    );
-                  })
-                )}
+                      </div>
+                    ))
+                  ) : filteredTables.length === 0 ? (
+                    <div className="text-center py-10 text-sm text-muted-foreground">
+                      No matching tables found.
+                    </div>
+                  ) : (
+                    filteredTables.map((t) => {
+                      const isSelected = selectedTable === t.name;
+                      return (
+                        <button
+                          key={t.name}
+                          onClick={() => handleTableSelect(t.name)}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left relative group ${
+                            isSelected 
+                              ? 'bg-primary/10 text-primary font-semibold' 
+                              : 'hover:bg-black/5 dark:hover:bg-white/[0.02] text-foreground/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-base shrink-0">📋</span>
+                            <span className="truncate text-sm" title={t.name}>{t.name}</span>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
+                            isSelected ? 'bg-primary/20 text-primary' : 'bg-black/10 dark:bg-white/5 text-muted-foreground'
+                          }`}>
+                            {t.columns_count} cols
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </SmartSkeleton>
               </div>
             </motion.div>
           )}
@@ -259,59 +266,83 @@ export default function SchemaExplorerPage() {
 
               {/* Columns Table */}
               <div className="flex-1 overflow-auto p-4 md:p-6 custom-scrollbar">
-                {loadingColumns ? (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                    <span className="text-sm">Fetching column structures...</span>
-                  </div>
-                ) : columns.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-20">
-                    <AlertCircle className="w-10 h-10 text-muted-foreground/50 mb-3" />
-                    <span className="text-sm">No column mapping found. Sync schema to fetch columns.</span>
-                  </div>
-                ) : (
-                  <div className="w-full border border-border/50 dark:border-white/5 rounded-2xl overflow-hidden bg-card/20 backdrop-blur-md">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-border/50 dark:border-white/5 bg-black/5 dark:bg-white/[0.02] text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          <th className="px-6 py-4">Column Name</th>
-                          <th className="px-6 py-4">Data Type</th>
-                          <th className="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30 dark:divide-white/5 text-sm">
-                        {columns.map((col) => (
-                          <tr 
-                            key={col.name} 
-                            className="hover:bg-black/5 dark:hover:bg-white/[0.01] transition-colors"
-                          >
-                            <td className="px-6 py-4 font-semibold text-foreground/90">
-                              <span className="flex items-center gap-2">
-                                <span className="text-muted-foreground/60 text-xs font-mono">#</span>
-                                {col.name}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="px-2 py-1 bg-black/10 dark:bg-white/5 border border-border/50 dark:border-white/5 rounded text-xs font-mono uppercase text-muted-foreground">
-                                {col.type}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button
-                                onClick={() => handleCopy(col.name, col.name)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
-                                title="Copy column name"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                                {copiedCol === col.name ? 'Copied' : 'Copy'}
-                              </button>
-                            </td>
+                <SmartSkeleton loading={loadingColumns}>
+                  {loadingColumns ? (
+                    <div className="w-full border border-border/50 dark:border-white/5 rounded-2xl overflow-hidden bg-card/20 backdrop-blur-md">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-border/50 dark:border-white/5 bg-black/5 dark:bg-white/[0.02] text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-6 py-4">Column Name</th>
+                            <th className="px-6 py-4">Data Type</th>
+                            <th className="px-6 py-4 text-right">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        </thead>
+                        <tbody className="divide-y divide-border/30 dark:divide-white/5 text-sm">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <tr key={i}>
+                              <td className="px-6 py-4">
+                                <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="h-4 bg-muted rounded w-1/4 animate-pulse" />
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="h-6 bg-muted rounded w-12 ml-auto animate-pulse" />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : columns.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-20">
+                      <AlertCircle className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                      <span className="text-sm">No column mapping found. Sync schema to fetch columns.</span>
+                    </div>
+                  ) : (
+                    <div className="w-full border border-border/50 dark:border-white/5 rounded-2xl overflow-hidden bg-card/20 backdrop-blur-md">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-border/50 dark:border-white/5 bg-black/5 dark:bg-white/[0.02] text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <th className="px-6 py-4">Column Name</th>
+                            <th className="px-6 py-4">Data Type</th>
+                            <th className="px-6 py-4 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30 dark:divide-white/5 text-sm">
+                          {columns.map((col) => (
+                            <tr 
+                              key={col.name} 
+                              className="hover:bg-black/5 dark:hover:bg-white/[0.01] transition-colors"
+                            >
+                              <td className="px-6 py-4 font-semibold text-foreground/90">
+                                <span className="flex items-center gap-2">
+                                  <span className="text-muted-foreground/60 text-xs font-mono">#</span>
+                                  {col.name}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="px-2 py-1 bg-black/10 dark:bg-white/5 border border-border/50 dark:border-white/5 rounded text-xs font-mono uppercase text-muted-foreground">
+                                  {col.type}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  onClick={() => handleCopy(col.name, col.name)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
+                                  title="Copy column name"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  {copiedCol === col.name ? 'Copied' : 'Copy'}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </SmartSkeleton>
               </div>
             </div>
           ) : (

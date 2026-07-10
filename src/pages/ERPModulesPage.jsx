@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   DollarSign, ShoppingCart, Package, Factory, Warehouse,
   Search, Loader2, AlertCircle, CheckCircle2, Lock,
@@ -195,73 +196,94 @@ export default function ERPModulesPage() {
         )}
 
         {/* States */}
-        <AnimatePresence mode="wait">
+        <SmartSkeleton loading={loading}>
+          <AnimatePresence mode="wait">
 
-          {/* Loading */}
-          {loading && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-14 gap-3"
-            >
-              <Loader2 className="w-7 h-7 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Analyzing your query…</p>
-            </motion.div>
-          )}
+            {/* Loading */}
+            {loading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-4 h-4 bg-muted rounded-full" />
+                  <div className="h-4 bg-muted rounded w-20" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-muted rounded w-3/4 animate-pulse" />
+                  <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+                </div>
+                <div className="mt-4 rounded-2xl border border-border/60 overflow-hidden bg-card/10">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/20">
+                    <div className="h-3 bg-muted rounded w-24" />
+                    <div className="h-3 bg-muted rounded w-16" />
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex gap-4 border-b border-border/20 pb-2">
+                      <div className="h-4 bg-muted rounded w-1/4" />
+                      <div className="h-4 bg-muted rounded w-1/4" />
+                      <div className="h-4 bg-muted rounded w-1/4" />
+                      <div className="h-4 bg-muted rounded w-1/4" />
+                    </div>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex gap-4">
+                        <div className="h-3 bg-muted rounded w-1/4" />
+                        <div className="h-3 bg-muted rounded w-1/4" />
+                        <div className="h-3 bg-muted rounded w-1/4" />
+                        <div className="h-3 bg-muted rounded w-1/4" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ) : denied ? (
+              <motion.div
+                key="denied"
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex gap-4 items-start"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <Lock className="w-4.5 h-4.5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground text-sm">Module Access Restricted</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{denied}</p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 font-medium">
+                    Contact your admin to request access to this module.
+                  </p>
+                </div>
+              </motion.div>
+            ) : error ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 flex gap-3 items-start"
+              >
+                <AlertCircle className="w-4.5 h-4.5 text-rose-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-foreground text-sm">Query Error</p>
+                  <p className="text-xs text-muted-foreground mt-1">{error}</p>
+                </div>
+              </motion.div>
+            ) : result ? (
+              <motion.div
+                key="result"
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <p className="text-sm font-semibold text-foreground">Result</p>
+                </div>
+                {result.summary && (
+                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{result.summary}</p>
+                )}
+                <ResultTable rows={result.rows} onExport={handleExport} />
+              </motion.div>
+            ) : null}
 
-          {/* Access Denied */}
-          {!loading && denied && (
-            <motion.div
-              key="denied"
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 flex gap-4 items-start"
-            >
-              <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                <Lock className="w-4.5 h-4.5 text-amber-500" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground text-sm">Module Access Restricted</p>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{denied}</p>
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 font-medium">
-                  Contact your admin to request access to this module.
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Error */}
-          {!loading && error && (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 flex gap-3 items-start"
-            >
-              <AlertCircle className="w-4.5 h-4.5 text-rose-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-foreground text-sm">Query Error</p>
-                <p className="text-xs text-muted-foreground mt-1">{error}</p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Success Result */}
-          {!loading && result && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <p className="text-sm font-semibold text-foreground">Result</p>
-              </div>
-              {result.summary && (
-                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{result.summary}</p>
-              )}
-              <ResultTable rows={result.rows} onExport={handleExport} />
-            </motion.div>
-          )}
-
-        </AnimatePresence>
+          </AnimatePresence>
+        </SmartSkeleton>
       </div>
     </div>
   );

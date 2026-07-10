@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   Loader2,
   AlertCircle,
@@ -125,18 +126,20 @@ export default function ReportPage() {
     }
   };
 
-  // ── Loading / Error states ─────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary/60" />
-          <p className="text-sm text-muted-foreground">Loading report...</p>
-        </div>
-      </div>
-    );
-  }
+  const mockReportData = {
+    id: 'loading-id',
+    title: 'Loading Report...',
+    chartType: 'bar',
+    columns: ['Category', 'Value A', 'Value B'],
+    rows: [
+      { Category: 'Category 1', 'Value A': 100, 'Value B': 200 },
+      { Category: 'Category 2', 'Value A': 150, 'Value B': 250 },
+      { Category: 'Category 3', 'Value A': 120, 'Value B': 220 },
+      { Category: 'Category 4', 'Value A': 180, 'Value B': 280 },
+    ]
+  };
 
+  // ── Error states ─────────────────────────────────────────────────
   if (error) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
@@ -157,7 +160,8 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
+    <SmartSkeleton loading={loading}>
+      <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
 
       {/* ── Top action bar (only for saved reports) ─────────────────────── */}
       {id && id !== 'new' && (
@@ -243,7 +247,7 @@ export default function ReportPage() {
           <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative w-full absolute inset-0">
             <ReportBuilder
               query={query}
-              reportData={reportData}
+              reportData={loading ? mockReportData : reportData}
               onClose={handleBack}
             />
           </div>
@@ -274,6 +278,7 @@ export default function ReportPage() {
           onSaved={handleScheduleSaved}
         />
       )}
-    </div>
+      </div>
+    </SmartSkeleton>
   );
 }

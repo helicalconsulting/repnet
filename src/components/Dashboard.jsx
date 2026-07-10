@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import ScheduleModal from "./ScheduleModal";
 import {
   DndContext,
@@ -566,16 +567,9 @@ export default function Dashboard() {
         </div>
 
         {/* ── Reports Grid ────────────────────────────────────────────── */}
-        {isLoadingReports ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="flex flex-col items-center gap-3 text-muted-foreground">
-              <div className="w-8 h-8 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
-              <span className="text-sm">Loading reports…</span>
-            </div>
-          </div>
-        ) : (
+        <SmartSkeleton loading={isLoadingReports}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={filteredReports.map((r) => r.id)} strategy={rectSortingStrategy}>
+            <SortableContext items={isLoadingReports ? [1, 2, 3, 4, 5, 6] : filteredReports.map((r) => r.id)} strategy={rectSortingStrategy}>
               <div
                 className={`grid gap-5 pb-20 ${
                   viewMode === "grid"
@@ -583,20 +577,31 @@ export default function Dashboard() {
                     : "grid-cols-1"
                 }`}
               >
-                <AnimatePresence>
-                  {filteredReports.map((report) => (
-                    <SortableReportCard
-                      key={report.id}
-                      report={report}
-                      onUnpin={handleUnpin}
-                      onOpen={handleOpen}
-                      onSchedule={(r) => setScheduleReport(r)}
-                    />
-                  ))}
-                </AnimatePresence>
+                {isLoadingReports ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="bg-card rounded-2xl border border-border p-5 flex flex-col gap-4 shadow-sm">
+                      <div className="h-6 w-1/3 bg-muted rounded-md" />
+                      <div className="h-4 w-3/4 bg-muted rounded-md" />
+                      <div className="h-20 bg-muted rounded-xl" />
+                      <div className="h-6 w-1/2 bg-muted rounded-md" />
+                    </div>
+                  ))
+                ) : (
+                  <AnimatePresence>
+                    {filteredReports.map((report) => (
+                      <SortableReportCard
+                        key={report.id}
+                        report={report}
+                        onUnpin={handleUnpin}
+                        onOpen={handleOpen}
+                        onSchedule={(r) => setScheduleReport(r)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                )}
 
                 {/* Empty state */}
-                {filteredReports.length === 0 && (
+                {!isLoadingReports && filteredReports.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -624,7 +629,7 @@ export default function Dashboard() {
                 )}
 
                 {/* Add placeholder card */}
-                {filteredReports.length > 0 && !showAllReports && (
+                {!isLoadingReports && filteredReports.length > 0 && !showAllReports && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -640,7 +645,7 @@ export default function Dashboard() {
                 )}
 
                 {/* "Pin from All Reports" hint */}
-                {showAllReports && filteredReports.length > 0 && (
+                {!isLoadingReports && showAllReports && filteredReports.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -652,7 +657,7 @@ export default function Dashboard() {
               </div>
             </SortableContext>
           </DndContext>
-        )}
+        </SmartSkeleton>
       </div>
 
       {/* Schedule Modal */}

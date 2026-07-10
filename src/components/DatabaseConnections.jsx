@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import { 
   Database, 
   Plus, 
@@ -1285,7 +1286,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 }
 
 export default function DatabaseConnections() {
-  const { connections, addConnection, removeConnection, syncConnection, syncSchema, user } = useApp();
+  const { connections, addConnection, removeConnection, syncConnection, syncSchema, user, isLoadingConnections } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
 
@@ -1355,46 +1356,69 @@ export default function DatabaseConnections() {
         </div>
 
         {/* Connections Grid */}
-        {connections.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-border/50 dark:border-white/10 rounded-2xl"
-          >
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Database className="w-8 h-8 text-primary/60" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">No connections yet</h3>
-            <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-              Connect your first database to start generating AI-powered reports and analytics
-            </p>
-            {!isViewer && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Add Your First Connection
-              </button>
-            )}
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AnimatePresence>
-              {connections.map(connection => (
-                <ConnectionCard
-                   key={connection.id}
-                   connection={connection}
-                   onSync={handleSync}
-                   onSyncSchema={syncSchema}
-                   onDelete={removeConnection}
-                   isAdmin={isAdmin}
-                   isViewer={isViewer}
-                />
+        <SmartSkeleton loading={isLoadingConnections}>
+          {isLoadingConnections ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 bg-muted rounded w-1/3" />
+                        <div className="h-3 bg-muted rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-black/5 dark:bg-white/5 rounded-lg p-3 h-14" />
+                    <div className="bg-black/5 dark:bg-white/5 rounded-lg p-3 h-14" />
+                    <div className="bg-black/5 dark:bg-white/5 rounded-lg p-3 h-14" />
+                  </div>
+                </div>
               ))}
-            </AnimatePresence>
-          </div>
-        )}
+            </div>
+          ) : connections.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-border/50 dark:border-white/10 rounded-2xl"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Database className="w-8 h-8 text-primary/60" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No connections yet</h3>
+              <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
+                Connect your first database to start generating AI-powered reports and analytics
+              </p>
+              {!isViewer && (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Your First Connection
+                </button>
+              )}
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AnimatePresence>
+                {connections.map(connection => (
+                  <ConnectionCard
+                     key={connection.id}
+                     connection={connection}
+                     onSync={handleSync}
+                     onSyncSchema={syncSchema}
+                     onDelete={removeConnection}
+                     isAdmin={isAdmin}
+                     isViewer={isViewer}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </SmartSkeleton>
       </div>
 
       <AnimatePresence>

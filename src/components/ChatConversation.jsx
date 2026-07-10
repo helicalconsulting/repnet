@@ -380,6 +380,15 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             socketRef.current = null;
             setIsProcessing(false);
             setPipelineStep(null);
+            
+            // Safety cleanup: stop streaming indicator & display report button if executable SQL exists
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === aiMsgId && m.isStreaming
+                  ? { ...m, isStreaming: false, showReportBtn: m.type === "executable" || !!m.sql }
+                  : m
+              )
+            );
           };
         } else {
           // REST Fallback (Direct execution when no connection is active)
@@ -776,22 +785,60 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
   const highlightSQL = (sql) => {
     if (!sql) return "";
-    let html = sql
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    
+    // List of SQL keywords (uppercase)
+    const keywords = new Set([
+      "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "LIMIT", "HAVING", 
+      "LEFT", "RIGHT", "INNER", "JOIN", "ON", "AS", "AND", "OR", "UNION", 
+      "ALL", "INSERT", "UPDATE", "DELETE", "CREATE", "TABLE", "IN", "IS", "NULL"
+    ]);
+    
+    // List of SQL functions
+    const functions = new Set([
+      "COALESCE", "CAST", "SUM", "AVG", "COUNT", "MAX", "MIN", "DECIMAL", 
+      "CONCAT", "NOW", "DATE", "IFNULL", "NULLIF"
+    ]);
 
-    const keywords = /\b(SELECT|FROM|WHERE|GROUP\s+BY|ORDER\s+BY|LIMIT|HAVING|LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|JOIN|ON|AS|AND|OR|UNION|ALL|INSERT|UPDATE|DELETE|CREATE|TABLE)\b/gi;
-    html = html.replace(keywords, '<span class="text-blue-500 dark:text-sky-400 font-bold">$1</span>');
+    // Regex to tokenize: captures strings, comments, numbers, words, and symbols
+    const tokenRegex = /(".*?"|'.*?'|--.*|\b[a-zA-Z_][a-zA-Z0-9_]*\b|\b\d+(?:\.\d+)?\b|\S)/g;
+    const parts = sql.split(tokenRegex);
+    
+    return parts.map(token => {
+      if (!token) return "";
+      
+      // Escape HTML entities in the token
+      const escapedToken = token
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 
-    const functions = /\b(COALESCE|CAST|SUM|AVG|COUNT|MAX|MIN|DECIMAL|CONCAT|NOW|DATE|IFNULL|NULLIF)\b/gi;
-    html = html.replace(functions, '<span class="text-amber-500 dark:text-amber-400 font-medium">$1</span>');
-
-    html = html.replace(/\b(\d+)\b/g, '<span class="text-emerald-500 dark:text-emerald-400">$1</span>');
-
-    html = html.replace(/(['"])(.*?)\1/g, '<span class="text-rose-500 dark:text-rose-400">\'$2\'</span>');
-
-    return html;
+      // 1. Strings
+      if (token.startsWith("'") || token.startsWith('"')) {
+        return `<span class="text-rose-500 dark:text-rose-400">${escapedToken}</span>`;
+      }
+      
+      // 2. Comments
+      if (token.startsWith("--")) {
+        return `<span class="text-slate-500 dark:text-slate-500 italic">${escapedToken}</span>`;
+      }
+      
+      // 3. Numbers
+      if (/^\d+(?:\.\d+)?$/.test(token)) {
+        return `<span class="text-emerald-500 dark:text-emerald-400">${escapedToken}</span>`;
+      }
+      
+      // 4. Words (Keywords or Functions or Columns)
+      const upperToken = token.toUpperCase();
+      if (keywords.has(upperToken)) {
+        return `<span class="text-blue-500 dark:text-sky-400 font-bold">${escapedToken}</span>`;
+      }
+      if (functions.has(upperToken)) {
+        return `<span class="text-amber-500 dark:text-amber-400 font-medium">${escapedToken}</span>`;
+      }
+      
+      // 5. Default/Symbols
+      return escapedToken;
+    }).join("");
   };
 
   // ── Format message content ──────────────────────────────────────────
@@ -833,7 +880,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       }
 
       // 6. Detect Insight Cards (Emoji + Title: Description)
-      const emojiCardMatch = processedLine.match(/^(?:\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
+      // Supports optional bullets and numbers at start, e.g. "• 📥 Title: Desc" or "1. 🗣️ Title: Desc"
+      const emojiCardMatch = processedLine.match(/^(?:\s*[-*•]\s*)?(?:\s*\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
       if (emojiCardMatch) {
         const emoji = emojiCardMatch[1];
         const title = emojiCardMatch[2];
@@ -852,7 +900,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       }
 
       // 7. Detect Title-Description Pairs (no emoji, e.g. Title: Description)
-      const textCardMatch = processedLine.match(/^(?:\d+\.\s*)?([A-Za-z0-9\s,\(\)\-\'\"]+):\s*(.+)$/);
+      // Supports optional leading bullet/numbers, e.g. "• Total Overdue: $12M"
+      const textCardMatch = processedLine.match(/^(?:\s*[-*•]\s*)?(?:\s*\d+\.\s*)?([A-Za-z0-9\s,\(\)\-\'\"]+):\s*(.+)$/);
       if (textCardMatch && textCardMatch[1].length < 45 && textCardMatch[2].length > 15) {
         const title = textCardMatch[1];
         const desc = textCardMatch[2];
@@ -880,8 +929,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         );
       }
 
-      // 9. Parse numbered lists (1. Item)
-      const numberedMatch = processedLine.match(/^(\d+)\.\s(.+)/);
+      // 9. Parse numbered lists (1. Item) - trimStart is applied to catch indented lists
+      const numberedMatch = processedLine.trimStart().match(/^(\d+)\.\s(.+)/);
       if (numberedMatch) {
         const num = numberedMatch[1];
         const text = numberedMatch[2];

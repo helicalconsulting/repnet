@@ -37,9 +37,9 @@ export default function MainLayout({ user, onSignOut }) {
   // Decide if right-side TopNav controls should be hidden (only when full screen report is active)
   const isReportView = location.pathname.startsWith('/report/') && location.pathname !== '/report';
 
-  // Collapse sidebar on small screens when route changes
+  // Collapse sidebar on small screens or when viewing a report
   useEffect(() => {
-    if (window.innerWidth < 768) {
+    if ((location.pathname.startsWith('/report/') && location.pathname !== '/report') || window.innerWidth < 768) {
       setIsSidebarOpen(false);
     }
   }, [location.pathname]);

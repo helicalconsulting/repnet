@@ -6,41 +6,51 @@ import { queryApi } from "../services/api";
 
 const DEFAULT_SUGGESTIONS = [
   {
-    category: "AP & Suppliers",
-    prompts: [
-      { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
-      { text: "List overdue supplier invoices as of today", icon: "⚠️" },
-      { text: "Top 10 suppliers by outstanding amount", icon: "🏆" },
-      { text: "Supplier payment history last 3 months", icon: "💳" },
-    ],
+    module: "Finance & Accounting",
+    submodules: [
+      {
+        name: "AP & Suppliers",
+        prompts: [
+          { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
+          { text: "List overdue supplier invoices as of today", icon: "⚠️" },
+          { text: "Top 10 suppliers by outstanding amount", icon: "🏆" },
+          { text: "Supplier payment history last 3 months", icon: "💳" },
+        ],
+      },
+      {
+        name: "AR & Customers",
+        prompts: [
+          { text: "Customer ageing report with overdue buckets", icon: "📋" },
+          { text: "Top 10 customers by outstanding receivables", icon: "📈" },
+          { text: "Overdue customer invoices older than 60 days", icon: "⚠️" },
+          { text: "Customer payment collection trend this quarter", icon: "💰" },
+        ],
+      },
+      {
+        name: "Cashbook & GL",
+        prompts: [
+          { text: "Cashbook summary for current month", icon: "💵" },
+          { text: "GL journal entries posted today", icon: "📝" },
+          { text: "Trial balance for current period", icon: "📑" },
+          { text: "Bank reconciliation status report", icon: "🏦" },
+        ],
+      }
+    ]
   },
   {
-    category: "AR & Customers",
-    prompts: [
-      { text: "Customer ageing report with overdue buckets", icon: "📋" },
-      { text: "Top 10 customers by outstanding receivables", icon: "📈" },
-      { text: "Overdue customer invoices older than 60 days", icon: "⚠️" },
-      { text: "Customer payment collection trend this quarter", icon: "💰" },
-    ],
-  },
-  {
-    category: "Cashbook & GL",
-    prompts: [
-      { text: "Cashbook summary for current month", icon: "💵" },
-      { text: "GL journal entries posted today", icon: "📝" },
-      { text: "Trial balance for current period", icon: "📑" },
-      { text: "Bank reconciliation status report", icon: "🏦" },
-    ],
-  },
-  {
-    category: "Sales & Revenue",
-    prompts: [
-      { text: "Sales orders by customer this month", icon: "🛒" },
-      { text: "Top 10 customers by revenue", icon: "🏆" },
-      { text: "Monthly revenue trend last 6 months", icon: "📈" },
-      { text: "Outstanding sales orders summary", icon: "📦" },
-    ],
-  },
+    module: "Sales & Operations",
+    submodules: [
+      {
+        name: "Sales & Revenue",
+        prompts: [
+          { text: "Sales orders by customer this month", icon: "🛒" },
+          { text: "Top 10 customers by revenue", icon: "🏆" },
+          { text: "Monthly revenue trend last 6 months", icon: "📈" },
+          { text: "Outstanding sales orders summary", icon: "📦" },
+        ],
+      }
+    ]
+  }
 ];
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,21 +64,32 @@ export default function AIChatArea({ onSearch }) {
   const [suggestions, setSuggestions] = useState(DEFAULT_SUGGESTIONS);
   const [showQueriesDrawer, setShowQueriesDrawer] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [hasFetchedDynamic, setHasFetchedDynamic] = useState(false);
 
+  // Fetch suggestions from backend only when drawer is opened and we haven't fetched them yet
   useEffect(() => {
-    setIsLoadingSuggestions(true);
-    queryApi.getSuggestions(activeConnection || null)
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setSuggestions(data);
-        }
-      })
-      .catch((err) => {
-        console.warn("Failed to fetch dynamic suggestions, using fallbacks:", err);
-      })
-      .finally(() => {
-        setIsLoadingSuggestions(false);
-      });
+    if (showQueriesDrawer && !hasFetchedDynamic) {
+      setIsLoadingSuggestions(true);
+      queryApi.getSuggestions(activeConnection || null)
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            setSuggestions(data);
+            setHasFetchedDynamic(true);
+          }
+        })
+        .catch((err) => {
+          console.warn("Failed to fetch dynamic suggestions, using default static suggestions:", err);
+        })
+        .finally(() => {
+          setIsLoadingSuggestions(false);
+        });
+    }
+  }, [showQueriesDrawer, activeConnection, hasFetchedDynamic]);
+
+  // Reset fetched flag when connection changes so it pulls fresh suggestions on next open
+  useEffect(() => {
+    setHasFetchedDynamic(false);
+    setSuggestions(DEFAULT_SUGGESTIONS);
   }, [activeConnection]);
 
   const [isListening, setIsListening] = useState(false);
@@ -359,32 +380,45 @@ export default function AIChatArea({ onSearch }) {
                     No suggestions found. Connect a database schema to get started.
                   </div>
                 ) : (
-                  suggestions.map((cat, catIdx) => (
-                    <div key={catIdx} className="flex flex-col gap-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-2 mb-1">
-                        {categoryIcons[cat.category] || <Sparkles className="w-3.5 h-3.5" />}
-                        {cat.category}
+                  suggestions.map((mod, modIdx) => (
+                    <div key={modIdx} className="flex flex-col gap-4 border-b border-border/30 dark:border-white/5 pb-4 last:border-0 last:pb-0">
+                      {/* Module Title */}
+                      <h4 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
+                        <span className="w-1.5 h-3.5 bg-blue-500 rounded-full" />
+                        {mod.module || "General Modules"}
                       </h4>
-                      <div className="flex flex-col gap-2">
-                        {cat.prompts.map((sug, sugIdx) => (
-                          <button
-                            key={sugIdx}
-                            onClick={() => {
-                              if (!isViewer && onSearch) {
-                                setQuery(sug.text);
-                                onSearch(sug.text);
-                                setShowQueriesDrawer(false);
-                              }
-                            }}
-                            disabled={isViewer}
-                            className="w-full p-3.5 text-left rounded-xl bg-muted/30 hover:bg-muted dark:bg-white/[0.02] dark:hover:bg-white/[0.06] border border-border/50 dark:border-white/5 hover:border-blue-500/30 transition-all text-xs font-medium text-foreground/90 flex items-start justify-between gap-3 group"
-                          >
-                            <span className="flex items-start gap-2.5">
-                              <span className="text-sm select-none shrink-0 mt-0.5">{sug.icon || "📊"}</span>
-                              <span className="leading-relaxed">{sug.text}</span>
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
-                          </button>
+                      
+                      {/* Submodules & Prompts */}
+                      <div className="flex flex-col gap-4 pl-3">
+                        {mod.submodules?.map((sub, subIdx) => (
+                          <div key={subIdx} className="flex flex-col gap-2">
+                            <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                              {categoryIcons[sub.name] || <Sparkles className="w-3.5 h-3.5 text-blue-400" />}
+                              {sub.name}
+                            </h5>
+                            <div className="flex flex-col gap-2">
+                              {sub.prompts?.map((sug, sugIdx) => (
+                                <button
+                                  key={sugIdx}
+                                  onClick={() => {
+                                    if (!isViewer && onSearch) {
+                                      setQuery(sug.text);
+                                      onSearch(sug.text);
+                                      setShowQueriesDrawer(false);
+                                    }
+                                  }}
+                                  disabled={isViewer}
+                                  className="w-full p-3 text-left rounded-xl bg-muted/20 hover:bg-muted dark:bg-white/[0.01] dark:hover:bg-white/[0.05] border border-border/50 dark:border-white/5 hover:border-blue-500/30 transition-all text-[12px] font-medium text-foreground/90 flex items-start justify-between gap-3 group"
+                                >
+                                  <span className="flex items-start gap-2">
+                                    <span className="text-sm select-none shrink-0">{sug.icon || "📊"}</span>
+                                    <span className="leading-normal">{sug.text}</span>
+                                  </span>
+                                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>

@@ -182,10 +182,10 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
+          className="pointer-events-auto w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl"
         >
           {/* Header */}
-          <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-violet-500/5 flex items-center justify-between">
+          <div className="px-6 py-5 border-b border-border bg-gradient-to-r from-primary/5 to-violet-500/5 flex items-center justify-between rounded-t-2xl">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
                 <CalendarClock className="w-5 h-5 text-primary" />
@@ -332,7 +332,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-2 overflow-hidden"
+                  className={`space-y-2 ${connDropOpen ? "overflow-visible" : "overflow-hidden"}`}
                 >
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <Database className="w-3.5 h-3.5" />
@@ -478,7 +478,7 @@ export default function ScheduleModal({ report, onClose, onSaved }) {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+          <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-3 rounded-b-2xl">
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"

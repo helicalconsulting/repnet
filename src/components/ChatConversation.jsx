@@ -418,13 +418,17 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               window.dispatchEvent(new Event("repnex-sessions-updated"));
             } else if (event.type === "error") {
               clearWSTimeout();
-              const isValidation = event.code === "validation_failed";
-              const userFriendlyMsg = isValidation
-                ? event.message
-                : "Could not process. An error occurred while executing the query. Please verify your query or database schema and try again.";
+              let userFriendlyMsg = "Could not process. An error occurred while executing the query. Please verify your query or database schema and try again.";
+              if (event.code === "validation_failed") {
+                userFriendlyMsg = event.message;
+              } else if (event.code === "target_db_error") {
+                userFriendlyMsg = `Could not process. Database execution failed:\n\n${event.message}\n\nPlease verify your query or database schema and try again.`;
+              } else if (event.message) {
+                userFriendlyMsg = `Could not process. ${event.message}`;
+              }
 
               upsertAIMessage({
-                type: isValidation ? "conversational" : "error",
+                type: event.code === "validation_failed" ? "conversational" : "error",
                 content: userFriendlyMsg,
                 isStreaming: false,
                 historyId: event.history_id || null,

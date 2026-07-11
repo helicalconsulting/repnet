@@ -39,6 +39,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [editingText, setEditingText] = useState("");
   const [isPaused, setIsPaused] = useState(false);
   const socketRef = useRef(null);
+  const socketSessionIdRef = useRef(null);
   const [feedbacks, setFeedbacks] = useState({});
   const [collapsedMessages, setCollapsedMessages] = useState({});
   const [expandedVisuals, setExpandedVisuals] = useState({});
@@ -166,6 +167,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       setIsProcessing(true);
       setShowSuggestions(false);
 
+      const getCombinedSuggestions = (res) => {
+        const sim = (res.candidates || [])
+          .map((c) => c.description)
+          .filter((d) => d && d !== res.template_description);
+        const all = [...new Set([...sim.slice(0, 3), ...(res.suggestions || [])])];
+        return all.slice(0, 4);
+      };
+
       // Handle casual greetings locally with personalized response
       const casualResponse = getCasualResponse(query);
       if (casualResponse) {
@@ -221,8 +230,46 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           const wsUrl = `${getWsServerUrl()}/ws/query/${activeSessionId}?token=${getToken()}`;
           const ws = new WebSocket(wsUrl);
           socketRef.current = ws;
+          socketSessionIdRef.current = activeSessionId;
 
           const aiMsgId = Date.now().toString();
+
+          let timeoutTimer = null;
+          const resetTimeout = () => {
+            if (timeoutTimer) clearTimeout(timeoutTimer);
+            timeoutTimer = setTimeout(() => {
+              console.warn("[WS] No message received for 45 seconds, timing out.");
+              try {
+                ws.close();
+              } catch (e) {}
+              
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMsgId && m.isStreaming
+                    ? {
+                        ...m,
+                        type: "error",
+                        content: "Query execution timed out. No response from server.",
+                        isStreaming: false,
+                      }
+                    : m
+                )
+              );
+              setIsProcessing(false);
+              setPipelineStep(null);
+              setCurrentStatusText("");
+            }, 45000);
+          };
+
+          const clearWSTimeout = () => {
+            if (timeoutTimer) {
+              clearTimeout(timeoutTimer);
+              timeoutTimer = null;
+            }
+          };
+
+          resetTimeout();
+
           const upsertAIMessage = (fields) => {
             setMessages((prev) => {
               const exists = prev.some((m) => m.id === aiMsgId);
@@ -250,6 +297,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           };
 
           ws.onopen = () => {
+            resetTimeout();
             ws.send(JSON.stringify({
               action: "run_query",
               natural_language: query,
@@ -257,6 +305,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           };
 
           ws.onmessage = (e) => {
+            resetTimeout();
             const event = JSON.parse(e.data);
             if (event.type === "status") {
               setCurrentStatusText(event.message);
@@ -320,6 +369,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             } else if (event.type === "insight") {
               upsertAIMessage({ content: event.summary });
             } else if (event.type === "complete") {
+              clearWSTimeout();
               const backendSugs = getCombinedSuggestions(event);
               setMessages((prev) => {
                 const exists = prev.some((m) => m.id === aiMsgId);
@@ -367,6 +417,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setCurrentStatusText("");
               window.dispatchEvent(new Event("repnex-sessions-updated"));
             } else if (event.type === "error") {
+              clearWSTimeout();
               const isValidation = event.code === "validation_failed";
               const userFriendlyMsg = isValidation
                 ? event.message
@@ -386,6 +437,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           };
 
           ws.onerror = (err) => {
+            clearWSTimeout();
             console.error("WS error:", err);
             setMessages((prev) =>
               prev.map((m) =>
@@ -400,6 +452,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           };
 
           ws.onclose = () => {
+            clearWSTimeout();
             socketRef.current = null;
             setIsProcessing(false);
             setPipelineStep(null);
@@ -437,14 +490,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           });
 
           setCompletedSteps(["classify", "search", "extract"]);
-
-          const getCombinedSuggestions = (res) => {
-            const sim = (res.candidates || [])
-              .map((c) => c.description)
-              .filter((d) => d && d !== res.template_description);
-            const all = [...new Set([...sim.slice(0, 3), ...(res.suggestions || [])])];
-            return all.slice(0, 4);
-          };
 
           if (response.type === "conversational") {
             // Conversational response
@@ -701,7 +746,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pipelineStep]);
+  }, [messages, pipelineStep, isProcessing]);
 
   // Fix Recharts ResponsiveContainer rendering zero width/height inside flex/animated components
   useEffect(() => {
@@ -710,6 +755,27 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }, 250);
     return () => clearTimeout(timer);
   }, [messages]);
+
+  // Close active WebSocket if session changes or component unmounts
+  useEffect(() => {
+    if (socketRef.current && socketSessionIdRef.current !== sessionId) {
+      console.log("[Chat] Closing socket due to session change from", socketSessionIdRef.current, "to", sessionId);
+      socketRef.current.close();
+      socketRef.current = null;
+      setIsProcessing(false);
+      setPipelineStep(null);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        console.log("[Chat] Component unmounting, closing active socket");
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+    };
+  }, []);
 
   // ── Execute with user-provided params ───────────────────────────────
   const handleParamSubmit = useCallback(
@@ -865,51 +931,58 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }).join("");
   };
 
+  const formatLine = (text) => {
+    if (!text) return "";
+    let processed = text;
+    // 1. Parse bold text (**text** -> <strong>text</strong>)
+    processed = processed.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    // 2. Parse italic/emphasized text (*text* -> <em>text</em>)
+    processed = processed.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    // 3. Parse inline code (`code` -> <code>code</code>)
+    processed = processed.replace(/`(.*?)`/g, "<code class='px-1.5 py-0.5 bg-black/5 dark:bg-white/10 rounded font-mono text-xs text-blue-600 dark:text-blue-400'>$1</code>");
+    // 4. Strip unbalanced single asterisks
+    processed = processed.replace(/\*/g, "");
+    return processed;
+  };
+
   // ── Format message content ──────────────────────────────────────────
   const formatContent = (content) => {
     if (!content) return null;
     return content.split("\n").map((line, i) => {
-      // 1. Parse bold text (**text** -> <strong>text</strong>)
-      let processedLine = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={i} className="h-2" />;
 
-      // 2. Parse italic/emphasized text (*text* -> <em>text</em>)
-      processedLine = processedLine.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      // Horizontal separator
+      if (trimmed === "--" || trimmed === "---") {
+        return <hr key={i} className="my-4 border-t border-border/40 dark:border-white/5" />;
+      }
 
-      // 3. Parse inline code (`code` -> <code>code</code>)
-      processedLine = processedLine.replace(/`(.*?)`/g, "<code class='px-1.5 py-0.5 bg-black/5 dark:bg-white/10 rounded font-mono text-xs text-blue-600 dark:text-blue-400'>$1</code>");
-
-      // 4. Parse headers (### Header -> <h3>Header</h3>)
-      if (processedLine.trimStart().startsWith("### ")) {
-        const hContent = processedLine.trimStart().slice(4);
+      // Check for headers first
+      if (trimmed.startsWith("### ")) {
+        const hContent = formatLine(trimmed.slice(4));
         return (
           <h3 key={i} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
         );
       }
-      if (processedLine.trimStart().startsWith("## ")) {
-        const hContent = processedLine.trimStart().slice(3);
+      if (trimmed.startsWith("## ")) {
+        const hContent = formatLine(trimmed.slice(3));
         return (
           <h2 key={i} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
         );
       }
-      if (processedLine.trimStart().startsWith("# ")) {
-        const hContent = processedLine.trimStart().slice(2);
+      if (trimmed.startsWith("# ")) {
+        const hContent = formatLine(trimmed.slice(2));
         return (
           <h1 key={i} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
         );
       }
 
-      // 5. Parse horizontal separators (-- or ---)
-      if (processedLine.trim() === "--" || processedLine.trim() === "---") {
-        return <hr key={i} className="my-4 border-t border-border/40 dark:border-white/5" />;
-      }
-
-      // 6. Detect Insight Cards (Emoji + Title: Description)
-      // Supports optional bullets and numbers at start, e.g. "• 📥 Title: Desc" or "1. 🗣️ Title: Desc"
-      const emojiCardMatch = processedLine.match(/^(?:\s*[-*•]\s*)?(?:\s*\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
+      // Check Emoji Card Match on raw line
+      const emojiCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
       if (emojiCardMatch) {
         const emoji = emojiCardMatch[1];
-        const title = emojiCardMatch[2];
-        const desc = emojiCardMatch[3];
+        const title = formatLine(emojiCardMatch[2]);
+        const desc = formatLine(emojiCardMatch[3]);
         return (
           <div key={i} className="my-3.5 p-4 bg-black/[0.02] dark:bg-white/[0.015] border border-border/40 dark:border-white/5 border-l-4 border-l-blue-500/80 rounded-xl rounded-l-none flex items-start gap-3.5 shadow-sm hover:border-l-blue-500 transition-all duration-300">
             <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-lg shrink-0 border border-blue-500/15">
@@ -923,27 +996,30 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         );
       }
 
-      // 7. Detect Title-Description Pairs (no emoji, e.g. Title: Description)
-      // Supports optional leading bullet/numbers, e.g. "• Total Overdue: $12M"
-      const textCardMatch = processedLine.match(/^(?:\s*[-*•]\s*)?(?:\s*\d+\.\s*)?([A-Za-z0-9\s,\(\)\-\'\"]+):\s*(.+)$/);
-      if (textCardMatch && textCardMatch[1].length < 45 && textCardMatch[2].length > 15) {
-        const title = textCardMatch[1];
-        const desc = textCardMatch[2];
-        return (
-          <div key={i} className="my-3 p-3.5 bg-black/[0.01] dark:bg-white/[0.01] border border-border/40 dark:border-white/5 border-l-2 border-l-muted rounded-lg rounded-l-none flex items-start gap-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 animate-pulse" />
-            <div className="flex-1 space-y-1">
-              <h4 className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{ __html: title }} />
-              <p className="text-sm text-foreground/85 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+      // Check Text Card Match on raw line (Title: Description)
+      const textCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([^:]+):\s*(.+)$/);
+      if (textCardMatch) {
+        const rawTitle = textCardMatch[1].trim();
+        const rawDesc = textCardMatch[2].trim();
+        const cleanTitleLen = rawTitle.replace(/\*/g, "").length;
+        if (cleanTitleLen > 0 && cleanTitleLen < 45 && rawDesc.length > 5) {
+          const title = formatLine(rawTitle);
+          const desc = formatLine(rawDesc);
+          return (
+            <div key={i} className="my-3 p-3.5 bg-black/[0.01] dark:bg-white/[0.01] border border-border/40 dark:border-white/5 border-l-2 border-l-blue-500 rounded-lg rounded-l-none flex items-start gap-3">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 animate-pulse" />
+              <div className="flex-1 space-y-1">
+                <h4 className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{ __html: title }} />
+                <p className="text-sm text-foreground/85 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+              </div>
             </div>
-          </div>
-        );
+          );
+        }
       }
 
-      // 8. Parse bullet points starting with "- ", "* " or "• " (including nested ones)
-      const trimmedLine = processedLine.trimStart();
-      if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") || trimmedLine.startsWith("• ")) {
-        const itemContent = trimmedLine.slice(2);
+      // Check for bullet points on raw line
+      if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") || trimmed.startsWith("+ ")) {
+        const itemContent = formatLine(trimmed.slice(2));
         const isNested = line.startsWith("  ") || line.startsWith("    ") || line.startsWith("\t");
         return (
           <div key={i} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
@@ -953,11 +1029,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         );
       }
 
-      // 9. Parse numbered lists (1. Item) - trimStart is applied to catch indented lists
-      const numberedMatch = processedLine.trimStart().match(/^(\d+)\.\s(.+)/);
+      // Check for numbered lists
+      const numberedMatch = trimmed.match(/^(\d+)\.\s(.+)/);
       if (numberedMatch) {
         const num = numberedMatch[1];
-        const text = numberedMatch[2];
+        const text = formatLine(numberedMatch[2]);
         return (
           <div key={i} className="flex items-start gap-2.5 my-1.5 pl-3">
             <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
@@ -968,12 +1044,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         );
       }
 
-      // 10. Empty lines
-      if (!processedLine.trim()) {
-        return <div key={i} className="h-2" />;
-      }
-
-      // 11. Regular paragraphs
+      // Default paragraph
+      const processedLine = formatLine(line);
       return (
         <p key={i} className="mb-3 text-foreground/90 leading-relaxed text-[15px]" dangerouslySetInnerHTML={{ __html: processedLine }} />
       );
@@ -1018,6 +1090,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           ) : (
             messages.map((msg) => (
             <motion.div
+              layout
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1106,35 +1179,53 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     )
                   ) : (
                     /* AI message block */
-                    isMessageCollapsed(msg.id) ? (
-                      <div className="text-xs text-muted-foreground italic flex items-center justify-between gap-4">
-                        <span>
-                          {msg.type === "error" 
-                            ? "Error: Click expand to view details" 
-                            : msg.content 
-                              ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...` 
-                              : "Click expand to view details"
-                          }
-                        </span>
-                        {msg.rowsReturned != null && (
-                          <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
-                            {msg.rowsReturned} rows
-                          </span>
+                    <div className="overflow-hidden">
+                      <AnimatePresence initial={false} mode="wait">
+                        {isMessageCollapsed(msg.id) ? (
+                          <motion.div
+                            key="collapsed"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
+                          >
+                            <span>
+                              {msg.type === "error" 
+                                ? "Error: Click expand to view details" 
+                                : msg.content 
+                                  ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...` 
+                                  : "Click expand to view details"
+                              }
+                            </span>
+                            {msg.rowsReturned != null && (
+                              <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
+                                {msg.rowsReturned} rows
+                              </span>
+                            )}
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="expanded"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="text-[15px] leading-relaxed text-foreground"
+                          >
+                            {msg.type === "error" && (
+                              <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                                <AlertCircle className="w-4 h-4" />
+                                <span className="text-xs font-semibold uppercase">Could not process</span>
+                              </div>
+                            )}
+                            {formatContent(msg.content)}
+                          </motion.div>
                         )}
-                      </div>
-                    ) : (
-                      <div className="text-[15px] leading-relaxed text-foreground">
-                        {msg.type === "error" && (
-                          <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
-                            <AlertCircle className="w-4 h-4" />
-                            <span className="text-xs font-semibold uppercase">Could not process</span>
-                          </div>
-                        )}
-                        {formatContent(msg.content)}
-                      </div>
-                    )
+                      </AnimatePresence>
+                    </div>
                   )}
-
+ 
                   {/* Copy button */}
                   {msg.role === "ai" && msg.content && !isMessageCollapsed(msg.id) && (
                     <button
@@ -1148,7 +1239,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       )}
                     </button>
                   )}
-
+ 
                   {/* Edit button for user message */}
                   {msg.role === "user" && editingMessageId !== msg.id && (
                     <button
@@ -1161,48 +1252,52 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   )}
                 </div>
               )}
-
+ 
               {/* SQL display */}
-              {!isMessageCollapsed(msg.id) && msg.sql && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 w-full border border-border/40 dark:border-white/5 rounded-2xl overflow-hidden shadow-lg bg-[#0E121E]"
-                >
-                  {/* Code block header */}
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-b border-border/30 dark:border-white/5 select-none">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-sky-400 border border-blue-500/15">
-                        SQL
-                      </span>
-                      <span className="text-xs text-slate-400 font-medium font-sans">
-                        Query Execution
-                      </span>
+              <AnimatePresence>
+                {!isMessageCollapsed(msg.id) && msg.sql && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: 8 }}
+                    animate={{ opacity: 1, height: "auto", y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: 8 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="mt-4 w-full border border-border/40 dark:border-white/5 rounded-2xl overflow-hidden shadow-lg bg-[#0E121E]"
+                  >
+                    {/* Code block header */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-b border-border/30 dark:border-white/5 select-none">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-sky-400 border border-blue-500/15">
+                          SQL
+                        </span>
+                        <span className="text-xs text-slate-400 font-medium font-sans">
+                          Query Execution
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-xs text-slate-300 hover:text-white transition-all font-sans"
+                      >
+                        {copiedId === `sql-${msg.id}` ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400 font-medium">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-xs text-slate-300 hover:text-white transition-all font-sans"
-                    >
-                      {copiedId === `sql-${msg.id}` ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400 font-medium">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  {/* Highlighted SQL pre code */}
-                  <pre 
-                    className="p-4 text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none"
-                    dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
-                  />
-                </motion.div>
-              )}
+                    {/* Highlighted SQL pre code */}
+                    <pre 
+                      className="p-4 text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none"
+                      dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Execution stats */}
               {msg.type === "executable" && (
@@ -1252,9 +1347,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       templateId: msg.templateId, 
                       extractedParams: msg.extractedParams 
                     })}
-                    className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-blue-50/60 hover:bg-blue-100/80 dark:bg-blue-950/10 dark:hover:bg-blue-950/20 text-blue-600 dark:text-blue-400 border border-blue-200/40 dark:border-blue-800/30 rounded-xl transition-all shadow-sm group font-semibold text-sm select-none"
+                    className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-muted/40 hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10 text-foreground border border-border/80 dark:border-white/10 rounded-xl transition-all shadow-sm group font-semibold text-sm select-none"
                   >
-                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-blue-500 dark:text-blue-400 animate-pulse" />
+                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-foreground/70 group-hover:text-primary animate-pulse" />
                     <span>View Interactive Report with Data</span>
                   </button>
                 </motion.div>

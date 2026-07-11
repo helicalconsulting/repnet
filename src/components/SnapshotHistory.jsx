@@ -61,7 +61,7 @@ function DataPreview({ rows }) {
   const preview = rows.slice(0, 5);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div className="overflow-x-auto custom-scrollbar rounded-xl border border-border">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border bg-muted/30">
@@ -155,7 +155,7 @@ function SnapshotRow({ snap, reportId, isFirst }) {
         </div>
 
         {/* Content card */}
-        <div className="flex-1 mb-4">
+        <div className="flex-1 min-w-0 mb-4">
           <div
             onClick={handleExpand}
             className={`p-4 rounded-xl border cursor-pointer transition-all ${

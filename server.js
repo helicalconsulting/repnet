@@ -805,37 +805,63 @@ app.post('/api/templates/search', requireAuth, async (req, res, next) => {
   }
 });
 
-app.post('/api/subscribe', async (req, res) => {
+app.post('/api/subscribe', async (req, res, next) => {
   const { name, email, countryCode, phone } = req.body;
 
+  if (!email?.trim()) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+
   try {
-    const transporter = createTransporter();
+    const database = await ensureDb();
 
-    await transporter.sendMail({
-      from: SMTP_FROM,
-      to: SMTP_TO,
-      subject: '🔥 New Early Bird Subscriber - Repnex AI',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-          <h2 style="color: #0055FF;">New Early Bird Subscriber Details</h2>
-          <hr />
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${countryCode} ${phone}</p>
-          <br />
-          <p style="font-size: 12px; color: #666;">This is an automated notification from your Repnex Landing Page.</p>
-        </div>
-      `,
-    });
+    // 1. Save subscriber details to MongoDB
+    try {
+      await database.collection('subscribers').updateOne(
+        { email: email.trim().toLowerCase() },
+        {
+          $set: {
+            name: name?.trim() || '',
+            countryCode: countryCode || '',
+            phone: phone || '',
+            updatedAt: new Date()
+          },
+          $setOnInsert: {
+            createdAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
+    } catch (dbError) {
+      console.error('Database connection or save error in subscribe:', dbError.message);
+    }
 
-    res.status(200).json({ message: 'Email sent successfully' });
+    // 2. Attempt to send Email (Non-fatal)
+    try {
+      const transporter = createTransporter();
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: SMTP_TO,
+        subject: '🔥 New Early Bird Subscriber - Repnex AI',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #0055FF;">New Early Bird Subscriber Details</h2>
+            <hr />
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Phone:</strong> ${countryCode} ${phone}</p>
+            <br />
+            <p style="font-size: 12px; color: #666;">This is an automated notification from your Repnex Landing Page.</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error('SMTP Subscription Email Error (non-fatal):', emailError.message, emailError.code);
+    }
+
+    res.status(200).json({ message: 'Email saved successfully' });
   } catch (error) {
-    console.error('Detailed SMTP Error:', error);
-    res.status(500).json({
-      error: 'Failed to send email',
-      details: error.message,
-      code: error.code,
-    });
+    next(error);
   }
 });
 
@@ -843,34 +869,63 @@ app.get('/api/waitlist/count', (_req, res) => {
   res.status(200).json({ count: waitlistCount.value });
 });
 
-app.post('/api/waitlist', async (req, res) => {
+app.post('/api/waitlist', async (req, res, next) => {
   const { email, company, erp_system } = req.body;
 
-  try {
-    const transporter = createTransporter();
+  if (!email?.trim()) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
 
-    await transporter.sendMail({
-      from: SMTP_FROM,
-      to: SMTP_TO,
-      subject: '✨ New Waitlist Signup - Repnex AI',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-          <h2 style="color: #0055FF;">New Waitlist Signup</h2>
-          <hr />
-          <p><strong>Work Email:</strong> ${email}</p>
-          <p><strong>Company:</strong> ${company || 'N/A'}</p>
-          <p><strong>ERP System:</strong> ${erp_system || 'N/A'}</p>
-          <br />
-          <p style="font-size: 12px; color: #666;">This is an automated notification from your Repnex Waitlist Form.</p>
-        </div>
-      `,
-    });
+  try {
+    const database = await ensureDb();
+
+    // 1. Save waitlist signup to MongoDB
+    try {
+      await database.collection('waitlist').updateOne(
+        { email: email.trim().toLowerCase() },
+        {
+          $set: {
+            company: company?.trim() || '',
+            erp_system: erp_system || '',
+            updatedAt: new Date()
+          },
+          $setOnInsert: {
+            createdAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
+    } catch (dbError) {
+      console.error('Database connection or save error in waitlist:', dbError.message);
+    }
+
+    // 2. Attempt to send Email (Non-fatal)
+    try {
+      const transporter = createTransporter();
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: SMTP_TO,
+        subject: '✨ New Waitlist Signup - Repnex AI',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #0055FF;">New Waitlist Signup</h2>
+            <hr />
+            <p><strong>Work Email:</strong> ${email}</p>
+            <p><strong>Company:</strong> ${company || 'N/A'}</p>
+            <p><strong>ERP System:</strong> ${erp_system || 'N/A'}</p>
+            <br />
+            <p style="font-size: 12px; color: #666;">This is an automated notification from your Repnex Waitlist Form.</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error('Waitlist SMTP Error (non-fatal):', emailError.message, emailError.code);
+    }
 
     waitlistCount.value += 1;
     res.status(200).json({ message: 'Waitlist signup successful' });
   } catch (error) {
-    console.error('Waitlist SMTP Error:', error);
-    res.status(500).json({ error: 'Failed to join waitlist' });
+    next(error);
   }
 });
 

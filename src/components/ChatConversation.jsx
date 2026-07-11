@@ -419,7 +419,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             } else if (event.type === "error") {
               clearWSTimeout();
               let userFriendlyMsg = "Could not process. An error occurred while executing the query. Please verify your query or database schema and try again.";
-              if (event.code === "validation_failed") {
+              if (event.code === "validation_failed" || event.code === "forbidden" || event.code === "access_denied") {
                 userFriendlyMsg = event.message;
               } else if (event.code === "target_db_error") {
                 userFriendlyMsg = `Could not process. Database execution failed:\n\n${event.message}\n\nPlease verify your query or database schema and try again.`;
@@ -428,7 +428,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               }
 
               upsertAIMessage({
-                type: event.code === "validation_failed" ? "conversational" : "error",
+                type: (event.code === "validation_failed" || event.code === "forbidden" || event.code === "access_denied") ? "conversational" : "error",
                 content: userFriendlyMsg,
                 isStreaming: false,
                 historyId: event.history_id || null,

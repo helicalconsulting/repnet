@@ -950,109 +950,202 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   };
 
   // ── Format message content ──────────────────────────────────────────
+  const parseTable = (tableLines) => {
+    if (tableLines.length < 2) return null;
+    
+    const headerLine = tableLines[0];
+    const separatorLine = tableLines[1];
+    
+    // Check if second line is a valid separator line (contains hyphens, pipes, colons)
+    if (!/^[|\s:-]+$/.test(separatorLine)) return null;
+    
+    const parseRow = (line) => {
+      // Split by '|', trim, and remove empty first/last elements
+      const parts = line.split('|').map(p => p.trim());
+      if (line.startsWith('|')) parts.shift();
+      if (line.endsWith('|')) parts.pop();
+      return parts;
+    };
+    
+    const headers = parseRow(headerLine);
+    const rows = tableLines.slice(2).map(parseRow).filter(row => row.length > 0 && row.some(cell => cell !== ""));
+    
+    return { headers, rows };
+  };
+
+  const renderSingleLine = (line, key) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={key} className="h-2" />;
+
+    // Horizontal separator
+    if (trimmed === "--" || trimmed === "---") {
+      return <hr key={key} className="my-4 border-t border-border/40 dark:border-white/5" />;
+    }
+
+    // Check for headers first
+    if (trimmed.startsWith("### ")) {
+      const hContent = formatLine(trimmed.slice(4));
+      return (
+        <h3 key={key} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+      );
+    }
+    if (trimmed.startsWith("## ")) {
+      const hContent = formatLine(trimmed.slice(3));
+      return (
+        <h2 key={key} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+      );
+    }
+    if (trimmed.startsWith("# ")) {
+      const hContent = formatLine(trimmed.slice(2));
+      return (
+        <h1 key={key} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+      );
+    }
+
+    // Check Emoji Card Match on raw line
+    const emojiCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
+    if (emojiCardMatch) {
+      const emoji = emojiCardMatch[1];
+      const title = formatLine(emojiCardMatch[2]);
+      const desc = formatLine(emojiCardMatch[3]);
+      return (
+        <div key={key} className="my-3.5 p-4 bg-black/[0.02] dark:bg-white/[0.015] border border-border/40 dark:border-white/5 border-l-4 border-l-blue-500/80 rounded-xl rounded-l-none flex items-start gap-3.5 shadow-sm hover:border-l-blue-500 transition-all duration-300">
+          <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-lg shrink-0 border border-blue-500/15">
+            {emoji}
+          </div>
+          <div className="flex-1 space-y-1">
+            <h4 className="font-semibold text-foreground text-sm tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
+            <p className="text-sm text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+          </div>
+        </div>
+      );
+    }
+
+    // Check Text Card Match on raw line (Title: Description)
+    const textCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([^:]+):\s*(.+)$/);
+    if (textCardMatch) {
+      const rawTitle = textCardMatch[1].trim();
+      const rawDesc = textCardMatch[2].trim();
+      const cleanTitleLen = rawTitle.replace(/\*/g, "").length;
+      if (cleanTitleLen > 0 && cleanTitleLen < 45 && rawDesc.length > 5) {
+        const title = formatLine(rawTitle);
+        const desc = formatLine(rawDesc);
+        return (
+          <div key={key} className="my-3 p-3.5 bg-black/[0.01] dark:bg-white/[0.01] border border-border/40 dark:border-white/5 border-l-2 border-l-blue-500 rounded-lg rounded-l-none flex items-start gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 animate-pulse" />
+            <div className="flex-1 space-y-1">
+              <h4 className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{ __html: title }} />
+              <p className="text-sm text-foreground/85 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // Check for bullet points on raw line
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") || trimmed.startsWith("+ ")) {
+      const itemContent = formatLine(trimmed.slice(2));
+      const isNested = line.startsWith("  ") || line.startsWith("    ") || line.startsWith("\t");
+      return (
+        <div key={key} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500/70 mt-2 shrink-0" />
+          <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
+        </div>
+      );
+    }
+
+    // Check for numbered lists
+    const numberedMatch = trimmed.match(/^(\d+)\.\s(.+)/);
+    if (numberedMatch) {
+      const num = numberedMatch[1];
+      const text = formatLine(numberedMatch[2]);
+      return (
+        <div key={key} className="flex items-start gap-2.5 my-1.5 pl-3">
+          <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
+            {num}
+          </span>
+          <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
+        </div>
+      );
+    }
+
+    // Default paragraph
+    const processedLine = formatLine(line);
+    return (
+      <p key={key} className="mb-3 text-foreground/90 leading-relaxed text-[15px]" dangerouslySetInnerHTML={{ __html: processedLine }} />
+    );
+  };
+
   const formatContent = (content) => {
     if (!content) return null;
-    return content.split("\n").map((line, i) => {
+    const lines = content.split("\n");
+    const blocks = [];
+    let currentTable = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const trimmed = line.trim();
-      if (!trimmed) return <div key={i} className="h-2" />;
-
-      // Horizontal separator
-      if (trimmed === "--" || trimmed === "---") {
-        return <hr key={i} className="my-4 border-t border-border/40 dark:border-white/5" />;
+      
+      // If the line starts with '|' and ends with '|' (or at least starts with '|' and contains '|'), it's a table line
+      if (trimmed.startsWith("|") && trimmed.includes("|", 1)) {
+        currentTable.push(line);
+      } else {
+        if (currentTable.length > 0) {
+          blocks.push({ type: "table", lines: currentTable });
+          currentTable = [];
+        }
+        blocks.push({ type: "line", content: line, index: i });
       }
-
-      // Check for headers first
-      if (trimmed.startsWith("### ")) {
-        const hContent = formatLine(trimmed.slice(4));
-        return (
-          <h3 key={i} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
-        );
-      }
-      if (trimmed.startsWith("## ")) {
-        const hContent = formatLine(trimmed.slice(3));
-        return (
-          <h2 key={i} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
-        );
-      }
-      if (trimmed.startsWith("# ")) {
-        const hContent = formatLine(trimmed.slice(2));
-        return (
-          <h1 key={i} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
-        );
-      }
-
-      // Check Emoji Card Match on raw line
-      const emojiCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])\s*([^:]+):\s*(.+)$/);
-      if (emojiCardMatch) {
-        const emoji = emojiCardMatch[1];
-        const title = formatLine(emojiCardMatch[2]);
-        const desc = formatLine(emojiCardMatch[3]);
-        return (
-          <div key={i} className="my-3.5 p-4 bg-black/[0.02] dark:bg-white/[0.015] border border-border/40 dark:border-white/5 border-l-4 border-l-blue-500/80 rounded-xl rounded-l-none flex items-start gap-3.5 shadow-sm hover:border-l-blue-500 transition-all duration-300">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-lg shrink-0 border border-blue-500/15">
-              {emoji}
-            </div>
-            <div className="flex-1 space-y-1">
-              <h4 className="font-semibold text-foreground text-sm tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
-              <p className="text-sm text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
-            </div>
-          </div>
-        );
-      }
-
-      // Check Text Card Match on raw line (Title: Description)
-      const textCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([^:]+):\s*(.+)$/);
-      if (textCardMatch) {
-        const rawTitle = textCardMatch[1].trim();
-        const rawDesc = textCardMatch[2].trim();
-        const cleanTitleLen = rawTitle.replace(/\*/g, "").length;
-        if (cleanTitleLen > 0 && cleanTitleLen < 45 && rawDesc.length > 5) {
-          const title = formatLine(rawTitle);
-          const desc = formatLine(rawDesc);
+    }
+    
+    if (currentTable.length > 0) {
+      blocks.push({ type: "table", lines: currentTable });
+    }
+    
+    return blocks.map((block, idx) => {
+      if (block.type === "table") {
+        const parsed = parseTable(block.lines);
+        if (parsed) {
+          const { headers, rows } = parsed;
           return (
-            <div key={i} className="my-3 p-3.5 bg-black/[0.01] dark:bg-white/[0.01] border border-border/40 dark:border-white/5 border-l-2 border-l-blue-500 rounded-lg rounded-l-none flex items-start gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 animate-pulse" />
-              <div className="flex-1 space-y-1">
-                <h4 className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{ __html: title }} />
-                <p className="text-sm text-foreground/85 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
-              </div>
+            <div key={`table-${idx}`} className="my-4 overflow-x-auto rounded-xl border border-border/60 bg-card/45 shadow-sm">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/40">
+                    {headers.map((h, hIdx) => (
+                      <th 
+                        key={hIdx} 
+                        className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider text-[11px]"
+                        dangerouslySetInnerHTML={{ __html: formatLine(h) }}
+                      />
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {rows.map((row, rIdx) => (
+                    <tr 
+                      key={rIdx} 
+                      className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
+                    >
+                      {row.map((cell, cIdx) => (
+                        <td 
+                          key={cIdx} 
+                          className="px-4 py-3 text-foreground/90 font-medium text-[13px]"
+                          dangerouslySetInnerHTML={{ __html: formatLine(cell) }}
+                        />
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           );
+        } else {
+          return block.lines.map((line, lIdx) => renderSingleLine(line, `table-fallback-${idx}-${lIdx}`));
         }
+      } else {
+        return renderSingleLine(block.content, `line-${block.index}`);
       }
-
-      // Check for bullet points on raw line
-      if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") || trimmed.startsWith("+ ")) {
-        const itemContent = formatLine(trimmed.slice(2));
-        const isNested = line.startsWith("  ") || line.startsWith("    ") || line.startsWith("\t");
-        return (
-          <div key={i} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500/70 mt-2 shrink-0" />
-            <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
-          </div>
-        );
-      }
-
-      // Check for numbered lists
-      const numberedMatch = trimmed.match(/^(\d+)\.\s(.+)/);
-      if (numberedMatch) {
-        const num = numberedMatch[1];
-        const text = formatLine(numberedMatch[2]);
-        return (
-          <div key={i} className="flex items-start gap-2.5 my-1.5 pl-3">
-            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
-              {num}
-            </span>
-            <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
-          </div>
-        );
-      }
-
-      // Default paragraph
-      const processedLine = formatLine(line);
-      return (
-        <p key={i} className="mb-3 text-foreground/90 leading-relaxed text-[15px]" dangerouslySetInnerHTML={{ __html: processedLine }} />
-      );
     });
   };
 

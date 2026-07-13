@@ -3,7 +3,7 @@ import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp,
-  Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown
+  Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -43,6 +43,83 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [feedbacks, setFeedbacks] = useState({});
   const [collapsedMessages, setCollapsedMessages] = useState({});
   const [expandedVisuals, setExpandedVisuals] = useState({});
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const recognitionRef = useRef(null);
+
+  // Initialize Web Speech API SpeechRecognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setIsSpeechSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setInputValue((prev) => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${finalTranscript}` : finalTranscript;
+          });
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
+        if (event.error === "not-allowed") {
+          addNotification("error", "Microphone access denied. Please check your browser permissions.");
+        } else {
+          addNotification("error", `Voice input error: ${event.error}`);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    } else {
+      setIsSpeechSupported(false);
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [addNotification]);
+
+  const toggleListening = useCallback(() => {
+    if (!recognitionRef.current) {
+      addNotification("error", "Speech Recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error("Failed to start speech recognition:", err);
+      }
+    }
+  }, [isListening, addNotification]);
 
   const toggleCollapse = (id) => {
     setCollapsedMessages(prev => ({
@@ -1684,6 +1761,37 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               >
                 <Paperclip className="w-4 h-4" />
               </button>
+              {isSpeechSupported ? (
+                <button
+                  type="button"
+                  disabled={isViewer}
+                  onClick={toggleListening}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-all relative ${
+                    isListening
+                      ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse"
+                      : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                  } disabled:opacity-30`}
+                  title={isListening ? "Stop listening" : "Start voice typing"}
+                >
+                  {isListening ? (
+                    <>
+                      <span className="absolute inset-0 rounded-full bg-red-500/30 animate-ping" />
+                      <Mic className="w-4 h-4 z-10" />
+                    </>
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={true}
+                  className="w-8 h-8 flex items-center justify-center text-muted-foreground/30 rounded-full cursor-not-allowed"
+                  title="Speech recognition not supported in this browser"
+                >
+                  <MicOff className="w-4 h-4" />
+                </button>
+              )}
               <button
                 type={isProcessing ? "button" : "submit"}
                 onClick={isProcessing ? handleCancel : undefined}

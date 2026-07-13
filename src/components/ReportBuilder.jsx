@@ -1345,20 +1345,28 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Include Sections</label>
                     
-                    {reportData?.summary && (
-                      <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
-                        <input 
-                          type="checkbox" 
-                          checked={exportOptions.includeSummary} 
-                          onChange={e => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
-                          className="w-4 h-4 rounded accent-primary text-primary"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-foreground">AI Report Summary</span>
-                          <span className="text-[10px] text-muted-foreground">Executive summary and parsed insights</span>
-                        </div>
-                      </label>
-                    )}
+                    <label className={`flex items-center gap-3 p-3 border rounded-xl select-none transition-colors ${
+                      !reportData?.summary 
+                        ? 'bg-black/[0.01] dark:bg-white/[0.01] border-border/30 opacity-50 cursor-not-allowed' 
+                        : 'bg-black/[0.02] dark:bg-white/[0.02] border-border/50 cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'
+                    }`}>
+                      <input 
+                        type="checkbox" 
+                        checked={exportOptions.includeSummary && !!reportData?.summary} 
+                        disabled={!reportData?.summary}
+                        onChange={e => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-primary text-primary disabled:opacity-50"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-foreground">AI Report Summary</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {reportData?.summary 
+                            ? "Executive summary and parsed insights" 
+                            : "No summary available for this report"
+                          }
+                        </span>
+                      </div>
+                    </label>
 
                     <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
                       <input 
@@ -1373,20 +1381,28 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                       </div>
                     </label>
 
-                    {chartType !== 'table' && (
-                      <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
-                        <input 
-                          type="checkbox" 
-                          checked={exportOptions.includeChart} 
-                          onChange={e => setExportOptions(prev => ({ ...prev, includeChart: e.target.checked }))}
-                          className="w-4 h-4 rounded accent-primary text-primary"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-foreground">Visualization Chart</span>
-                          <span className="text-[10px] text-muted-foreground">High-quality render of the active {chartType} chart</span>
-                        </div>
-                      </label>
-                    )}
+                    <label className={`flex items-center gap-3 p-3 border rounded-xl select-none transition-colors ${
+                      chartType === 'table' 
+                        ? 'bg-black/[0.01] dark:bg-white/[0.01] border-border/30 opacity-50 cursor-not-allowed' 
+                        : 'bg-black/[0.02] dark:bg-white/[0.02] border-border/50 cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'
+                    }`}>
+                      <input 
+                        type="checkbox" 
+                        checked={exportOptions.includeChart && chartType !== 'table'} 
+                        disabled={chartType === 'table'}
+                        onChange={e => setExportOptions(prev => ({ ...prev, includeChart: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-primary text-primary disabled:opacity-50"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-foreground">Visualization Chart</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {chartType !== 'table' 
+                            ? `High-quality render of the active ${chartType} chart` 
+                            : "Select a visual chart style (Bar/Line/Pie) to include a snapshot"
+                          }
+                        </span>
+                      </div>
+                    </label>
 
                     <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
                       <input 

@@ -168,7 +168,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     return chartColors[0];
   });
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showChartPicker, setShowChartPicker] = useState(false);
   const [showSQLModal, setShowSQLModal] = useState(false);
   const [isPinned, setIsPinned] = useState(() => {
     if (reportData?.isPinned || reportData?.is_pinned) return true;
@@ -968,55 +967,49 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                 <LayoutDashboard className="w-4 h-4" />
               </button>
             </div>
-            {/* Chart Type Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowChartPicker(!showChartPicker)}
-                className="flex items-center gap-2 px-3 py-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-sm font-medium hover:border-primary/50 transition-colors"
-              >
-                {chartType === 'bar' && <BarChart2 className="w-4 h-4" />}
-                {chartType === 'line' && <TrendingUp className="w-4 h-4" />}
-                {chartType === 'area' && <Activity className="w-4 h-4" />}
-                {chartType === 'pie' && <PieChart className="w-4 h-4" />}
-                {chartType === 'donut' && <Circle className="w-4 h-4" />}
-                {chartType === 'scatter' && <Target className="w-4 h-4" />}
-                <span className="capitalize">{chartType}</span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </button>
-              
-              <AnimatePresence>
-                {showChartPicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full left-0 mt-2 bg-card border border-border rounded-xl shadow-xl z-20 overflow-hidden"
-                  >
-                    {chartTypes.map(ct => (
+            {/* Chart Type Segmented Pill Control */}
+            <AnimatePresence mode="wait">
+              {displayedTab !== "table" && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, x: -10 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-1 bg-card dark:bg-[#1C1C1C] p-1 rounded-xl border border-border/50 dark:border-white/10 relative overflow-hidden"
+                >
+                  {chartTypes.filter(ct => ct.id !== 'table').map(ct => {
+                    const isActive = chartType === ct.id;
+                    return (
                       <button
                         key={ct.id}
-                        onClick={() => {
-                          setChartType(ct.id);
-                          setActiveTab(ct.id === 'table' ? 'table' : 'chart');
-                          setShowChartPicker(false);
-                        }}
-                        className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-muted transition-colors ${chartType === ct.id ? 'bg-primary/10 text-primary' : ''}`}
+                        onClick={() => setChartType(ct.id)}
+                        className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center gap-1.5 select-none ${
+                          isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
-                        {ct.id === 'bar' && <BarChart2 className="w-4 h-4" />}
-                        {ct.id === 'line' && <TrendingUp className="w-4 h-4" />}
-                        {ct.id === 'area' && <Activity className="w-4 h-4" />}
-                        {ct.id === 'pie' && <PieChart className="w-4 h-4" />}
-                        {ct.id === 'donut' && <Circle className="w-4 h-4" />}
-                        {ct.id === 'scatter' && <Target className="w-4 h-4" />}
-                        {ct.id === 'table' && <TableIcon className="w-4 h-4" />}
-                        {ct.name}
-                        {chartType === ct.id && <Check className="w-4 h-4 ml-auto" />}
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeChartType"
+                            className="absolute inset-0 bg-primary rounded-lg z-0"
+                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                          />
+                        )}
+                        
+                        <span className="relative z-10 flex items-center gap-1.5">
+                          {ct.id === 'bar' && <BarChart2 className="w-3.5 h-3.5" />}
+                          {ct.id === 'line' && <TrendingUp className="w-3.5 h-3.5" />}
+                          {ct.id === 'area' && <Activity className="w-3.5 h-3.5" />}
+                          {ct.id === 'pie' && <PieChart className="w-3.5 h-3.5" />}
+                          {ct.id === 'donut' && <Circle className="w-3.5 h-3.5" />}
+                          {ct.id === 'scatter' && <Target className="w-3.5 h-3.5" />}
+                          <span className="capitalize hidden md:inline">{ct.name || ct.id}</span>
+                        </span>
                       </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Color Palette Selector */}
             <div className="relative">

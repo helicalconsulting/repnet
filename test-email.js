@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 
 const mailOptions = {
   from: '"Repnex AI Test" <' + (process.env.SMTP_USER || 'helicalconsulting@gmail.com') + '>',
-  to: 'jai@helical.consulting, keshav@helical.consulting, helicalconsulting@gmail.com',
+  to: 'thesharmakeshav@gmail.com',
   subject: '🚀 SMTP Test - Repnex AI',
   text: 'This is a test email to verify SMTP configuration from the server script.'
 };

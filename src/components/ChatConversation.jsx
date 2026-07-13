@@ -255,9 +255,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       // Handle casual greetings locally with personalized response
       const casualResponse = getCasualResponse(query);
       if (casualResponse) {
-        const userMsg = { id: Date.now().toString(), role: "user", content: query };
+        const userMsg = { id: `user-${Date.now()}`, role: "user", content: query };
         const aiMsg = {
-          id: (Date.now() + 1).toString(),
+          id: `ai-${Date.now()}`,
           role: "ai",
           type: "conversational",
           content: casualResponse,
@@ -272,7 +272,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       setCurrentStatusText("Classifying intent");
 
       // Add user message
-      const userMsg = { id: Date.now().toString(), role: "user", content: query };
+      const userMsgId = `user-${Date.now()}`;
+      const userMsg = { id: userMsgId, role: "user", content: query };
       setMessages((prev) => [...prev, userMsg]);
 
       try {
@@ -309,7 +310,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           socketRef.current = ws;
           socketSessionIdRef.current = activeSessionId;
 
-          const aiMsgId = Date.now().toString();
+          const aiMsgId = `ai-${Date.now()}`;
 
           let timeoutTimer = null;
           const resetTimeout = () => {

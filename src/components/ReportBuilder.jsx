@@ -453,10 +453,35 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       
       clonedSvg.setAttribute('width', width);
       clonedSvg.setAttribute('height', height);
-      // Remove responsive styles that might override explicit attributes
       clonedSvg.removeAttribute('style');
       clonedSvg.style.width = `${width}px`;
       clonedSvg.style.height = `${height}px`;
+
+      // Helper to inline computed styles from live DOM to the cloned SVG
+      const inlineStyles = (source, target) => {
+        const computed = window.getComputedStyle(source);
+        const properties = [
+          'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 
+          'fill-opacity', 'stroke-opacity',
+          'font-size', 'font-family', 'font-weight', 'text-anchor', 'color',
+          'display', 'visibility', 'transform'
+        ];
+        properties.forEach(prop => {
+          const val = computed.getPropertyValue(prop);
+          if (val) {
+            target.style[prop] = val;
+          }
+        });
+        
+        for (let i = 0; i < source.children.length; i++) {
+          if (target.children[i]) {
+            inlineStyles(source.children[i], target.children[i]);
+          }
+        }
+      };
+
+      // Apply computed styles to ensure high-fidelity rendering without relying on external stylesheets or variables
+      inlineStyles(svgEl, clonedSvg);
 
       const serializer = new XMLSerializer();
       let svgString = serializer.serializeToString(clonedSvg);

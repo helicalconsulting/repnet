@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "./ui/drawer";
 import { 
   Table as TableIcon, 
   BarChart2, 
@@ -169,6 +170,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   });
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showSQLModal, setShowSQLModal] = useState(false);
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
   const [isPinned, setIsPinned] = useState(() => {
     if (reportData?.isPinned || reportData?.is_pinned) return true;
     if (reportData?.id && pinnedReports) {
@@ -459,6 +461,9 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       // Helper to inline computed styles from live DOM to the cloned SVG
       const inlineStyles = (source, target) => {
         const computed = window.getComputedStyle(source);
+        const tagName = source.tagName.toLowerCase();
+        const isContainer = tagName === 'svg' || tagName === 'g';
+        
         const properties = [
           'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 
           'fill-opacity', 'stroke-opacity',
@@ -466,6 +471,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           'display', 'visibility', 'transform'
         ];
         properties.forEach(prop => {
+          // Never inline fill/stroke on container tags (svg/g) to prevent style cascade override of child presentation attributes
+          if (isContainer && (prop === 'fill' || prop === 'stroke')) {
+            return;
+          }
           const val = computed.getPropertyValue(prop);
           if (val) {
             target.style[prop] = val;
@@ -967,124 +976,22 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                 <LayoutDashboard className="w-4 h-4" />
               </button>
             </div>
-            {/* Chart Type Segmented Pill Control */}
+            {/* Customize Chart Button (Drawer Trigger) */}
             <AnimatePresence mode="wait">
               {displayedTab !== "table" && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, x: -10 }}
-                  animate={{ opacity: 1, scale: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center gap-1 bg-card dark:bg-[#1C1C1C] p-1 rounded-xl border border-border/50 dark:border-white/10 relative overflow-hidden"
+                <motion.button
+                  key="customize-btn"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={() => setShowSettingsDrawer(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-sm font-semibold hover:border-primary/50 transition-colors shadow-sm cursor-pointer animate-pulse"
                 >
-                  {chartTypes.filter(ct => ct.id !== 'table').map(ct => {
-                    const isActive = chartType === ct.id;
-                    return (
-                      <button
-                        key={ct.id}
-                        onClick={() => setChartType(ct.id)}
-                        className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center gap-1.5 select-none ${
-                          isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="activeChartType"
-                            className="absolute inset-0 bg-primary rounded-lg z-0"
-                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        
-                        <span className="relative z-10 flex items-center gap-1.5">
-                          {ct.id === 'bar' && <BarChart2 className="w-3.5 h-3.5" />}
-                          {ct.id === 'line' && <TrendingUp className="w-3.5 h-3.5" />}
-                          {ct.id === 'area' && <Activity className="w-3.5 h-3.5" />}
-                          {ct.id === 'pie' && <PieChart className="w-3.5 h-3.5" />}
-                          {ct.id === 'donut' && <Circle className="w-3.5 h-3.5" />}
-                          {ct.id === 'scatter' && <Target className="w-3.5 h-3.5" />}
-                          <span className="capitalize hidden md:inline">{ct.name || ct.id}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </motion.div>
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <span>Customize Chart</span>
+                </motion.button>
               )}
             </AnimatePresence>
-
-            {/* Color Palette Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                className="flex items-center gap-2 px-3 py-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-sm font-medium hover:border-primary/50 transition-colors"
-              >
-                <div className="flex -space-x-1">
-                  {selectedColors.colors.slice(0, 3).map((color, i) => (
-                    <div key={i} className="w-4 h-4 rounded-full border-2 border-card" style={{ backgroundColor: color }} />
-                  ))}
-                </div>
-                <span>{selectedColors.name}</span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </button>
-              
-              <AnimatePresence>
-                {showColorPicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-full left-0 mt-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl shadow-xl z-20 p-3 w-64"
-                  >
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Color Palettes</p>
-                    <div className="space-y-2">
-                      {chartColors.map(palette => (
-                        <button
-                          key={palette.name}
-                          onClick={() => { setSelectedColors(palette); setShowColorPicker(false); }}
-                          className={`flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${selectedColors.name === palette.name ? 'bg-primary/10' : ''}`}
-                        >
-                          <div className="flex -space-x-1">
-                            {palette.colors.slice(0, 5).map((color, i) => (
-                              <div key={i} className="w-5 h-5 rounded-full border-2 border-card" style={{ backgroundColor: color }} />
-                            ))}
-                          </div>
-                          <span className="flex-1 text-left">{palette.name}</span>
-                          {selectedColors.name === palette.name && <Check className="w-4 h-4 text-primary" />}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Data Keys Selector */}
-            <div className="flex items-center gap-2 px-3 py-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl flex-wrap">
-              <span className="text-xs text-muted-foreground">Show:</span>
-              {availableKeys.length > 0 ? (
-                availableKeys.map(key => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setSelectedDataKeys(prev => {
-                        if (prev.includes(key)) {
-                          return prev.length > 1 ? prev.filter(k => k !== key) : prev;
-                        }
-                        return [...prev, key];
-                      });
-                    }}
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
-                      selectedDataKeys.includes(key) 
-                        ? 'bg-primary/20 text-primary' 
-                        : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {key}
-                  </button>
-                ))
-              ) : (
-                <span className="text-xs text-muted-foreground">None found</span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -1322,6 +1229,158 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Chart Customization Drawer */}
+      <Drawer open={showSettingsDrawer} onOpenChange={setShowSettingsDrawer}>
+        <DrawerContent className="max-w-md mx-auto p-6 bg-card border-border shadow-2xl">
+          <DrawerHeader className="px-0 pt-0 text-left">
+            <DrawerTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
+              <Settings className="w-5 h-5 text-primary" />
+              Chart Customization
+            </DrawerTitle>
+            <DrawerDescription className="text-xs text-muted-foreground">
+              Adjust chart style, metrics, and axis configurations.
+            </DrawerDescription>
+          </DrawerHeader>
+          
+          <div className="space-y-6 py-4 overflow-y-auto max-h-[60vh] custom-scrollbar">
+            {/* 1. Chart Type */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Chart Type
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {chartTypes.filter(ct => ct.id !== 'table').map(ct => {
+                  const isActive = chartType === ct.id;
+                  return (
+                    <button
+                      key={ct.id}
+                      onClick={() => setChartType(ct.id)}
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all cursor-pointer ${
+                        isActive 
+                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm' 
+                          : 'border-border/50 bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      {ct.id === 'bar' && <BarChart2 className="w-5 h-5" />}
+                      {ct.id === 'line' && <TrendingUp className="w-5 h-5" />}
+                      {ct.id === 'area' && <Activity className="w-5 h-5" />}
+                      {ct.id === 'pie' && <PieChart className="w-5 h-5" />}
+                      {ct.id === 'donut' && <Circle className="w-5 h-5" />}
+                      {ct.id === 'scatter' && <Target className="w-5 h-5" />}
+                      <span className="text-[10px] font-semibold capitalize truncate w-full text-center">
+                        {ct.name.replace(' Chart', '').replace(' Plot', '')}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* 2. Color Palette */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Color Palette
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                {chartColors.map(palette => {
+                  const isActive = selectedColors.name === palette.name;
+                  return (
+                    <button
+                      key={palette.name}
+                      onClick={() => setSelectedColors(palette)}
+                      className={`flex items-center gap-2 p-2 rounded-xl border text-sm transition-all cursor-pointer ${
+                        isActive 
+                          ? 'border-primary bg-primary/10 text-primary font-semibold shadow-sm' 
+                          : 'border-border/50 bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <div className="flex -space-x-1 shrink-0">
+                        {palette.colors.slice(0, 3).map((color, i) => (
+                          <div key={i} className="w-3.5 h-3.5 rounded-full border border-card" style={{ backgroundColor: color }} />
+                        ))}
+                      </div>
+                      <span className="text-xs truncate">{palette.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* 3. Metrics/Columns */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Metrics to Plot (Y-Axis)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {availableKeys.length > 0 ? (
+                  availableKeys.map(key => {
+                    const isActive = selectedDataKeys.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSelectedDataKeys(prev => {
+                            if (prev.includes(key)) {
+                              return prev.length > 1 ? prev.filter(k => k !== key) : prev;
+                            }
+                            return [...prev, key];
+                          });
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                          isActive 
+                            ? 'bg-primary border-primary text-primary-foreground shadow-sm' 
+                            : 'border-border/50 bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {key}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <span className="text-xs text-muted-foreground">No metrics found</span>
+                )}
+              </div>
+            </div>
+            
+            {/* 4. X-Axis Column */}
+            {columns.length > 0 && (
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                  X-Axis Column
+                </label>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                  {columns.map(key => {
+                    const isActive = xAxisKey === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setXAxisKey(key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                          isActive 
+                            ? 'bg-primary border-primary text-primary-foreground shadow-sm' 
+                            : 'border-border/50 bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {key}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-border flex justify-end">
+            <button
+              onClick={() => setShowSettingsDrawer(false)}
+              className="px-5 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-xl shadow hover:bg-primary/95 transition-colors cursor-pointer"
+            >
+              Done
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Export Options Modal */}
       <AnimatePresence>

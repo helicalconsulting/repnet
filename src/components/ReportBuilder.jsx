@@ -194,8 +194,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [exportFormat, setExportFormat] = useState("pdf");
   const [exportOptions, setExportOptions] = useState({
     includeSummary: true,
-    includeChart: true,
-    includeKPIs: true,
+    includeChart: false,
+    includeKPIs: false,
     includeTable: true
   });
 
@@ -1426,7 +1426,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                           if (f === 'csv') {
                             setExportOptions(prev => ({ ...prev, includeSummary: false, includeChart: false, includeKPIs: false, includeTable: true }));
                           } else {
-                            setExportOptions(prev => ({ ...prev, includeSummary: true, includeChart: chartType !== 'table', includeKPIs: true, includeTable: true }));
+                            setExportOptions(prev => ({ ...prev, includeSummary: true, includeChart: false, includeKPIs: false, includeTable: true }));
                           }
                         }}
                         className={`py-1.5 text-xs font-semibold rounded-lg uppercase transition-all ${
@@ -1459,42 +1459,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                           {reportData?.summary 
                             ? "Executive summary and parsed insights" 
                             : "Include auto-generated overview summary"
-                          }
-                        </span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={exportOptions.includeKPIs} 
-                        onChange={e => setExportOptions(prev => ({ ...prev, includeKPIs: e.target.checked }))}
-                        className="w-4 h-4 rounded accent-primary text-primary"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-foreground">Key Metrics (KPIs)</span>
-                        <span className="text-[10px] text-muted-foreground">Total records, average values, currency calculations</span>
-                      </div>
-                    </label>
-
-                    <label className={`flex items-center gap-3 p-3 border rounded-xl select-none transition-colors ${
-                      chartType === 'table' 
-                        ? 'bg-black/[0.01] dark:bg-white/[0.01] border-border/30 opacity-50 cursor-not-allowed' 
-                        : 'bg-black/[0.02] dark:bg-white/[0.02] border-border/50 cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'
-                    }`}>
-                      <input 
-                        type="checkbox" 
-                        checked={exportOptions.includeChart && chartType !== 'table'} 
-                        disabled={chartType === 'table'}
-                        onChange={e => setExportOptions(prev => ({ ...prev, includeChart: e.target.checked }))}
-                        className="w-4 h-4 rounded accent-primary text-primary disabled:opacity-50"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-foreground">Visualization Chart</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {chartType !== 'table' 
-                            ? `High-quality render of the active ${chartType} chart` 
-                            : "Select a visual chart style (Bar/Line/Pie) to include a snapshot"
                           }
                         </span>
                       </div>

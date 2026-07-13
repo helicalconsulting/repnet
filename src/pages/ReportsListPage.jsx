@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   BarChart3, Plus, Search, Loader2, Trash2, Play,
-  Calendar, Database, FileText, AlertCircle, RefreshCw, CheckSquare, Square
+  Calendar, Database, FileText, AlertCircle, RefreshCw, CheckSquare, Square, Download, X
 } from 'lucide-react';
 import { reportApi, exportApi } from '../services/api';
 import { useApp } from '../context/AppContext';
@@ -32,6 +32,12 @@ export default function ReportsListPage() {
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [showBulkExportModal, setShowBulkExportModal] = useState(false);
+  const [bulkExportFormat, setBulkExportFormat] = useState("excel");
+  const [bulkExportOptions, setBulkExportOptions] = useState({
+    includeSummary: true,
+    includeTable: true
+  });
 
   const fetchReports = async () => {
     setLoading(true);
@@ -63,14 +69,16 @@ export default function ReportsListPage() {
     }
   };
 
-  const handleBulkExport = async (format) => {
+  const handleBulkExport = async (format, options = bulkExportOptions) => {
     if (selectedIds.length === 0) return;
     setIsExporting(true);
     try {
       const result = await exportApi.exportBulk({
         reportIds: selectedIds,
         format,
-        connectionId: activeConnection?.id
+        connectionId: activeConnection?.id,
+        includeSummary: options.includeSummary,
+        includeTable: options.includeTable
       });
       
       if (result) {
@@ -84,6 +92,7 @@ export default function ReportsListPage() {
         window.URL.revokeObjectURL(url);
       }
       setSelectedIds([]);
+      setShowBulkExportModal(false);
     } catch (err) {
       alert('Failed to export reports: ' + err.message);
     } finally {
@@ -324,27 +333,36 @@ export default function ReportsListPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleBulkExport('excel')}
+              onClick={() => {
+                setBulkExportFormat('excel');
+                setBulkExportOptions({ includeSummary: true, includeTable: true });
+                setShowBulkExportModal(true);
+              }}
               disabled={isExporting}
               className="px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
             >
-              {isExporting && <Loader2 className="w-3 h-3 animate-spin" />}
               Excel
             </button>
             <button
-              onClick={() => handleBulkExport('pdf')}
+              onClick={() => {
+                setBulkExportFormat('pdf');
+                setBulkExportOptions({ includeSummary: true, includeTable: true });
+                setShowBulkExportModal(true);
+              }}
               disabled={isExporting}
               className="px-3.5 py-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
             >
-              {isExporting && <Loader2 className="w-3 h-3 animate-spin" />}
               PDF
             </button>
             <button
-              onClick={() => handleBulkExport('zip')}
+              onClick={() => {
+                setBulkExportFormat('zip');
+                setBulkExportOptions({ includeSummary: true, includeTable: true });
+                setShowBulkExportModal(true);
+              }}
               disabled={isExporting}
               className="px-3.5 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
             >
-              {isExporting && <Loader2 className="w-3 h-3 animate-spin" />}
               ZIP
             </button>
             <button
@@ -357,6 +375,119 @@ export default function ReportsListPage() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showBulkExportModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-card border border-border/80 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
+            >
+              <div className="p-5 border-b border-border/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Download className="w-5 h-5 text-primary" />
+                  <span className="font-bold text-foreground">Bulk Export Options</span>
+                </div>
+                <button 
+                  onClick={() => setShowBulkExportModal(false)}
+                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Format selection */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</label>
+                  <div className="grid grid-cols-3 gap-2 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+                    {["excel", "pdf", "zip"].map(f => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => {
+                          setBulkExportFormat(f);
+                        }}
+                        className={`py-1.5 text-xs font-semibold rounded-lg uppercase transition-all ${
+                          bulkExportFormat === f 
+                            ? 'bg-card text-foreground shadow-sm border border-border/50' 
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Options List */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Include Sections</label>
+                  
+                  <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={bulkExportOptions.includeSummary} 
+                      onChange={e => setBulkExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
+                      className="w-4 h-4 rounded accent-primary text-primary"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-foreground">AI Report Summary</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Include executive summary and parsed insights for each report
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={bulkExportOptions.includeTable} 
+                      onChange={e => setBulkExportOptions(prev => ({ ...prev, includeTable: e.target.checked }))}
+                      className="w-4 h-4 rounded accent-primary text-primary"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-foreground">Data Table Rows</span>
+                      <span className="text-[10px] text-muted-foreground">Complete tabular list of results for each report</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-5 bg-black/[0.02] dark:bg-white/[0.01] border-t border-border/50 dark:border-white/5 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowBulkExportModal(false)}
+                  className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={isExporting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleBulkExport(bulkExportFormat, bulkExportOptions);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl text-sm font-semibold transition-all shadow-md shadow-primary/20 disabled:opacity-50"
+                  disabled={isExporting || (!bulkExportOptions.includeSummary && !bulkExportOptions.includeTable)}
+                >
+                  {isExporting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isExporting ? "Exporting..." : `Export ${selectedIds.length} Reports`}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

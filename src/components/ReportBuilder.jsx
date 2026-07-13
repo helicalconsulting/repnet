@@ -446,8 +446,20 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       const svgEl = document.querySelector('.recharts-wrapper svg');
       if (!svgEl) return null;
 
+      // Clone the SVG so we can modify its attributes without affecting the live DOM
+      const clonedSvg = svgEl.cloneNode(true);
+      const width = svgEl.clientWidth || svgEl.getBoundingClientRect().width || 800;
+      const height = svgEl.clientHeight || svgEl.getBoundingClientRect().height || 400;
+      
+      clonedSvg.setAttribute('width', width);
+      clonedSvg.setAttribute('height', height);
+      // Remove responsive styles that might override explicit attributes
+      clonedSvg.removeAttribute('style');
+      clonedSvg.style.width = `${width}px`;
+      clonedSvg.style.height = `${height}px`;
+
       const serializer = new XMLSerializer();
-      let svgString = serializer.serializeToString(svgEl);
+      let svgString = serializer.serializeToString(clonedSvg);
       
       if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
         svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
@@ -460,16 +472,17 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          canvas.width = svgEl.clientWidth || svgEl.getBoundingClientRect().width || 800;
-          canvas.height = svgEl.clientHeight || svgEl.getBoundingClientRect().height || 400;
+          canvas.width = width;
+          canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0);
           URL.revokeObjectURL(url);
           resolve(canvas.toDataURL('image/png'));
         };
-        img.onerror = () => {
+        img.onerror = (err) => {
+          console.error("Image loading error", err);
           URL.revokeObjectURL(url);
           resolve(null);
         };
@@ -479,6 +492,17 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       console.error("Failed to serialize chart SVG", e);
       return null;
     }
+  };
+
+  const getSummaryContent = () => {
+    if (reportData?.summary) return reportData.summary;
+    if (reportData?.description) return reportData.description;
+    
+    const reportName = reportData?.name || saveName || query || 'Analytical Report';
+    const numRows = data?.length || 0;
+    const colsList = columns?.filter(c => c !== '__rowId' && c !== 'id').join(', ') || '';
+    
+    return `### Executive Summary: ${reportName}\nThis analytical report presents a detailed breakdown of the query results. It contains a total of **${numRows} records** structured across the following fields: *${colsList}*.\n\nKey findings can be visualized in the chart below and the associated granular data table.`;
   };
 
   const handleExportExcel = async (options = exportOptions) => {
@@ -494,7 +518,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         return cleanRow;
       }) : [];
       
-      const summaryText = options.includeSummary ? (reportData?.summary || "") : "";
+      const summaryText = options.includeSummary ? getSummaryContent() : "";
       const kpisList = options.includeKPIs ? getDynamicKPIs() : [];
 
       const result = await exportApi.exportExcel({
@@ -532,7 +556,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         return cleanRow;
       }) : [];
 
-      const summaryText = options.includeSummary ? (reportData?.summary || "") : "";
+      const summaryText = options.includeSummary ? getSummaryContent() : "";
       const kpisList = options.includeKPIs ? getDynamicKPIs() : [];
       
       let chartImgBase64 = null;
@@ -848,7 +872,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             onClick={() => {
               setExportOptions(prev => ({ 
                 ...prev, 
-                includeSummary: !!reportData?.summary, 
+                includeSummary: true, 
                 includeChart: chartType !== 'table', 
                 includeKPIs: true, 
                 includeTable: true 
@@ -1068,7 +1092,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                     onClick={() => {
                       setExportOptions(prev => ({ 
                         ...prev, 
-                        includeSummary: !!reportData?.summary, 
+                        includeSummary: true, 
                         includeChart: chartType !== 'table', 
                         includeKPIs: true, 
                         includeTable: true 
@@ -1325,7 +1349,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                           if (f === 'csv') {
                             setExportOptions(prev => ({ ...prev, includeSummary: false, includeChart: false, includeKPIs: false, includeTable: true }));
                           } else {
-                            setExportOptions(prev => ({ ...prev, includeSummary: !!reportData?.summary, includeChart: chartType !== 'table', includeKPIs: true, includeTable: true }));
+                            setExportOptions(prev => ({ ...prev, includeSummary: true, includeChart: chartType !== 'table', includeKPIs: true, includeTable: true }));
                           }
                         }}
                         className={`py-1.5 text-xs font-semibold rounded-lg uppercase transition-all ${
@@ -1345,24 +1369,19 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Include Sections</label>
                     
-                    <label className={`flex items-center gap-3 p-3 border rounded-xl select-none transition-colors ${
-                      !reportData?.summary 
-                        ? 'bg-black/[0.01] dark:bg-white/[0.01] border-border/30 opacity-50 cursor-not-allowed' 
-                        : 'bg-black/[0.02] dark:bg-white/[0.02] border-border/50 cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'
-                    }`}>
+                    <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
                       <input 
                         type="checkbox" 
-                        checked={exportOptions.includeSummary && !!reportData?.summary} 
-                        disabled={!reportData?.summary}
+                        checked={exportOptions.includeSummary} 
                         onChange={e => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
-                        className="w-4 h-4 rounded accent-primary text-primary disabled:opacity-50"
+                        className="w-4 h-4 rounded accent-primary text-primary"
                       />
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-foreground">AI Report Summary</span>
                         <span className="text-[10px] text-muted-foreground">
                           {reportData?.summary 
                             ? "Executive summary and parsed insights" 
-                            : "No summary available for this report"
+                            : "Include auto-generated overview summary"
                           }
                         </span>
                       </div>

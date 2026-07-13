@@ -528,14 +528,15 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   };
 
   const getSummaryContent = () => {
-    if (reportData?.summary) return reportData.summary;
+    const mainSummary = reportData?.summary || reportData?.parameters?.summary;
+    if (mainSummary) return mainSummary;
     if (reportData?.description) return reportData.description;
     
     const reportName = reportData?.name || saveName || query || 'Analytical Report';
     const numRows = data?.length || 0;
     const colsList = columns?.filter(c => c !== '__rowId' && c !== 'id').join(', ') || '';
     
-    return `### Executive Summary: ${reportName}\nThis analytical report presents a detailed breakdown of the query results. It contains a total of **${numRows} records** structured across the following fields: *${colsList}*.\n\nKey findings can be visualized in the chart below and the associated granular data table.`;
+    return `### Executive Summary: ${reportName}\nThis analytical report presents a detailed breakdown of the query results. It contains a total of **${numRows} records** structured across the following fields: *${colsList}*.\n\nKey findings can be analyzed in the associated granular data table.`;
   };
 
   const handleExportExcel = async (options = exportOptions) => {
@@ -552,7 +553,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       }) : [];
       
       const summaryText = options.includeSummary ? getSummaryContent() : "";
-      const kpisList = options.includeKPIs ? getDynamicKPIs() : [];
+      const kpisList = []; // KPIs should not be exported per user choice
 
       const result = await exportApi.exportExcel({
         title: query || "Report",
@@ -590,12 +591,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       }) : [];
 
       const summaryText = options.includeSummary ? getSummaryContent() : "";
-      const kpisList = options.includeKPIs ? getDynamicKPIs() : [];
-      
-      let chartImgBase64 = null;
-      if (options.includeChart && chartType !== 'table') {
-        chartImgBase64 = await getChartImage();
-      }
+      const kpisList = []; // KPIs should not be exported per user choice
+      const chartImgBase64 = null; // Charts should not be exported per user choice
 
       const result = await exportApi.exportPDF({
         title: query || "Report",
@@ -906,8 +903,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               setExportOptions(prev => ({ 
                 ...prev, 
                 includeSummary: true, 
-                includeChart: chartType !== 'table', 
-                includeKPIs: true, 
+                includeChart: false, 
+                includeKPIs: false, 
                 includeTable: true 
               }));
               setShowExportModal(true);
@@ -1018,8 +1015,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                       setExportOptions(prev => ({ 
                         ...prev, 
                         includeSummary: true, 
-                        includeChart: chartType !== 'table', 
-                        includeKPIs: true, 
+                        includeChart: false, 
+                        includeKPIs: false, 
                         includeTable: true 
                       }));
                       setShowExportModal(true);

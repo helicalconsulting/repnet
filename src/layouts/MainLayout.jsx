@@ -130,49 +130,12 @@ export default function MainLayout({ user, onSignOut }) {
          </AnimatePresence>
       </div>
 
-      {/* Top Nav Right Side Controls */}
-      <div className={`absolute top-0 right-0 p-4 md:p-6 flex items-center gap-3 z-40 pointer-events-auto transition-opacity duration-300 ${isReportView ? 'hidden' : 'flex'}`}>
-         {!isViewer && !isReportView && location.pathname.includes('/chat') && (
-           <Motion.button 
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             onClick={handleNewChat} 
-             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-card/80 backdrop-blur-md border border-border/50 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
-           >
-             <MessageSquarePlus className="w-4 h-4" />
-             <span className="hidden sm:inline">New Chat</span>
-           </Motion.button>
-         )}
-
-         {/* Theme Toggle */}
-         <button 
-           onClick={() => setDarkMode(!darkMode)} 
-          className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors bg-card/80 backdrop-blur-md border border-border/50 shadow-sm"
-          title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-        >
-          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-        
-        <button
-          onClick={handleSignOut}
-          className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-xl transition-colors bg-card/80 backdrop-blur-md border border-border/50 shadow-sm"
-          title="Sign out"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-         
-         {/* User Avatar */}
-         <div
-           className="w-9 h-9 rounded-xl border border-black/10 dark:border-white/10 bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-sm font-bold cursor-pointer transition-all hover:scale-105 text-white shadow-lg shadow-primary/20 ml-1"
-           title={user?.name || 'Authenticated user'}
-         >
-           {userInitial}
-         </div>
-      </div>
-
       <Sidebar 
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
+        onSignOut={handleSignOut}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
       />
 
       <main className="flex-1 flex flex-col relative w-full min-w-0 h-full overflow-hidden mix-blend-normal z-10 transition-all duration-300">

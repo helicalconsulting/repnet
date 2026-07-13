@@ -14,7 +14,10 @@ import {
   ChevronRight,
   Trash2,
   Loader2,
-  Layers
+  Layers,
+  Sun,
+  Moon,
+  LogOut
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect, useCallback } from "react";
@@ -41,8 +44,9 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export default function Sidebar({ isOpen, setIsOpen }) {
+export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDarkMode }) {
   const { user } = useApp();
+  const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
   const [showHistory, setShowHistory] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -307,11 +311,42 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           )}
 
           {/* Bottom Actions */}
-          <div className="mt-auto pt-4 space-y-1 border-t border-border/50">
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground transition-all">
-              <UserCircle className="w-5 h-5" strokeWidth={2} />
-              <span className="font-medium text-sm">Profile</span>
-            </button>
+          <div className="mt-auto pt-4 space-y-2 border-t border-border/50">
+            {/* User profile row */}
+            <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-9 h-9 rounded-xl border border-black/10 dark:border-white/10 bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-lg shadow-primary/20">
+                  {userInitial}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{user?.name || 'User'}</p>
+                  <p className="text-[10px] text-muted-foreground truncate capitalize">{user?.role || 'member'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {/* Theme Toggle */}
+                {setDarkMode && (
+                  <button 
+                    onClick={() => setDarkMode(!darkMode)} 
+                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+                    title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                  >
+                    {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  </button>
+                )}
+                {/* Logout */}
+                {onSignOut && (
+                  <button
+                    onClick={onSignOut}
+                    className="p-1.5 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                    title="Sign out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <button
               onClick={() => navigate('/settings')}
               className={clsx(

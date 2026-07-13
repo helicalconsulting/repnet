@@ -1520,7 +1520,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       columns: msg.columns,
                       sql: msg.sql, 
                       templateId: msg.templateId, 
-                      extractedParams: msg.extractedParams 
+                      extractedParams: msg.extractedParams,
+                      summary: msg.summary || msg.content || ''
                     })}
                     className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-muted/40 hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10 text-foreground border border-border/80 dark:border-white/10 rounded-xl transition-all shadow-sm group font-semibold text-sm select-none"
                   >

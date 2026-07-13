@@ -189,6 +189,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showDataExportMenu, setShowDataExportMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState("pdf");
+  const [exportOptions, setExportOptions] = useState({
+    includeSummary: true,
+    includeChart: true,
+    includeKPIs: true,
+    includeTable: true
+  });
 
   const isNewReport = !reportData?.id || String(reportData.id).startsWith('rep-');
   
@@ -391,6 +399,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           ...(reportData?.extractedParams || {}),
           sql: reportData?.sql || "",
           data: data || [],
+          summary: reportData?.summary || "",
         },
         is_public: false,
         columns: columnsPayload
@@ -432,22 +441,68 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     addNotification('success', 'CSV exported successfully');
   };
 
-  const handleExportExcel = async () => {
+  const getChartImage = async () => {
+    try {
+      const svgEl = document.querySelector('.recharts-wrapper svg');
+      if (!svgEl) return null;
+
+      const serializer = new XMLSerializer();
+      let svgString = serializer.serializeToString(svgEl);
+      
+      if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+        svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      return new Promise((resolve) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = svgEl.clientWidth || svgEl.getBoundingClientRect().width || 800;
+          canvas.height = svgEl.clientHeight || svgEl.getBoundingClientRect().height || 400;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        img.src = url;
+      });
+    } catch (e) {
+      console.error("Failed to serialize chart SVG", e);
+      return null;
+    }
+  };
+
+  const handleExportExcel = async (options = exportOptions) => {
     if (!data?.length) return;
     setIsExporting(true);
     try {
-      const headers = columns.filter(k => k !== '__rowId' && k !== 'id');
-      const cleanRows = data.map(row => {
+      const headers = options.includeTable ? columns.filter(k => k !== '__rowId' && k !== 'id') : [];
+      const cleanRows = options.includeTable ? data.map(row => {
         const cleanRow = {};
         headers.forEach(h => {
           cleanRow[h] = row[h];
         });
         return cleanRow;
-      });
+      }) : [];
+      
+      const summaryText = options.includeSummary ? (reportData?.summary || "") : "";
+      const kpisList = options.includeKPIs ? getDynamicKPIs() : [];
+
       const result = await exportApi.exportExcel({
         title: query || "Report",
         headers,
-        rows: cleanRows
+        rows: cleanRows,
+        summary: summaryText,
+        kpis: kpisList
       }, `report_${Date.now()}.xlsx`);
       
       const url = URL.createObjectURL(result.content);
@@ -464,22 +519,34 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = async (options = exportOptions) => {
     if (!data?.length) return;
     setIsExporting(true);
     try {
-      const headers = columns.filter(k => k !== '__rowId' && k !== 'id');
-      const cleanRows = data.map(row => {
+      const headers = options.includeTable ? columns.filter(k => k !== '__rowId' && k !== 'id') : [];
+      const cleanRows = options.includeTable ? data.map(row => {
         const cleanRow = {};
         headers.forEach(h => {
           cleanRow[h] = row[h];
         });
         return cleanRow;
-      });
+      }) : [];
+
+      const summaryText = options.includeSummary ? (reportData?.summary || "") : "";
+      const kpisList = options.includeKPIs ? getDynamicKPIs() : [];
+      
+      let chartImgBase64 = null;
+      if (options.includeChart && chartType !== 'table') {
+        chartImgBase64 = await getChartImage();
+      }
+
       const result = await exportApi.exportPDF({
         title: query || "Report",
         headers,
-        rows: cleanRows
+        rows: cleanRows,
+        summary: summaryText,
+        chart_image: chartImgBase64,
+        kpis: kpisList
       }, `report_${Date.now()}.pdf`);
       
       const url = URL.createObjectURL(result.content);
@@ -777,58 +844,23 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             </button>
           )}
 
-          <div className="relative">
-            <button 
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
-            >
-              {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              <span className="hidden md:inline">{isExporting ? "Exporting..." : "Export"}</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-            
-            {showExportMenu && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowExportMenu(false)}
-                />
-                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-card border border-border shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <button
-                    onClick={() => {
-                      handleExportCSV();
-                      setShowExportMenu(false);
-                    }}
-                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
-                  >
-                    <FileText className="w-4 h-4 text-muted-foreground" />
-                    CSV Format
-                  </button>
-                  <button
-                    onClick={async () => {
-                      setShowExportMenu(false);
-                      await handleExportExcel();
-                    }}
-                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />
-                    Excel (XLSX)
-                  </button>
-                  <button
-                    onClick={async () => {
-                      setShowExportMenu(false);
-                      await handleExportPDF();
-                    }}
-                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
-                  >
-                    <File className="w-4 h-4 text-muted-foreground" />
-                    PDF Document
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <button 
+            onClick={() => {
+              setExportOptions(prev => ({ 
+                ...prev, 
+                includeSummary: !!reportData?.summary, 
+                includeChart: chartType !== 'table', 
+                includeKPIs: true, 
+                includeTable: true 
+              }));
+              setShowExportModal(true);
+            }}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+          >
+            {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            <span className="hidden md:inline">{isExporting ? "Exporting..." : "Export"}</span>
+          </button>
         </div>
       </div>
 
@@ -1032,58 +1064,23 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                   <span className="truncate">Data View</span>
                   <span className="text-xs text-muted-foreground shrink-0">({data.length} rows)</span>
                 </h3>
-                <div className="relative">
                   <button 
-                    onClick={() => setShowDataExportMenu(!showDataExportMenu)}
+                    onClick={() => {
+                      setExportOptions(prev => ({ 
+                        ...prev, 
+                        includeSummary: !!reportData?.summary, 
+                        includeChart: chartType !== 'table', 
+                        includeKPIs: true, 
+                        includeTable: true 
+                      }));
+                      setShowExportModal(true);
+                    }}
                     disabled={isExporting}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-50"
                   >
                     {isExporting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ArrowDownToLine className="w-3.5 h-3.5" />}
                     <span>Export</span>
-                    <ChevronDown className="w-3 h-3" />
                   </button>
-                  
-                  {showDataExportMenu && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-40" 
-                        onClick={() => setShowDataExportMenu(false)}
-                      />
-                      <div className="absolute right-0 mt-2 w-44 rounded-xl bg-card border border-border shadow-lg py-1 z-50">
-                        <button
-                          onClick={() => {
-                            handleExportCSV();
-                            setShowDataExportMenu(false);
-                          }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                          CSV Format
-                        </button>
-                        <button
-                          onClick={async () => {
-                            setShowDataExportMenu(false);
-                            await handleExportExcel();
-                          }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
-                        >
-                          <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground" />
-                          Excel (XLSX)
-                        </button>
-                        <button
-                          onClick={async () => {
-                            setShowDataExportMenu(false);
-                            await handleExportPDF();
-                          }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
-                        >
-                          <File className="w-3.5 h-3.5 text-muted-foreground" />
-                          PDF Document
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
               </div>
               <div className="overflow-x-auto flex-1 p-2 sm:p-3">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1277,6 +1274,172 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                     <Check className="w-4 h-4" />
                   )}
                   <span>{isSaving ? "Saving..." : "Save Report"}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Export Options Modal */}
+      <AnimatePresence>
+        {showExportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowExportModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card dark:bg-[#1C1C1C] rounded-2xl w-full max-w-md overflow-hidden border border-border/50 dark:border-white/10 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 border-b border-border/50 dark:border-white/5">
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <Download className="w-5 h-5 text-primary" />
+                  Export Options
+                </h3>
+                <button 
+                  onClick={() => setShowExportModal(false)} 
+                  className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-muted-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Format selection */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</label>
+                  <div className="grid grid-cols-3 gap-2 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+                    {["pdf", "excel", "csv"].map(f => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => {
+                          setExportFormat(f);
+                          if (f === 'csv') {
+                            setExportOptions(prev => ({ ...prev, includeSummary: false, includeChart: false, includeKPIs: false, includeTable: true }));
+                          } else {
+                            setExportOptions(prev => ({ ...prev, includeSummary: !!reportData?.summary, includeChart: chartType !== 'table', includeKPIs: true, includeTable: true }));
+                          }
+                        }}
+                        className={`py-1.5 text-xs font-semibold rounded-lg uppercase transition-all ${
+                          exportFormat === f 
+                            ? 'bg-card text-foreground shadow-sm border border-border/50' 
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Options List */}
+                {exportFormat !== 'csv' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Include Sections</label>
+                    
+                    {reportData?.summary && (
+                      <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={exportOptions.includeSummary} 
+                          onChange={e => setExportOptions(prev => ({ ...prev, includeSummary: e.target.checked }))}
+                          className="w-4 h-4 rounded accent-primary text-primary"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-foreground">AI Report Summary</span>
+                          <span className="text-[10px] text-muted-foreground">Executive summary and parsed insights</span>
+                        </div>
+                      </label>
+                    )}
+
+                    <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={exportOptions.includeKPIs} 
+                        onChange={e => setExportOptions(prev => ({ ...prev, includeKPIs: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-primary text-primary"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-foreground">Key Metrics (KPIs)</span>
+                        <span className="text-[10px] text-muted-foreground">Total records, average values, currency calculations</span>
+                      </div>
+                    </label>
+
+                    {chartType !== 'table' && (
+                      <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={exportOptions.includeChart} 
+                          onChange={e => setExportOptions(prev => ({ ...prev, includeChart: e.target.checked }))}
+                          className="w-4 h-4 rounded accent-primary text-primary"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-foreground">Visualization Chart</span>
+                          <span className="text-[10px] text-muted-foreground">High-quality render of the active {chartType} chart</span>
+                        </div>
+                      </label>
+                    )}
+
+                    <label className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-border/50 rounded-xl cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={exportOptions.includeTable} 
+                        onChange={e => setExportOptions(prev => ({ ...prev, includeTable: e.target.checked }))}
+                        className="w-4 h-4 rounded accent-primary text-primary"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-foreground">Data Table Rows</span>
+                        <span className="text-[10px] text-muted-foreground">Complete tabular list of results</span>
+                      </div>
+                    </label>
+                  </div>
+                )}
+                
+                {exportFormat === 'csv' && (
+                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl text-center">
+                    <p className="text-xs text-muted-foreground">
+                      CSV format does not support charts or summary formatting. It will export only the raw tabular data rows.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 bg-black/[0.02] dark:bg-white/[0.01] border-t border-border/50 dark:border-white/5 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={isExporting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (exportFormat === 'pdf') {
+                      await handleExportPDF(exportOptions);
+                    } else if (exportFormat === 'excel') {
+                      await handleExportExcel(exportOptions);
+                    } else {
+                      handleExportCSV();
+                    }
+                    setShowExportModal(false);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl text-sm font-semibold transition-all shadow-md shadow-primary/20 disabled:opacity-50"
+                  disabled={isExporting || (exportFormat !== 'csv' && !exportOptions.includeSummary && !exportOptions.includeChart && !exportOptions.includeKPIs && !exportOptions.includeTable)}
+                >
+                  {isExporting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>{isExporting ? "Generating..." : "Download"}</span>
                 </button>
               </div>
             </motion.div>

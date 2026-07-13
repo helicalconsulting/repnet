@@ -68,6 +68,7 @@ export default function ReportPage() {
               ...config,
               rows: savedRows,
               sql: config.sql || config.parameters?.sql || '',
+              summary: config.parameters?.summary || '',
             });
             setQuery(config.name || 'Report');
             return;
@@ -83,6 +84,7 @@ export default function ReportPage() {
                   ...config,
                   rows: latestSnap.rows_data,
                   sql: config.parameters?.sql || latestSnap.sql || '',
+                  summary: config.parameters?.summary || '',
                 });
                 hasSnapshotData = true;
               }
@@ -100,6 +102,7 @@ export default function ReportPage() {
                   ...config,
                   rows: runResult.rows,
                   sql: config.sql || runResult.sql || config.parameters?.sql,
+                  summary: config.parameters?.summary || '',
                 });
               } else {
                 setReportData(config);

@@ -584,7 +584,7 @@ export const exportApi = {
     return { filename, content: csvContent, mimeType: 'text/csv' };
   },
 
-  async exportExcel({ title, headers, rows }, filename = 'report.xlsx') {
+  async exportExcel({ title, headers, rows, summary, kpis }, filename = 'report.xlsx') {
     const token = getToken();
     const response = await fetch(`${API_BASE}/reports/export/excel`, {
       method: 'POST',
@@ -592,14 +592,14 @@ export const exportApi = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ title, headers, rows }),
+      body: JSON.stringify({ title, headers, rows, summary, kpis }),
     });
     if (!response.ok) throw new Error('Failed to export to Excel');
     const blob = await response.blob();
     return { filename, content: blob, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
   },
 
-  async exportPDF({ title, headers, rows }, filename = 'report.pdf') {
+  async exportPDF({ title, headers, rows, summary, chart_image, kpis }, filename = 'report.pdf') {
     const token = getToken();
     const response = await fetch(`${API_BASE}/reports/export/pdf`, {
       method: 'POST',
@@ -607,7 +607,7 @@ export const exportApi = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ title, headers, rows }),
+      body: JSON.stringify({ title, headers, rows, summary, chart_image, kpis }),
     });
     if (!response.ok) throw new Error('Failed to export to PDF');
     const blob = await response.blob();

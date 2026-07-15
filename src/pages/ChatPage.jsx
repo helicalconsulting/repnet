@@ -33,7 +33,12 @@ export default function ChatPage() {
       setSelectedSessionId(id);
       setChatState('conversation');
       setActiveQuery('');
-      setConversationKey(id);
+      setConversationKey(prev => {
+        if (prev === id || (prev && prev.startsWith('new-') && selectedSessionId === id)) {
+          return prev;
+        }
+        return id;
+      });
     } else {
       // /chat with no id → always show a clean fresh landing
       setSelectedSessionId(null);
@@ -41,7 +46,7 @@ export default function ChatPage() {
       setActiveQuery('');
       setConversationKey(null);
     }
-  }, [id]);
+  }, [id, selectedSessionId]);
 
   useEffect(() => {
     const handleNewChat = () => {
@@ -58,7 +63,6 @@ export default function ChatPage() {
 
   /**
    * Landing page search → always spawn a completely isolated fresh chat.
-   * URL stays as /chat — no session ID ever leaks into the address bar.
    */
   const handleSearch = (query) => {
     setActiveQuery(query);
@@ -69,13 +73,12 @@ export default function ChatPage() {
 
   /**
    * Called by ChatConversation when the backend creates a session.
-   * We only sync selectedSessionId in React state so the current query
-   * can attach its turns to the session — we do NOT navigate / change the URL.
-   * This is a report generation tool; the URL stays clean at /chat.
+   * We navigate to /chat/:id so that the session ID is preserved in the URL,
+   * allowing the state/report to persist even on page refresh.
    */
   const handleSessionCreated = (newId) => {
     setSelectedSessionId(newId);
-    // ← No navigate() call. URL stays /chat. No redirect. No disruption.
+    navigate(`/chat/${newId}`, { replace: true });
   };
 
   /** "View Interactive Report" button inside chat */

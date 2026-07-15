@@ -536,7 +536,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     const numRows = data?.length || 0;
     const colsList = columns?.filter(c => c !== '__rowId' && c !== 'id').join(', ') || '';
     
-    return `### Executive Summary: ${reportName}\nThis analytical report presents a detailed breakdown of the query results. It contains a total of **${numRows} records** structured across the following fields: *${colsList}*.\n\nKey findings can be analyzed in the associated granular data table.`;
+    return `### Executive Summary: ${reportName}\nAs a senior business intelligence consultant, I have compiled this analytical report presenting a detailed breakdown of the query results. It contains a total of **${numRows} records** structured across the following fields: *${colsList}*.\n\nKey findings can be analyzed in the associated granular data table.`;
   };
 
   const handleExportExcel = async (options = exportOptions) => {

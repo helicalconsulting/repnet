@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
-  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp,
+  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
   Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -41,7 +41,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const socketRef = useRef(null);
   const socketSessionIdRef = useRef(null);
   const [feedbacks, setFeedbacks] = useState({});
-  const [collapsedMessages, setCollapsedMessages] = useState({});
+  const [collapsedSummaries, setCollapsedSummaries] = useState({});
+  const [collapsedSQLs, setCollapsedSQLs] = useState({});
   const [expandedVisuals, setExpandedVisuals] = useState({});
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
@@ -121,15 +122,26 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }
   }, [isListening, addNotification]);
 
-  const toggleCollapse = (id) => {
-    setCollapsedMessages(prev => ({
+  const toggleSummaryCollapse = (id) => {
+    setCollapsedSummaries(prev => ({
       ...prev,
       [id]: prev[id] === false ? true : false
     }));
   };
 
-  const isMessageCollapsed = (id) => {
-    return collapsedMessages[id] !== false;
+  const isSummaryCollapsed = (id) => {
+    return collapsedSummaries[id] !== false;
+  };
+
+  const toggleSqlCollapse = (id) => {
+    setCollapsedSQLs(prev => ({
+      ...prev,
+      [id]: prev[id] === false ? true : false
+    }));
+  };
+
+  const isSqlCollapsed = (id) => {
+    return collapsedSQLs[id] !== false;
   };
 
 
@@ -157,7 +169,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const handleFeedbackNegativeClick = (msgId) => {
     setFeedbacks((prev) => ({
       ...prev,
-      [msgId]: { ...prev[msgId], [msgId]: true, submitted: false, isPositive: false, category: "Wrong SQL", comment: "" },
+      [msgId]: { ...prev[msgId], [msgId]: true, submitted: false, isPositive: false, category: "Wrong Output", comment: "" },
     }));
   };
 
@@ -255,12 +267,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       // Handle casual greetings locally with personalized response
       const casualResponse = getCasualResponse(query);
       if (casualResponse) {
-        const userMsg = { id: `user-${Date.now()}`, role: "user", content: query };
+        const userMsg = { id: `user-${Date.now()}`, role: "user", content: query, timestamp: new Date().toISOString() };
         const aiMsg = {
           id: `ai-${Date.now()}`,
           role: "ai",
           type: "conversational",
           content: casualResponse,
+          timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, userMsg, aiMsg]);
         setIsProcessing(false);
@@ -273,12 +286,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       // Add user message
       const userMsgId = `user-${Date.now()}`;
-      const userMsg = { id: userMsgId, role: "user", content: query };
+      const userMsg = { id: userMsgId, role: "user", content: query, timestamp: new Date().toISOString() };
       setMessages((prev) => [...prev, userMsg]);
 
       try {
         const isValidUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
-        let activeSessionId = (sessionId && isValidUuid(sessionId)) ? sessionId : null;
+        let activeSessionId = (sessionId && isValidUuid(sessionId)) 
+          ? sessionId 
+          : (currentSessionId && isValidUuid(currentSessionId) ? currentSessionId : null);
 
         if (!activeSessionId) {
           try {
@@ -367,6 +382,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     rowsReturned: 0,
                     executionTime: 0,
                     isStreaming: true,
+                    timestamp: new Date().toISOString(),
                     ...fields,
                   },
                 ];
@@ -440,6 +456,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       rowsReturned: (event.rows || []).length,
                       executionTime: 0,
                       isStreaming: true,
+                      timestamp: new Date().toISOString(),
                     },
                   ];
                 }
@@ -483,6 +500,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       showReportBtn: true,
                       historyId: event.history_id,
                       suggestions: backendSugs,
+                      timestamp: new Date().toISOString(),
                     },
                   ];
                 }
@@ -585,6 +603,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 type: "conversational",
                 content: response.message,
                 suggestions: backendSugs,
+                timestamp: new Date().toISOString(),
               },
             ]);
             setCurrentSuggestions(backendSugs);
@@ -606,6 +625,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 extractedParams: response.extracted_params || {},
                 missingParams: response.missing_params || [],
                 suggestions: backendSugs,
+                timestamp: new Date().toISOString(),
               },
             ]);
             setCurrentSuggestions(backendSugs);
@@ -640,6 +660,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 showReportBtn: true,
                 historyId: response.history_id,
                 suggestions: backendSugs,
+                timestamp: new Date().toISOString(),
               },
             ]);
             setCurrentSuggestions(backendSugs);
@@ -741,8 +762,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     setIsProcessing(true);
 
     try {
-      if (currentSessionId) {
-        await sessionsApi.editTurn(currentSessionId, msgIdx);
+      const activeSessionId = sessionId || currentSessionId;
+      if (activeSessionId) {
+        await sessionsApi.editTurn(activeSessionId, msgIdx);
       }
       setMessages((prev) => prev.slice(0, msgIdx));
       await processQuery(textToSubmit);
@@ -784,6 +806,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             suggestions: turn.suggestions || [],
             showReportBtn: turn.type === "executable",
             historyId: turn.history_id || turn.historyId || null,
+            timestamp: turn.timestamp || null,
           }));
           setMessages(loaded);
           loadedSessionIdRef.current = sessionId;
@@ -1227,6 +1250,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     });
   };
 
+  const formatMessageTimestamp = (isoStr) => {
+    if (!isoStr) return "";
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleString(undefined, { 
+        dateStyle: 'medium', 
+        timeStyle: 'short' 
+      });
+    } catch (e) {
+      return "";
+    }
+  };
+
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
@@ -1305,10 +1341,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         </span>
                       </div>
                       <button
-                        onClick={() => toggleCollapse(msg.id)}
+                        onClick={() => toggleSummaryCollapse(msg.id)}
                         className="flex items-center gap-1 px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-[10px] font-semibold text-blue-500 hover:text-blue-600 transition-colors"
                       >
-                        {isMessageCollapsed(msg.id) ? (
+                        {isSummaryCollapsed(msg.id) ? (
                           <>
                             <span>Expand Summary</span>
                             <ChevronDown className="w-3 h-3" />
@@ -1356,7 +1392,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     /* AI message block */
                     <div className="overflow-hidden">
                       <AnimatePresence initial={false} mode="wait">
-                        {isMessageCollapsed(msg.id) ? (
+                        {isSummaryCollapsed(msg.id) ? (
                           <motion.div
                             key="collapsed"
                             initial={{ opacity: 0, height: 0 }}
@@ -1400,9 +1436,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       </AnimatePresence>
                     </div>
                   )}
- 
+
                   {/* Copy button */}
-                  {msg.role === "ai" && msg.content && !isMessageCollapsed(msg.id) && (
+                  {msg.role === "ai" && msg.content && !isSummaryCollapsed(msg.id) && (
                     <button
                       onClick={() => handleCopy(msg.content, msg.id)}
                       className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
@@ -1414,7 +1450,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       )}
                     </button>
                   )}
- 
+
                   {/* Edit button for user message */}
                   {msg.role === "user" && editingMessageId !== msg.id && (
                     <button
@@ -1427,19 +1463,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   )}
                 </div>
               )}
- 
+
               {/* SQL display */}
               <AnimatePresence>
-                {!isMessageCollapsed(msg.id) && msg.sql && (
+                {msg.sql && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0, y: 8 }}
-                    animate={{ opacity: 1, height: "auto", y: 0 }}
-                    exit={{ opacity: 0, height: 0, y: 8 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
                     className="mt-4 w-full border border-border/40 dark:border-white/5 rounded-2xl overflow-hidden shadow-lg bg-[#0E121E]"
                   >
                     {/* Code block header */}
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-b border-border/30 dark:border-white/5 select-none">
+                    <div 
+                      className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-b border-border/30 dark:border-white/5 select-none cursor-pointer"
+                      onClick={() => toggleSqlCollapse(msg.id)}
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-sky-400 border border-blue-500/15">
                           SQL
@@ -1448,45 +1486,79 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                           Query Execution
                         </span>
                       </div>
-                      <button
-                        onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-xs text-slate-300 hover:text-white transition-all font-sans"
-                      >
-                        {copiedId === `sql-${msg.id}` ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400 font-medium">Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Copy</span>
-                          </>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {!isSqlCollapsed(msg.id) && (
+                          <button
+                            onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-xs text-slate-300 hover:text-white transition-all font-sans"
+                          >
+                            {copiedId === `sql-${msg.id}` ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="text-emerald-400 font-medium">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
                         )}
-                      </button>
+                        <button
+                          onClick={() => toggleSqlCollapse(msg.id)}
+                          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 text-[10px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          {isSqlCollapsed(msg.id) ? (
+                            <>
+                              <span>Expand SQL</span>
+                              <ChevronDown className="w-3 h-3" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Collapse SQL</span>
+                              <ChevronUp className="w-3 h-3" />
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     {/* Highlighted SQL pre code */}
-                    <pre 
-                      className="p-4 text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none"
-                      dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
-                    />
+                    <AnimatePresence initial={false}>
+                      {!isSqlCollapsed(msg.id) && (
+                        <motion.pre 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeInOut" }}
+                          className="p-4 text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none"
+                          dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
+                        />
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {/* Execution stats */}
               {msg.type === "executable" && (
-                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                   {msg.rowsReturned != null && (
                     <span className="flex items-center gap-1">
-                      <Rows3 className="w-3.5 h-3.5" />
+                      <Rows3 className="w-3.5 h-3.5 text-slate-400" />
                       {msg.rowsReturned.toLocaleString()} rows
                     </span>
                   )}
                   {msg.executionTime != null && (
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
                       {msg.executionTime}ms
+                    </span>
+                  )}
+                  {msg.timestamp && (
+                    <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      {formatMessageTimestamp(msg.timestamp)}
                     </span>
                   )}
                 </div>
@@ -1564,7 +1636,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       
                       {/* Category selection */}
                       <div className="flex flex-wrap gap-1.5">
-                        {["Wrong SQL", "Didn't understand", "Slow", "Other"].map((cat) => {
+                        {["Wrong Output", "Didn't understand", "Slow", "Other"].map((cat) => {
                           const isSelected = feedbacks[msg.id].category === cat;
                           return (
                             <button

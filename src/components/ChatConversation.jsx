@@ -1541,7 +1541,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               </AnimatePresence>
 
               {/* Execution stats */}
-              {msg.type === "executable" && (
+              {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                   {msg.rowsReturned != null && (
                     <span className="flex items-center gap-1">
@@ -1562,6 +1562,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     </span>
                   )}
                 </div>
+              ) : (
+                msg.timestamp && (
+                  <div className="mt-1 text-[10px] text-muted-foreground/75 px-1 font-sans">
+                    {formatMessageTimestamp(msg.timestamp)}
+                  </div>
+                )
               )}
 
               {/* Parameter Card for params_needed */}

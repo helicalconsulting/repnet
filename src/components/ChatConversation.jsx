@@ -14,6 +14,7 @@ import { useTheme } from "../hooks/useTheme";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 import { QuickVisuals } from "./chat/QuickVisuals";
+import { format } from "date-fns";
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, addNotification, user } = useApp();
@@ -1254,10 +1255,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     if (!isoStr) return "";
     try {
       const d = new Date(isoStr);
-      return d.toLocaleString(undefined, { 
-        dateStyle: 'medium', 
-        timeStyle: 'short' 
-      });
+      return format(d, "PP, p");
     } catch (e) {
       return "";
     }

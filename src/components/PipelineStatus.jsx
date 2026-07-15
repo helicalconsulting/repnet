@@ -2,11 +2,11 @@ import { motion } from "framer-motion";
 import { Search, Database, Cpu, Rocket, Sparkles, Check, Loader2 } from "lucide-react";
 
 const STEPS = [
-  { id: "classify", label: "Classifying intent", icon: Search, color: "text-violet-500" },
-  { id: "search", label: "Searching templates", icon: Database, color: "text-blue-500" },
-  { id: "extract", label: "Building query", icon: Cpu, color: "text-amber-500" },
-  { id: "execute", label: "Executing", icon: Rocket, color: "text-emerald-500" },
-  { id: "insight", label: "Generating insights", icon: Sparkles, color: "text-primary" },
+  { id: "classify", label: "Classifying intent", icon: Search, color: "text-violet-500", bgColor: "bg-violet-500", pingColor: "bg-violet-500/40" },
+  { id: "search", label: "Searching templates", icon: Database, color: "text-blue-500", bgColor: "bg-blue-500", pingColor: "bg-blue-500/40" },
+  { id: "extract", label: "Building query", icon: Cpu, color: "text-amber-500", bgColor: "bg-amber-500", pingColor: "bg-amber-500/40" },
+  { id: "execute", label: "Executing", icon: Rocket, color: "text-emerald-500", bgColor: "bg-emerald-500", pingColor: "bg-emerald-500/40" },
+  { id: "insight", label: "Generating insights", icon: Sparkles, color: "text-primary", bgColor: "bg-primary", pingColor: "bg-primary/40" },
 ];
 
 /**
@@ -50,12 +50,8 @@ export default function PipelineStatus({ currentStep = "classify", completedStep
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
               ) : isActive ? (
                 <span className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
-                    step.color === 'text-primary' ? 'bg-primary' : step.color.replace('text-', 'bg-')
-                  }/45 opacity-75`} />
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                    step.color === 'text-primary' ? 'bg-primary' : step.color.replace('text-', 'bg-')
-                  }`} />
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${step.pingColor} opacity-75`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${step.bgColor}`} />
                 </span>
               ) : (
                 <Icon className={`w-3.5 h-3.5 text-muted-foreground/50`} />

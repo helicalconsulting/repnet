@@ -24,31 +24,33 @@ export default function ChatPage() {
    *   - NEVER changes during an active query    → no disruption mid-execution
    */
   const [conversationKey, setConversationKey] = useState(null);
-  const justCreatedSessionRef = useRef(null);
 
-  // ── Route-driven init ────────────────────────────────────────────────
+  // ── Route-driven init (only for direct URL loads / sidebar clicks) ───
+  // We use a ref to skip the first effect run when the user just initiated
+  // a new chat — in that case ChatConversation updates the URL itself via
+  // window.history.replaceState (no React Router involvement).
+  const routeInitDoneRef = useRef(false);
+
   useEffect(() => {
     if (id && isValidUuid(id)) {
-      // User opened /chat/:id intentionally (sidebar, bookmark, direct URL)
-      // → load history of that specific session
-      setSelectedSessionId(id);
-      setChatState('conversation');
-      setActiveQuery('');
-      setConversationKey(prev => {
-        if (prev === id || justCreatedSessionRef.current === id) {
-          return prev;
-        }
-        return id;
-      });
-      justCreatedSessionRef.current = null;
-    } else {
-      // /chat with no id → always show a clean fresh landing
+      // Only treat this as an external navigation if we don't already have
+      // a conversation running (i.e. the user clicked a sidebar history item
+      // or opened a bookmarked link directly).
+      if (chatState !== 'conversation' || !conversationKey) {
+        setSelectedSessionId(id);
+        setChatState('conversation');
+        setActiveQuery('');
+        setConversationKey(id);
+      }
+    } else if (!routeInitDoneRef.current) {
+      // /chat with no id → clean landing (only on first load)
       setSelectedSessionId(null);
       setChatState('landing');
       setActiveQuery('');
       setConversationKey(null);
     }
-  }, [id]);
+    routeInitDoneRef.current = true;
+  }, [id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleNewChat = () => {
@@ -75,13 +77,14 @@ export default function ChatPage() {
 
   /**
    * Called by ChatConversation when the backend creates a session.
-   * We navigate to /chat/:id so that the session ID is preserved in the URL,
-   * allowing the state/report to persist even on page refresh.
+   * We update the URL silently via history API so the browser can restore
+   * the session on refresh WITHOUT triggering a React Router re-render
+   * (which would unmount ChatConversation and kill the WebSocket).
    */
   const handleSessionCreated = (newId) => {
-    justCreatedSessionRef.current = newId;
     setSelectedSessionId(newId);
-    navigate(`/chat/${newId}`, { replace: true });
+    // Silently sync URL bar — no React Router route change, no unmount.
+    window.history.replaceState(null, '', `/chat/${newId}`);
   };
 
   /** "View Interactive Report" button inside chat */

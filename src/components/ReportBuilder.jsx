@@ -96,7 +96,7 @@ function SortableColumn({ id, title }) {
     zIndex: isDragging ? 10 : 1,
   };
   return (
-    <th ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 sm:px-4 py-2.5 sm:py-3 font-medium bg-black/5 dark:bg-white/5 relative z-10 hover:bg-black/10 dark:hover:bg-white/10 touch-none first:rounded-tl-lg last:rounded-tr-lg">
+    <th ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 sm:px-4 py-2.5 sm:py-3 font-medium bg-muted dark:bg-muted relative z-10 hover:bg-muted/80 dark:hover:bg-muted/80 touch-none first:rounded-tl-lg last:rounded-tr-lg">
       <div className="flex items-center gap-2">
         <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />
         {title}
@@ -146,7 +146,7 @@ function SortableRow({ rowId, row, columns }) {
   );
 }
 
-export default function ReportBuilder({ query, onClose, reportData, onToggleInsights }) {
+export default function ReportBuilder({ query, onClose, reportData, onToggleInsights, isSidebarOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { togglePinReport, saveReport, addNotification, pinnedReports, user } = useApp();
@@ -841,7 +841,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       className={`flex-1 flex flex-col h-full bg-background overflow-hidden relative z-10 ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}
     >
       {/* Dynamic Header */}
-      <div className="min-h-16 border-b border-border/50 flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-card/30 backdrop-blur-md sticky top-0 z-10 shrink-0">
+      <div className={`min-h-16 border-b border-border/50 flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-card/30 backdrop-blur-md sticky top-0 z-10 shrink-0 ${isSidebarOpen === false ? 'pl-14 md:pl-20' : ''}`}>
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 pr-0 sm:pr-4">
           <button onClick={onClose} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-muted-foreground shrink-0">
             <X className="w-5 h-5" />
@@ -1030,40 +1030,40 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               </div>
               <div className="overflow-x-auto flex-1 p-2 sm:p-3">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <table className="w-full min-w-[640px] text-sm text-left border-collapse">
-                    <thead className="text-xs text-muted-foreground uppercase sticky top-0 z-20">
-                      <tr>
-                        <th className="px-2 py-3 w-10 bg-black/5 dark:bg-white/5 first:rounded-tl-lg border-r border-border/20"></th>
-                        <SortableContext items={columns.map(c => `col-${c}`)} strategy={horizontalListSortingStrategy}>
-                          {columns.map(key => (
-                            <SortableColumn 
-                              key={`col-${key}`} 
-                              id={key} 
-                              title={key.charAt(0).toUpperCase() + key.slice(1)} 
-                            />
-                          ))}
-                        </SortableContext>
-                      </tr>
-                    </thead>
+                  <SortableContext items={columns.map(c => `col-${c}`)} strategy={horizontalListSortingStrategy}>
                     <SortableContext items={data.map(r => `row-${r.__rowId}`)} strategy={verticalListSortingStrategy}>
-                      <tbody>
-                        {data.length > 0 ? (
-                          data.map(row => (
-                            <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
-                          ))
-                        ) : (
+                      <table className="w-full min-w-[640px] text-sm text-left border-collapse">
+                        <thead className="text-xs text-muted-foreground uppercase sticky top-0 z-20">
                           <tr>
-                            <td 
-                              colSpan={(columns.length || 0) + 1} 
-                              className="px-4 py-8 text-center text-muted-foreground font-medium bg-black/[0.01] dark:bg-white/[0.01]"
-                            >
-                              No records found
-                            </td>
+                            <th className="px-2 py-3 w-10 bg-muted dark:bg-muted first:rounded-tl-lg border-r border-border/20"></th>
+                            {columns.map(key => (
+                              <SortableColumn 
+                                key={`col-${key}`} 
+                                id={key} 
+                                title={key.charAt(0).toUpperCase() + key.slice(1)} 
+                              />
+                            ))}
                           </tr>
-                        )}
-                      </tbody>
+                        </thead>
+                        <tbody>
+                          {data.length > 0 ? (
+                            data.map(row => (
+                              <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
+                            ))
+                          ) : (
+                            <tr>
+                              <td 
+                                colSpan={(columns.length || 0) + 1} 
+                                className="px-4 py-8 text-center text-muted-foreground font-medium bg-black/[0.01] dark:bg-white/[0.01]"
+                              >
+                                No records found
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </SortableContext>
-                  </table>
+                  </SortableContext>
                 </DndContext>
               </div>
             </motion.div>

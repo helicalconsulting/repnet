@@ -49,6 +49,41 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
 
+  const progressQueue = useRef([]);
+  const progressTimer = useRef(null);
+  const isWaitingForComplete = useRef(false);
+  const hasSuggestionsRef = useRef(false);
+
+  const processNextStep = useCallback(() => {
+    if (progressTimer.current || progressQueue.current.length === 0) {
+      if (progressQueue.current.length === 0 && isWaitingForComplete.current && !progressTimer.current) {
+        isWaitingForComplete.current = false;
+        setIsProcessing(false);
+        setPipelineStep(null);
+        setCurrentStatusText("");
+        setShowSuggestions(hasSuggestionsRef.current);
+      }
+      return;
+    }
+
+    const next = progressQueue.current.shift();
+    setPipelineStep(next.step);
+    setCompletedSteps(next.completed);
+    setCurrentStatusText(next.statusText);
+
+    progressTimer.current = setTimeout(() => {
+      progressTimer.current = null;
+      processNextStep();
+    }, 700);
+  }, []);
+
+  const enqueueStep = useCallback((step, completed, statusText) => {
+    const alreadyInQueue = progressQueue.current.some(q => q.step === step);
+    if (alreadyInQueue || pipelineStep === step) return;
+    progressQueue.current.push({ step, completed, statusText });
+    processNextStep();
+  }, [pipelineStep, processNextStep]);
+
   // Initialize Web Speech API SpeechRecognition
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -248,6 +283,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     setIsProcessing(false);
     setPipelineStep(null);
     setCurrentStatusText("");
+    progressQueue.current = [];
+    if (progressTimer.current) {
+      clearTimeout(progressTimer.current);
+      progressTimer.current = null;
+    }
+    isWaitingForComplete.current = false;
   }, []);
 
   // ── Process a user query ────────────────────────────────────────────
@@ -281,9 +322,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         return;
       }
 
-      setPipelineStep("classify");
-      setCompletedSteps([]);
-      setCurrentStatusText("Classifying intent");
+      progressQueue.current = [];
+      if (progressTimer.current) {
+        clearTimeout(progressTimer.current);
+        progressTimer.current = null;
+      }
+      isWaitingForComplete.current = false;
+      hasSuggestionsRef.current = false;
+
+      enqueueStep("classify", [], "Classifying intent");
+      enqueueStep("search", ["classify"], "Searching templates");
 
       // Add user message
       const userMsgId = `user-${Date.now()}`;
@@ -406,21 +454,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setCurrentStatusText(event.message);
             } else if (event.type === "progress") {
               if (event.step === "intent_extraction") {
-                setPipelineStep("classify");
-                setCompletedSteps([]);
-                setCurrentStatusText("Classifying intent");
+                enqueueStep("classify", [], "Classifying intent");
+                enqueueStep("search", ["classify"], "Searching templates");
               } else if (event.step === "sql_build") {
-                setPipelineStep("extract");
-                setCompletedSteps(["classify", "search"]);
-                setCurrentStatusText("Building query");
+                enqueueStep("extract", ["classify", "search"], "Building query");
               } else if (event.step === "execute") {
-                setPipelineStep("execute");
-                setCompletedSteps(["classify", "search", "extract"]);
-                setCurrentStatusText("Executing query");
+                enqueueStep("execute", ["classify", "search", "extract"], "Executing query");
               } else if (event.step === "insight") {
-                setPipelineStep("insight");
-                setCompletedSteps(["classify", "search", "extract", "execute"]);
-                setCurrentStatusText("Generating insights");
+                enqueueStep("insight", ["classify", "search", "extract", "execute"], "Generating insights");
               }
             } else if (event.type === "sql") {
               upsertAIMessage({ type: "executable", sql: event.sql });
@@ -507,12 +548,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 }
               });
               setCurrentSuggestions(backendSugs);
-              setShowSuggestions(backendSugs.length > 0);
               ws.close();
-              setIsProcessing(false);
-              setPipelineStep(null);
-              setCurrentStatusText("");
               window.dispatchEvent(new Event("repnex-sessions-updated"));
+              
+              // Defer final pipeline hiding until queue drains
+              hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+              isWaitingForComplete.current = true;
+              processNextStep();
             } else if (event.type === "error") {
               clearWSTimeout();
               let userFriendlyMsg = "Could not process. An error occurred while executing the query. Please verify your query or database schema and try again.";
@@ -534,6 +576,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setIsProcessing(false);
               setPipelineStep(null);
               setCurrentStatusText("");
+              progressQueue.current = [];
+              if (progressTimer.current) {
+                clearTimeout(progressTimer.current);
+                progressTimer.current = null;
+              }
+              isWaitingForComplete.current = false;
             }
           };
 
@@ -550,6 +598,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             setIsProcessing(false);
             setPipelineStep(null);
             setCurrentStatusText("");
+            progressQueue.current = [];
+            if (progressTimer.current) {
+              clearTimeout(progressTimer.current);
+              progressTimer.current = null;
+            }
+            isWaitingForComplete.current = false;
           };
 
           ws.onclose = () => {
@@ -879,6 +933,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         console.log("[Chat] Component unmounting, closing active socket");
         socketRef.current.close();
         socketRef.current = null;
+      }
+      if (progressTimer.current) {
+        clearTimeout(progressTimer.current);
+        progressTimer.current = null;
       }
     };
   }, []);

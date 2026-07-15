@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
@@ -29,6 +29,7 @@ export default function ReportPage() {
   const navigate = useNavigate();
   const { activeConnection, connections, user } = useApp();
   const isViewer = user?.role === 'viewer';
+  const { isSidebarOpen } = useOutletContext() || {};
 
   const [reportConfig, setReportConfig] = useState(null);  // raw config from API
   const [reportData, setReportData] = useState(location.state?.data || null);
@@ -372,6 +373,7 @@ export default function ReportPage() {
                   query={query}
                   reportData={loading ? mockReportData : reportData}
                   onClose={handleBack}
+                  isSidebarOpen={isSidebarOpen}
                 />
               </div>
             )}

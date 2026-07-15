@@ -154,7 +154,7 @@ export default function MainLayout({ user, onSignOut }) {
                exit={{ opacity: 0, y: -10 }} 
                className="flex-1 h-full flex flex-col"
             >
-               <Outlet />
+               <Outlet context={{ isSidebarOpen, setIsSidebarOpen }} />
             </Motion.div>
          </AnimatePresence>
       </main>

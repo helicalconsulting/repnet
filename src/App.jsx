@@ -152,17 +152,7 @@ function App() {
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route
-            path="/chat"
-            element={
-              sessionUser?.role !== 'viewer' ? (
-                <ChatPage />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-          <Route
-            path="/chat/:id"
+            path="/chat/:id?"
             element={
               sessionUser?.role !== 'viewer' ? (
                 <ChatPage />

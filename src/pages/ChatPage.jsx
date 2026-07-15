@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AIChatArea from '../components/AIChatArea';
 import ChatConversation from '../components/ChatConversation';
@@ -24,6 +24,7 @@ export default function ChatPage() {
    *   - NEVER changes during an active query    → no disruption mid-execution
    */
   const [conversationKey, setConversationKey] = useState(null);
+  const justCreatedSessionRef = useRef(null);
 
   // ── Route-driven init ────────────────────────────────────────────────
   useEffect(() => {
@@ -34,11 +35,12 @@ export default function ChatPage() {
       setChatState('conversation');
       setActiveQuery('');
       setConversationKey(prev => {
-        if (prev === id || (prev && prev.startsWith('new-') && selectedSessionId === id)) {
+        if (prev === id || justCreatedSessionRef.current === id) {
           return prev;
         }
         return id;
       });
+      justCreatedSessionRef.current = null;
     } else {
       // /chat with no id → always show a clean fresh landing
       setSelectedSessionId(null);
@@ -46,7 +48,7 @@ export default function ChatPage() {
       setActiveQuery('');
       setConversationKey(null);
     }
-  }, [id, selectedSessionId]);
+  }, [id]);
 
   useEffect(() => {
     const handleNewChat = () => {
@@ -77,6 +79,7 @@ export default function ChatPage() {
    * allowing the state/report to persist even on page refresh.
    */
   const handleSessionCreated = (newId) => {
+    justCreatedSessionRef.current = newId;
     setSelectedSessionId(newId);
     navigate(`/chat/${newId}`, { replace: true });
   };

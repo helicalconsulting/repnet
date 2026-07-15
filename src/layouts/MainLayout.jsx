@@ -88,6 +88,13 @@ export default function MainLayout({ user, onSignOut }) {
     window.dispatchEvent(new CustomEvent('repnex-new-chat'));
   };
 
+  const getLayoutTransitionKey = (pathname) => {
+    if (pathname.startsWith('/chat')) {
+      return '/chat';
+    }
+    return pathname;
+  };
+
   return (
     <div className={`flex h-screen w-full transition-colors duration-700 bg-[var(--background)] overflow-hidden relative`}>
       
@@ -141,7 +148,7 @@ export default function MainLayout({ user, onSignOut }) {
       <main className="flex-1 flex flex-col relative w-full min-w-0 h-full overflow-hidden mix-blend-normal z-10 transition-all duration-300">
          <AnimatePresence mode="wait">
             <Motion.div 
-               key={location.pathname}
+               key={getLayoutTransitionKey(location.pathname)}
                initial={{ opacity: 0, y: 10 }} 
                animate={{ opacity: 1, y: 0 }} 
                exit={{ opacity: 0, y: -10 }} 

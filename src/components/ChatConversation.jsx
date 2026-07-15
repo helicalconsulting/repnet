@@ -454,8 +454,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setCurrentStatusText(event.message);
             } else if (event.type === "progress") {
               if (event.step === "intent_extraction") {
-                enqueueStep("classify", [], "Classifying intent");
-                enqueueStep("search", ["classify"], "Searching templates");
+                // Already enqueued at the start of the query
               } else if (event.step === "sql_build") {
                 enqueueStep("extract", ["classify", "search"], "Building query");
               } else if (event.step === "execute") {
@@ -624,13 +623,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           };
         } else {
           // REST Fallback (Direct execution when no connection is active)
-          await new Promise((r) => setTimeout(r, 400));
-          setCompletedSteps(["classify"]);
-          setPipelineStep("search");
-
-          await new Promise((r) => setTimeout(r, 300));
-          setCompletedSteps(["classify", "search"]);
-          setPipelineStep("extract");
+          enqueueStep("extract", ["classify", "search"], "Building query");
 
           const response = await queryApi.chat({
             naturalLanguage: query,
@@ -644,11 +637,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             },
           });
 
-          setCompletedSteps(["classify", "search", "extract"]);
-
           if (response.type === "conversational") {
-            // Conversational response
-            setPipelineStep(null);
             const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
@@ -662,11 +651,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               },
             ]);
             setCurrentSuggestions(backendSugs);
-            setShowSuggestions(backendSugs.length > 0);
+            hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+            isWaitingForComplete.current = true;
+            processNextStep();
 
           } else if (response.type === "params_needed") {
-            // Need user input for params
-            setPipelineStep(null);
             const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
@@ -684,17 +673,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               },
             ]);
             setCurrentSuggestions(backendSugs);
-            setShowSuggestions(backendSugs.length > 0);
+            hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+            isWaitingForComplete.current = true;
+            processNextStep();
 
           } else if (response.type === "executable") {
-            // Query executed successfully
-            setPipelineStep("execute");
-            await new Promise((r) => setTimeout(r, 300));
-            setCompletedSteps(["classify", "search", "extract", "execute"]);
-            setPipelineStep("insight");
-            await new Promise((r) => setTimeout(r, 200));
-            setCompletedSteps(["classify", "search", "extract", "execute", "insight"]);
-            setPipelineStep(null);
+            enqueueStep("execute", ["classify", "search", "extract"], "Executing query");
+            enqueueStep("insight", ["classify", "search", "extract", "execute"], "Generating insights");
 
             const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
@@ -705,10 +690,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 type: "executable",
                 content: response.summary || response.message,
                 sql: response.sql,
-                rows: response.rows,
-                columns: response.columns,
-                rowsReturned: response.rows_returned,
-                executionTime: response.execution_time_ms,
+                rows: response.rows || [],
+                columns: response.columns || (response.rows && response.rows[0] ? Object.keys(response.rows[0]) : []),
+                rowsReturned: response.rows_returned || 0,
+                executionTime: response.execution_time_ms || 0,
                 templateId: response.template_id,
                 templateDescription: response.template_description,
                 extractedParams: response.extracted_params || {},
@@ -719,11 +704,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               },
             ]);
             setCurrentSuggestions(backendSugs);
-            setShowSuggestions(backendSugs.length > 0);
+            hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+            isWaitingForComplete.current = true;
+            processNextStep();
 
           } else if (response.type === "template_preview") {
-            // No DB connected - show template preview + SQL
-            setPipelineStep(null);
             const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
@@ -741,10 +726,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               },
             ]);
             setCurrentSuggestions(backendSugs);
-            setShowSuggestions(backendSugs.length > 0);
+            hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+            isWaitingForComplete.current = true;
+            processNextStep();
 
           } else if (response.type === "access_denied") {
-            setPipelineStep(null);
             const backendSugs = (response.suggestions || []).slice(0, 4);
             setMessages((prev) => [
               ...prev,
@@ -759,11 +745,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               },
             ]);
             setCurrentSuggestions(backendSugs);
-            setShowSuggestions(backendSugs.length > 0);
+            hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+            isWaitingForComplete.current = true;
+            processNextStep();
 
           } else {
-            // Error
-            setPipelineStep(null);
             const backendSugs = getCombinedSuggestions(response);
             setMessages((prev) => [
               ...prev,
@@ -777,7 +763,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               },
             ]);
             setCurrentSuggestions(backendSugs);
-            setShowSuggestions(backendSugs.length > 0);
+            hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
+            isWaitingForComplete.current = true;
+            processNextStep();
           }
         }
       } catch (err) {

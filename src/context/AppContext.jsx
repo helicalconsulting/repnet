@@ -253,6 +253,10 @@ export function AppProvider({ children, user }) {
     return res;
   }, []);
 
+  const getAdapterStatus = useCallback(async (id) => {
+    return await databaseApi.getAdapterStatus(id);
+  }, []);
+
   // Report functions
   const togglePinReport = useCallback(async (reportId) => {
     // Optimistic update: flip the local isPinned immediately
@@ -370,6 +374,7 @@ export function AppProvider({ children, user }) {
     getTables,
     getTableColumns,
     generateAdapters,
+    getAdapterStatus,
 
     // Reports state
     reports,

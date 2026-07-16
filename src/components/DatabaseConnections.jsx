@@ -45,8 +45,9 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
   const [showSchema, setShowSchema] = useState(false);
   const [isSyncingSchema, setIsSyncingSchema] = useState(false);
   const [isGeneratingAdapters, setIsGeneratingAdapters] = useState(false);
+  const [importProgress, setImportProgress] = useState("");
 
-  const { getTables, getTableColumns } = useApp();
+  const { getTables, getTableColumns, getAdapterStatus } = useApp();
   
   // Local schema explorer state
   const [tables, setTables] = useState([]);
@@ -94,12 +95,28 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
 
   const handleGenerateAdapters = async () => {
     setIsGeneratingAdapters(true);
+    setImportProgress("Initializing connection...");
+    
+    // Poll the adapter status endpoint
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await getAdapterStatus(connection.id);
+        if (res && res.progress) {
+          setImportProgress(res.progress);
+        }
+      } catch (err) {
+        // Ignore status query errors to not block flow
+      }
+    }, 1500);
+
     try {
       await onGenerateAdapters(connection.id);
     } catch (err) {
       console.error("Adapter generation failed:", err);
     } finally {
+      clearInterval(pollInterval);
       setIsGeneratingAdapters(false);
+      setImportProgress("");
     }
   };
 
@@ -207,6 +224,14 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
               <ExternalLink className="w-4 h-4" />
             </button>
           </div>
+
+          {isGeneratingAdapters && importProgress && (
+            <div className="w-full mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-lg flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <span className="truncate">{importProgress}</span>
+            </div>
+          )}
+
           {isAdmin && (
             <button 
               onClick={() => onDelete(connection.id)}

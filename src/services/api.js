@@ -418,6 +418,9 @@ export const databaseApi = {
   async generateAdapters(id) {
     return request(`/connections/${id}/generate-adapters`, { method: 'POST' });
   },
+  async getAdapterStatus(id) {
+    return request(`/connections/${id}/adapter-status`);
+  },
   async getTables(id) {
     return request(`/connections/${id}/tables`);
   },

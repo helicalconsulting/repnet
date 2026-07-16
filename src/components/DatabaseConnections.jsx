@@ -36,6 +36,8 @@ const dbTypes = [
   { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
   { id: "oracle", name: "Oracle", icon: "🔴", color: "#F80000", port: "1521" },
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
+  { id: "mongodb", name: "MongoDB / NoSQL", icon: "🍃", color: "#47A248", port: "27017" },
+  { id: "custom", name: "Custom / Any DB", icon: "⚙️", color: "#6B7280", port: "5432" },
 ];
 
 function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, onDelete, isAdmin, isViewer }) {
@@ -380,6 +382,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [selectedType, setSelectedType] = useState(null);
   const [inputMode, setInputMode] = useState('fields'); // 'fields' | 'string'
   const [connectionMode, setConnectionMode] = useState('direct'); // 'direct' | 'gateway'
+  const [customDbType, setCustomDbType] = useState('postgres');
   const [agentName, setAgentName] = useState('my-laptop');
   const [localDbHost, setLocalDbHost] = useState('localhost');
   const [localDbPort, setLocalDbPort] = useState('');
@@ -412,6 +415,20 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     password: '',
     connectionString: '',
   });
+
+  const customPorts = {
+    postgres: '5432',
+    mysql: '3306',
+    mssql: '1433',
+    oracle: '1521',
+    mongodb: '27017',
+  };
+
+  const handleCustomDbTypeChange = (newType) => {
+    setCustomDbType(newType);
+    setFormData(prev => ({ ...prev, port: customPorts[newType] || '5432' }));
+  };
+
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -447,11 +464,13 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setAvailableDbs([]);
     setFormData(prev => ({ ...prev, database: '' }));
     setTestResult(null);
+    const resolvedType = selectedType === 'custom' ? customDbType : (selectedType === 'supabase' ? 'postgres' : selectedType);
+    const resolvedPort = parseInt(selectedType === 'custom' ? customPorts[customDbType] : defaultPorts[selectedType]);
     try {
       const dbs = await listDatabases({
-        db_type: selectedType,
+        db_type: resolvedType,
         host: formData.host,
-        port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
+        port: parseInt(formData.port) || resolvedPort || 0,
         username: formData.username,
         password: formData.password,
       });
@@ -470,11 +489,14 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setIsTesting(true);
     setTestResult(null);
     
+    const resolvedType = selectedType === 'custom' ? customDbType : (selectedType === 'supabase' ? 'postgres' : selectedType);
+    const resolvedPort = parseInt(selectedType === 'custom' ? customPorts[customDbType] : defaultPorts[selectedType]);
+
     let payload;
     if (connectionMode === 'gateway') {
       payload = {
         name: formData.name || 'Test Gateway Connection',
-        db_type: selectedType,
+        db_type: resolvedType,
         host: `gateway:${agentName}`,
         port: 0,
         db_name: formData.database,
@@ -485,7 +507,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     } else if (inputMode === 'string') {
       payload = {
         name: formData.name || 'Test Connection',
-        db_type: (selectedType === 'supabase' ? 'postgres' : selectedType) || 'mssql',
+        db_type: resolvedType,
         connection_string: formData.connectionString,
         host: '',
         port: 0,
@@ -497,9 +519,9 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     } else {
       payload = {
         name: formData.name || 'Test Connection',
-        db_type: selectedType === 'supabase' ? 'postgres' : selectedType,
+        db_type: resolvedType,
         host: formData.host,
-        port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
+        port: parseInt(formData.port) || resolvedPort || 0,
         db_name: formData.database,
         username: formData.username,
         password: formData.password,
@@ -514,11 +536,14 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const handleAdd = async () => {
     setIsAdding(true);
     
+    const resolvedType = selectedType === 'custom' ? customDbType : (selectedType === 'supabase' ? 'postgres' : selectedType);
+    const resolvedPort = parseInt(selectedType === 'custom' ? customPorts[customDbType] : defaultPorts[selectedType]);
+
     let payload;
     if (connectionMode === 'gateway') {
       payload = {
         name: formData.name,
-        db_type: selectedType,
+        db_type: resolvedType,
         host: `gateway:${agentName}`,
         port: 0,
         db_name: formData.database,
@@ -529,7 +554,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     } else if (inputMode === 'string') {
       payload = {
         name: formData.name,
-        db_type: (selectedType === 'supabase' ? 'postgres' : selectedType) || 'mssql',
+        db_type: resolvedType,
         connection_string: formData.connectionString,
         host: '',
         port: 0,
@@ -541,9 +566,9 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     } else {
       payload = {
         name: formData.name,
-        db_type: selectedType === 'supabase' ? 'postgres' : selectedType,
+        db_type: resolvedType,
         host: formData.host,
-        port: parseInt(formData.port) || parseInt(defaultPorts[selectedType]) || 0,
+        port: parseInt(formData.port) || resolvedPort || 0,
         db_name: formData.database,
         username: formData.username,
         password: formData.password,
@@ -559,6 +584,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const resetForm = () => {
     setStep(1);
     setSelectedType(null);
+    setCustomDbType('postgres');
     setInputMode('fields');
     setConnectionMode('direct');
     setAgentName('my-laptop');
@@ -753,6 +779,24 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     >
                       Connection String
                     </button>
+                  </div>
+                )}
+
+                {/* Database Engine (shown only for Custom selection) */}
+                {selectedType === 'custom' && (
+                  <div>
+                    <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Database Engine</label>
+                    <select
+                      value={customDbType}
+                      onChange={e => handleCustomDbTypeChange(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors text-foreground dark:text-white dark:bg-[#1C1C1C]"
+                    >
+                      <option value="postgres">PostgreSQL</option>
+                      <option value="mysql">MySQL</option>
+                      <option value="mssql">SQL Server / Syspro</option>
+                      <option value="oracle">Oracle</option>
+                      <option value="mongodb">MongoDB / NoSQL</option>
+                    </select>
                   </div>
                 )}
 

@@ -247,6 +247,12 @@ export function AppProvider({ children, user }) {
     return await databaseApi.getTableColumns(id, tableName);
   }, []);
 
+  const generateAdapters = useCallback(async (id) => {
+    const res = await databaseApi.generateAdapters(id);
+    addNotification('success', 'Semantic mapping and adapters successfully generated!');
+    return res;
+  }, []);
+
   // Report functions
   const togglePinReport = useCallback(async (reportId) => {
     // Optimistic update: flip the local isPinned immediately
@@ -363,6 +369,7 @@ export function AppProvider({ children, user }) {
     syncSchema,
     getTables,
     getTableColumns,
+    generateAdapters,
 
     // Reports state
     reports,

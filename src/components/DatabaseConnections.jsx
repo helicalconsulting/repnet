@@ -38,10 +38,11 @@ const dbTypes = [
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
 ];
 
-function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, isViewer }) {
+function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, onDelete, isAdmin, isViewer }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSchema, setShowSchema] = useState(false);
   const [isSyncingSchema, setIsSyncingSchema] = useState(false);
+  const [isGeneratingAdapters, setIsGeneratingAdapters] = useState(false);
 
   const { getTables, getTableColumns } = useApp();
   
@@ -86,6 +87,17 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, i
       console.error(err);
     } finally {
       setIsSyncingSchema(false);
+    }
+  };
+
+  const handleGenerateAdapters = async () => {
+    setIsGeneratingAdapters(true);
+    try {
+      await onGenerateAdapters(connection.id);
+    } catch (err) {
+      console.error("Adapter generation failed:", err);
+    } finally {
+      setIsGeneratingAdapters(false);
     }
   };
 
@@ -174,6 +186,21 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onDelete, isAdmin, i
               )}
               {isSyncing ? 'Syncing...' : 'Sync Now'}
             </button>
+
+            <button
+              onClick={handleGenerateAdapters}
+              disabled={isGeneratingAdapters || connection.tables === 0}
+              title={connection.tables === 0 ? "Sync schema first to map concepts" : "Run AI ontology mapping & index adapters"}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isGeneratingAdapters ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              {isGeneratingAdapters ? 'Importing...' : 'Import Schema (AI)'}
+            </button>
+
             <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0">
               <ExternalLink className="w-4 h-4" />
             </button>
@@ -1301,7 +1328,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 }
 
 export default function DatabaseConnections() {
-  const { connections, addConnection, removeConnection, syncConnection, syncSchema, user, isLoadingConnections } = useApp();
+  const { connections, addConnection, removeConnection, syncConnection, syncSchema, generateAdapters, user, isLoadingConnections } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
 
@@ -1425,6 +1452,7 @@ export default function DatabaseConnections() {
                      connection={connection}
                      onSync={handleSync}
                      onSyncSchema={syncSchema}
+                     onGenerateAdapters={generateAdapters}
                      onDelete={removeConnection}
                      isAdmin={isAdmin}
                      isViewer={isViewer}

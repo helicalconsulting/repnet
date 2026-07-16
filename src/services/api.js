@@ -415,6 +415,9 @@ export const databaseApi = {
   async syncSchema(id) {
     return request(`/connections/${id}/sync-schema`, { method: 'POST' });
   },
+  async generateAdapters(id) {
+    return request(`/connections/${id}/generate-adapters`, { method: 'POST' });
+  },
   async getTables(id) {
     return request(`/connections/${id}/tables`);
   },

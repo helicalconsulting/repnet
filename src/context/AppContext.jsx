@@ -169,12 +169,11 @@ export function AppProvider({ children, user }) {
     const newConn = await databaseApi.addConnection(connectionData);
     const formatted = formatConnection(newConn);
     setConnections(prev => [...prev, formatted]);
-    if (!activeConnection) {
-      selectActiveConnection(formatted.id);
-    }
+    // Always make newly added database active immediately
+    selectActiveConnection(formatted.id);
     addNotification('success', `Connected to ${connectionData.name}`);
     return formatted;
-  }, [activeConnection, formatConnection, selectActiveConnection]);
+  }, [formatConnection, selectActiveConnection]);
 
   const removeConnection = useCallback(async (id) => {
     await databaseApi.deleteConnection(id);

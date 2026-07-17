@@ -222,6 +222,55 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
     }
   }, [showSchema, connection.tables]);
 
+  useEffect(() => {
+    let activePoll = null;
+
+    const checkJobStatus = async () => {
+      try {
+        const res = await getAdapterStatus(connection.id);
+        if (res && res.status === 'running') {
+          setIsGeneratingAdapters(true);
+          setShowOverlay(true);
+          setImportProgress(res.progress || 'Processing schema...');
+
+          // Start polling
+          activePoll = setInterval(async () => {
+            try {
+              const currentRes = await getAdapterStatus(connection.id);
+              if (currentRes) {
+                if (currentRes.status === 'running') {
+                  setImportProgress(currentRes.progress || 'Processing schema...');
+                } else if (currentRes.status === 'success') {
+                  setImportProgress('Ready — you can now query this database!');
+                  setTimeout(() => {
+                    setShowOverlay(false);
+                    setIsGeneratingAdapters(false);
+                  }, 2000);
+                  clearInterval(activePoll);
+                } else {
+                  // failed
+                  setShowOverlay(false);
+                  setIsGeneratingAdapters(false);
+                  clearInterval(activePoll);
+                }
+              }
+            } catch (err) {
+              clearInterval(activePoll);
+            }
+          }, 1500);
+        }
+      } catch (err) {
+        console.error("Error checking initial job status:", err);
+      }
+    };
+
+    checkJobStatus();
+
+    return () => {
+      if (activePoll) clearInterval(activePoll);
+    };
+  }, [connection.id, getAdapterStatus]);
+
   const handleSync = async () => {
     setIsSyncing(true);
     await onSync(connection.id);
@@ -255,6 +304,9 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
     try {
       await onGenerateAdapters(connection.id);
       setImportProgress('Ready — you can now query this database!');
+      setTimeout(() => {
+        setShowOverlay(false);
+      }, 2000);
     } catch (err) {
       console.error('Adapter generation failed:', err);
       setShowOverlay(false);

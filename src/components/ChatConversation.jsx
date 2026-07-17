@@ -17,7 +17,7 @@ import { QuickVisuals } from "./chat/QuickVisuals";
 import { format } from "date-fns";
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
-  const { connections, activeConnection, addNotification, user } = useApp();
+  const { connections, activeConnection, selectActiveConnection, addNotification, user } = useApp();
   const { getCasualResponse, profile } = usePersonalization();
   const navigate = useNavigate();
   const location = useLocation();
@@ -348,6 +348,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           try {
             const newSession = await sessionsApi.create({
               title: query.slice(0, 60) || "New chat",
+              connection_id: activeConnection || undefined,
             });
             console.log('[Chat] Session created:', newSession);
             if (newSession?.id) {
@@ -832,6 +833,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setLoadingHistory(true);
         try {
           const details = await sessionsApi.get(sessionId);
+
+          // Sync the active database connection with the loaded session's connection
+          if (details?.connection_id && details.connection_id !== activeConnection) {
+            selectActiveConnection(details.connection_id);
+          }
+
           // Map backend context window turns to frontend messages format preserving rich fields
           const loaded = (details.context_window || []).map((turn, idx) => ({
             id: `history-${idx}-${details.id}`,
@@ -880,7 +887,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setCurrentSessionId(null);
       }
     }
-  }, [sessionId, addNotification]);
+  }, [sessionId, addNotification, activeConnection, selectActiveConnection]);
 
   // Process initial query on fresh mount (new chat from landing page)
   useEffect(() => {

@@ -621,6 +621,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
 
 function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [step, setStep] = useState(1);
+  const [connectionCategory, setConnectionCategory] = useState(null); // 'syspro' | 'helios' | 'custom'
   const [selectedType, setSelectedType] = useState(null);
   const [inputMode, setInputMode] = useState('fields'); // 'fields' | 'string'
   const [connectionMode, setConnectionMode] = useState('direct'); // 'direct' | 'gateway'
@@ -825,6 +826,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
   const resetForm = () => {
     setStep(1);
+    setConnectionCategory(null);
     setSelectedType(null);
     setCustomDbType('postgres');
     setInputMode('fields');
@@ -867,7 +869,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
           <div>
             <h2 className="text-lg font-semibold">Connect Database</h2>
             <p className="text-sm text-muted-foreground">
-              {step === 1 ? 'Select your database type' : 'Enter connection details'}
+              {step === 1 ? 'Select connection flow' : step === 1.5 ? 'Select database technology' : 'Enter connection details'}
             </p>
           </div>
           <button 
@@ -887,31 +889,111 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="grid grid-cols-2 gap-3"
+                className="flex flex-col gap-3"
               >
-                {dbTypes.map(db => (
-                  <button
-                    key={db.id}
-                    onClick={() => {
-                      setSelectedType(db.id);
-                      setFormData(prev => ({ ...prev, port: db.port }));
-                      // Supabase → force connection-string mode
-                      if (db.id === 'supabase') {
-                        setInputMode('string');
-                        setConnectionMode('direct');
-                      }
-                      setStep(2);
-                    }}
-                    className="flex items-center gap-3 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                  >
-                    <span className="text-3xl">{db.icon}</span>
-                    <div className="text-left">
-                      <p className="font-medium text-foreground">{db.name}</p>
-                      <p className="text-xs text-muted-foreground">{db.id === 'supabase' ? 'Paste connection string' : 'Click to connect'}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                  </button>
-                ))}
+                {/* Option 1: Syspro DB */}
+                <button
+                  onClick={() => {
+                    setConnectionCategory('syspro');
+                    setSelectedType('mssql');
+                    setFormData(prev => ({ ...prev, name: prev.name || 'Syspro DB', port: '1433' }));
+                    setInputMode('fields');
+                    setStep(2);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                >
+                  <span className="text-3xl">🔷</span>
+                  <div className="text-left font-sans">
+                    <p className="font-semibold text-foreground text-sm">Syspro DB (Adapter)</p>
+                    <p className="text-[11px] text-muted-foreground">Connect using the Syspro ERP ontology and schema adapters</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                </button>
+
+                {/* Option 2: Helios */}
+                <button
+                  onClick={() => {
+                    setConnectionCategory('helios');
+                    setSelectedType('supabase');
+                    setFormData(prev => ({ ...prev, name: prev.name || 'Helios DB' }));
+                    setInputMode('string');
+                    setConnectionMode('direct');
+                    setStep(2);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                >
+                  <span className="text-3xl">⚡</span>
+                  <div className="text-left font-sans">
+                    <p className="font-semibold text-foreground text-sm">Helios DB (Adapter)</p>
+                    <p className="text-[11px] text-muted-foreground">Connect using the Helios ERP ontology (via Supabase PostgreSQL)</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                </button>
+
+                {/* Option 3: Own DB / Different DB */}
+                <button
+                  onClick={() => {
+                    setConnectionCategory('custom');
+                    setStep(1.5);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                >
+                  <span className="text-3xl">⚙️</span>
+                  <div className="text-left font-sans">
+                    <p className="font-semibold text-foreground text-sm">Own DB / Different DB</p>
+                    <p className="text-[11px] text-muted-foreground">Connect a custom database (PostgreSQL, MySQL, MongoDB, MSSQL, Oracle, etc.)</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                </button>
+              </motion.div>
+            )}
+
+            {step === 1.5 && (
+              <motion.div
+                key="step1.5"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-4"
+              >
+                {/* Back button */}
+                <button
+                  onClick={() => {
+                    setConnectionCategory(null);
+                    setStep(1);
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium mb-2"
+                >
+                  <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                  Back to connection options
+                </button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {dbTypes.map(db => (
+                    <button
+                      key={db.id}
+                      onClick={() => {
+                        setSelectedType(db.id);
+                        setFormData(prev => ({ ...prev, port: db.port, name: prev.name || `${db.name} Connection` }));
+                        if (db.id === 'supabase') {
+                          setInputMode('string');
+                          setConnectionMode('direct');
+                        } else {
+                          setInputMode('fields');
+                        }
+                        setStep(2);
+                      }}
+                      className="flex items-center gap-3 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                    >
+                      <span className="text-3xl">{db.icon}</span>
+                      <div className="text-left">
+                        <p className="font-medium text-foreground text-sm">{db.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{db.id === 'supabase' ? 'Paste connection string' : 'Click to connect'}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             )}
 
@@ -925,10 +1007,16 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
               >
                 {/* Back button */}
                 <button
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    if (connectionCategory === 'custom') {
+                      setStep(1.5);
+                    } else {
+                      setStep(1);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium mb-2"
                 >
-                  <ChevronRight className="w-4 h-4 rotate-180" />
+                  <ChevronRight className="w-3.5 h-3.5 rotate-180" />
                   Back to database selection
                 </button>
 

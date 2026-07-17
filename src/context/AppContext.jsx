@@ -24,8 +24,20 @@ function normaliseReport(r) {
 export function AppProvider({ children, user }) {
   // Database connections state
   const [connections, setConnections] = useState([]);
-  const [activeConnection, setActiveConnection] = useState(null);
+  const [activeConnection, setActiveConnection] = useState(
+    () => localStorage.getItem('repnex_active_conn') || null
+  );
   const [isLoadingConnections, setIsLoadingConnections] = useState(true);
+
+  // Derived: full active connection object
+  const activeConnectionObj = connections.find(c => c.id === activeConnection) || null;
+
+  // Persist + set active connection
+  const selectActiveConnection = useCallback((id) => {
+    setActiveConnection(id);
+    if (id) localStorage.setItem('repnex_active_conn', id);
+    else localStorage.removeItem('repnex_active_conn');
+  }, []);
 
   // Reports state
   const [reports, setReports] = useState([]);
@@ -72,10 +84,14 @@ export function AppProvider({ children, user }) {
         setReports(normReps);
         setPinnedReports(normReps.filter(r => r.isPinned));
 
-        // Set first connected database as active
-        const firstConnected = formatted.find(c => c.status === 'connected');
-        if (firstConnected) {
-          setActiveConnection(firstConnected.id);
+        // Restore saved active connection or default to first connected
+        const saved = localStorage.getItem('repnex_active_conn');
+        const savedValid = saved && formatted.find(c => c.id === saved);
+        if (savedValid) {
+          setActiveConnection(saved);
+        } else {
+          const firstConnected = formatted.find(c => c.status === 'connected');
+          if (firstConnected) selectActiveConnection(firstConnected.id);
         }
 
         // Run initial health check shortly after mount
@@ -154,20 +170,20 @@ export function AppProvider({ children, user }) {
     const formatted = formatConnection(newConn);
     setConnections(prev => [...prev, formatted]);
     if (!activeConnection) {
-      setActiveConnection(formatted.id);
+      selectActiveConnection(formatted.id);
     }
     addNotification('success', `Connected to ${connectionData.name}`);
     return formatted;
-  }, [activeConnection, formatConnection]);
+  }, [activeConnection, formatConnection, selectActiveConnection]);
 
   const removeConnection = useCallback(async (id) => {
     await databaseApi.deleteConnection(id);
     setConnections(prev => prev.filter(c => c.id !== id));
     if (activeConnection === id) {
-      setActiveConnection(null);
+      selectActiveConnection(null);
     }
     addNotification('info', 'Connection removed');
-  }, [activeConnection]);
+  }, [activeConnection, selectActiveConnection]);
 
   const testConnection = useCallback(async (connectionData) => {
     return await databaseApi.testConnection(connectionData);
@@ -362,7 +378,9 @@ export function AppProvider({ children, user }) {
     // Database state
     connections,
     activeConnection,
+    activeConnectionObj,
     setActiveConnection,
+    selectActiveConnection,
     isLoadingConnections,
     addConnection,
     removeConnection,

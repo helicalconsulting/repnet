@@ -45,7 +45,7 @@ function timeAgo(dateStr) {
 }
 
 export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDarkMode }) {
-  const { user } = useApp();
+  const { user, activeConnectionObj } = useApp();
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
   const [showHistory, setShowHistory] = useState(true);
   const [sessions, setSessions] = useState([]);
@@ -58,6 +58,17 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
 
   const isAdmin = user?.role === 'admin';
   const isViewer = user?.role === 'viewer';
+
+  const dbTypeIcons = {
+    postgres: "🐘",
+    supabase: "⚡",
+    mssql: "🔷",
+    mysql: "🐬",
+    oracle: "🔴",
+    cloudsql: "☁️",
+    mongodb: "🍃",
+    custom: "⚙️"
+  };
 
   const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -154,6 +165,33 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
               <PanelLeftClose className="w-[18px] h-[18px]" />
             </button>
           </div>
+          
+          {/* Active Connection Info Card */}
+          {activeConnectionObj && (
+            <motion.div 
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => navigate('/connections')}
+              className="mb-4 p-3 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/15 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-base shrink-0 select-none">
+                {dbTypeIcons[activeConnectionObj.type] || "🔌"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 justify-between">
+                  <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                    {activeConnectionObj.name}
+                  </span>
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 uppercase shrink-0 tracking-wider">
+                    Active
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {activeConnectionObj.database || 'No Database'} • {activeConnectionObj.tables || 0} tables
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           {/* New Chat Button */}
           {!isViewer && (

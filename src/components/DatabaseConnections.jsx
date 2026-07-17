@@ -40,19 +40,166 @@ const dbTypes = [
   { id: "custom", name: "Custom / Any DB", icon: "⚙️", color: "#6B7280", port: "5432" },
 ];
 
-function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, onDelete, isAdmin, isViewer }) {
+
+const SCHEMA_STEPS = [
+  { id: 'connect',  label: 'Connecting to database' },
+  { id: 'read',     label: 'Reading your schema' },
+  { id: 'map',      label: 'Mapping business concepts with AI' },
+  { id: 'index',    label: 'Indexing into semantic vector store' },
+  { id: 'done',     label: 'Ready — you can now query this database!' },
+];
+
+function SchemaReadingOverlay({ progress, onDone }) {
+  const stepIndex = (() => {
+    const p = (progress || '').toLowerCase();
+    if (p.includes('ready') || p.includes('success')) return 4;
+    if (p.includes('vector') || p.includes('uploading') || p.includes('pinecone')) return 3;
+    if (p.includes('mapping') || p.includes('deepseek') || p.includes('ai') || p.includes('ontology')) return 2;
+    if (p.includes('reading') || p.includes('schema') || p.includes('table')) return 1;
+    if (p.includes('connect') || p.includes('initial')) return 0;
+    return 0;
+  })();
+
+  const isDone = stepIndex === 4;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      className="absolute inset-0 z-20 rounded-2xl bg-[#0f0f0f]/95 backdrop-blur-md flex flex-col p-5 overflow-hidden"
+    >
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{ rotate: [0, 360] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+          className="absolute -inset-10 opacity-10"
+          style={{
+            background: 'conic-gradient(from 0deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6)',
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="relative">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+              <Database className="w-4 h-4 text-blue-400" />
+            </div>
+            {!isDone && (
+              <motion.div
+                animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="absolute inset-0 rounded-lg border border-blue-400"
+              />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">
+              {isDone ? '✅ Schema Ready!' : '⚡ Reading Your Schema...'}
+            </p>
+            <p className="text-[10px] text-white/40">
+              {isDone ? 'AI mapping complete — queries are now live' : 'AI is learning your database structure'}
+            </p>
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div className="flex-1 space-y-2.5">
+          {SCHEMA_STEPS.map((step, i) => {
+            const done = i < stepIndex;
+            const active = i === stepIndex && !isDone;
+            const pending = i > stepIndex;
+            return (
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-all ${
+                  done
+                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                    : active
+                    ? 'bg-blue-500/10 border-blue-500/30'
+                    : 'bg-white/[0.02] border-white/5'
+                }`}
+              >
+                {/* Status icon */}
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                  done ? 'bg-emerald-500' : active ? 'bg-blue-500/30 border border-blue-500/60' : 'bg-white/5 border border-white/10'
+                }`}>
+                  {done ? (
+                    <Check className="w-3 h-3 text-white" />
+                  ) : active ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Loader2 className="w-3 h-3 text-blue-400" />
+                    </motion.div>
+                  ) : (
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                  )}
+                </div>
+
+                {/* Step label */}
+                <span className={`text-xs font-medium ${
+                  done ? 'text-emerald-400' : active ? 'text-blue-300' : 'text-white/30'
+                }`}>
+                  {step.label}
+                </span>
+
+                {/* Active pulse line */}
+                {active && (
+                  <motion.div
+                    animate={{ scaleX: [0, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="ml-auto h-[2px] w-12 bg-gradient-to-r from-blue-500 to-transparent rounded-full origin-left"
+                  />
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Live progress text */}
+        <div className="mt-4 px-3 py-2 bg-white/[0.03] rounded-xl border border-white/5">
+          <p className="text-[10px] text-white/40 font-mono truncate">
+            {progress || 'Initializing...'}
+          </p>
+        </div>
+
+        {/* Done action */}
+        {isDone && (
+          <motion.button
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={onDone}
+            className="mt-3 w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            Start Querying →
+          </motion.button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, onDelete, isAdmin, isViewer, isActive, onActivate }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSchema, setShowSchema] = useState(false);
   const [isSyncingSchema, setIsSyncingSchema] = useState(false);
   const [isGeneratingAdapters, setIsGeneratingAdapters] = useState(false);
-  const [importProgress, setImportProgress] = useState("");
+  const [importProgress, setImportProgress] = useState('');
+  const [showOverlay, setShowOverlay] = useState(false);
 
   const { getTables, getTableColumns, getAdapterStatus } = useApp();
   
-  // Local schema explorer state
   const [tables, setTables] = useState([]);
   const [loadingTables, setLoadingTables] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [expandedTable, setExpandedTable] = useState(null);
   const [columnsMap, setColumnsMap] = useState({});
   const [loadingColumnsTable, setLoadingColumnsTable] = useState(null);
@@ -63,7 +210,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
       const data = await getTables(connection.id);
       setTables(data || []);
     } catch (err) {
-      console.error("Failed to load tables list:", err);
+      console.error('Failed to load tables list:', err);
     } finally {
       setLoadingTables(false);
     }
@@ -95,46 +242,38 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
 
   const handleGenerateAdapters = async () => {
     setIsGeneratingAdapters(true);
-    setImportProgress("Initializing connection...");
-    
-    // Poll the adapter status endpoint
+    setImportProgress('Initializing connection...');
+    setShowOverlay(true);
+
     const pollInterval = setInterval(async () => {
       try {
         const res = await getAdapterStatus(connection.id);
-        if (res && res.progress) {
-          setImportProgress(res.progress);
-        }
-      } catch (err) {
-        // Ignore status query errors to not block flow
-      }
+        if (res && res.progress) setImportProgress(res.progress);
+      } catch {}
     }, 1500);
 
     try {
       await onGenerateAdapters(connection.id);
+      setImportProgress('Ready — you can now query this database!');
     } catch (err) {
-      console.error("Adapter generation failed:", err);
+      console.error('Adapter generation failed:', err);
+      setShowOverlay(false);
     } finally {
       clearInterval(pollInterval);
       setIsGeneratingAdapters(false);
-      setImportProgress("");
     }
   };
 
   const handleTableClick = async (tableName) => {
-    if (expandedTable === tableName) {
-      setExpandedTable(null);
-      return;
-    }
-    
+    if (expandedTable === tableName) { setExpandedTable(null); return; }
     setExpandedTable(tableName);
-    
     if (!columnsMap[tableName]) {
       setLoadingColumnsTable(tableName);
       try {
         const cols = await getTableColumns(connection.id, tableName);
         setColumnsMap(prev => ({ ...prev, [tableName]: cols || [] }));
       } catch (err) {
-        console.error("Failed to load table columns:", err);
+        console.error('Failed to load table columns:', err);
       } finally {
         setLoadingColumnsTable(null);
       }
@@ -148,33 +287,63 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl p-5 hover:border-border dark:hover:border-white/10 transition-all group"
+      className={`relative bg-card dark:bg-[#1C1C1C] border rounded-2xl p-5 transition-all group overflow-hidden ${
+        isActive
+          ? 'border-blue-500/60 shadow-[0_0_0_1px_rgba(59,130,246,0.3),0_0_24px_rgba(59,130,246,0.12)]'
+          : 'border-border/50 dark:border-white/5 hover:border-border dark:hover:border-white/10'
+      }`}
     >
+      {/* Active glow strip */}
+      {isActive && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600 rounded-t-2xl" />
+      )}
+
+      {/* Schema reading overlay */}
+      <AnimatePresence>
+        {showOverlay && (
+          <SchemaReadingOverlay
+            progress={importProgress}
+            onDone={() => {
+              setShowOverlay(false);
+              onActivate(connection.id);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div 
+          <div
             className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
             style={{ backgroundColor: `${dbType?.color}15` }}
           >
             {dbType?.icon}
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">{connection.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground">{connection.name}</h3>
+              {isActive && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+                  <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" />
+                  Active
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">{dbType?.name} • {connection.database}</p>
           </div>
         </div>
         <div className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${
-          connection.status === 'connected' 
-             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-             : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+          connection.status === 'connected'
+            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
         }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${
-            connection.status === 'connected' ? 'bg-emerald-500' : 'bg-rose-500'
-          }`}></span>
+          <span className={`w-1.5 h-1.5 rounded-full ${connection.status === 'connected' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
           {connection.status === 'connected' ? 'Connected' : 'Disconnected'}
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-black/5 dark:bg-white/5 rounded-lg p-3">
           <p className="text-xs text-muted-foreground mb-1">Host</p>
@@ -190,6 +359,27 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
         </div>
       </div>
 
+      {/* Activate button (always visible) */}
+      {!isActive && (
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          onClick={() => onActivate(connection.id)}
+          className="w-full mb-3 py-2.5 rounded-xl border-2 border-dashed border-blue-500/30 text-blue-400 text-sm font-semibold hover:border-blue-500/60 hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2"
+        >
+          <Zap className="w-4 h-4" />
+          Use This Database
+        </motion.button>
+      )}
+
+      {isActive && (
+        <div className="w-full mb-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-semibold flex items-center justify-center gap-2">
+          <CheckCircle2 className="w-4 h-4" />
+          Active — Queries run on this DB
+        </div>
+      )}
+
+      {/* Actions */}
       {!isViewer && (
         <div className="flex flex-col gap-2 pt-3 border-t border-border/50 dark:border-white/5">
           <div className="flex items-center gap-2 w-full">
@@ -198,25 +388,17 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
               disabled={isSyncing}
               className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
-              {isSyncing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
+              {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               {isSyncing ? 'Syncing...' : 'Sync Now'}
             </button>
 
             <button
               onClick={handleGenerateAdapters}
               disabled={isGeneratingAdapters || connection.tables === 0}
-              title={connection.tables === 0 ? "Sync schema first to map concepts" : "Run AI ontology mapping & index adapters"}
+              title={connection.tables === 0 ? 'Sync schema first to map concepts' : 'Run AI ontology mapping & index adapters'}
               className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isGeneratingAdapters ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Zap className="w-4 h-4" />
-              )}
+              {isGeneratingAdapters ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
               {isGeneratingAdapters ? 'Importing...' : 'Import Schema (AI)'}
             </button>
 
@@ -225,15 +407,8 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
             </button>
           </div>
 
-          {isGeneratingAdapters && importProgress && (
-            <div className="w-full mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-3 py-1.5 rounded-lg flex items-center gap-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-              <span className="truncate">{importProgress}</span>
-            </div>
-          )}
-
           {isAdmin && (
-            <button 
+            <button
               onClick={() => onDelete(connection.id)}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-lg text-sm font-medium transition-colors"
             >
@@ -264,18 +439,14 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
               Open Explorer
             </Link>
           </div>
-          
+
           {showSchema && !isViewer && (
             <button
               onClick={handleSyncSchema}
               disabled={isSyncingSchema}
               className="flex items-center gap-1 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors disabled:opacity-50"
             >
-              {isSyncingSchema ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3 h-3" />
-              )}
+              {isSyncingSchema ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
               {isSyncingSchema ? 'Syncing...' : 'Sync Schema'}
             </button>
           )}
@@ -291,7 +462,6 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
             >
               {connection.tables > 0 ? (
                 <>
-                  {/* Search Bar */}
                   <input
                     type="text"
                     placeholder="Search tables..."
@@ -321,7 +491,6 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
                             const isExpanded = expandedTable === table.name;
                             const isLoadingColumns = loadingColumnsTable === table.name;
                             const cols = columnsMap[table.name] || [];
-
                             return (
                               <div key={table.name} className="bg-black/5 dark:bg-white/[0.02] border border-border/30 dark:border-white/5 rounded-xl p-2.5">
                                 <button
@@ -337,7 +506,6 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
                                     <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                   </div>
                                 </button>
-
                                 {isExpanded && (
                                   <div className="mt-2.5 pt-2.5 border-t border-border/10 dark:border-white/[0.03]">
                                     <SmartSkeleton loading={isLoadingColumns}>
@@ -384,11 +552,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
                       disabled={isSyncingSchema}
                       className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
-                      {isSyncingSchema ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      )}
+                      {isSyncingSchema ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                       Sync Database Schema
                     </button>
                   )}
@@ -401,6 +565,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
     </motion.div>
   );
 }
+
 
 function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [step, setStep] = useState(1);
@@ -1397,7 +1562,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 }
 
 export default function DatabaseConnections() {
-  const { connections, addConnection, removeConnection, syncConnection, syncSchema, generateAdapters, user, isLoadingConnections } = useApp();
+  const { connections, addConnection, removeConnection, syncConnection, syncSchema, generateAdapters, user, isLoadingConnections, activeConnection, selectActiveConnection } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
 
@@ -1525,6 +1690,8 @@ export default function DatabaseConnections() {
                      onDelete={removeConnection}
                      isAdmin={isAdmin}
                      isViewer={isViewer}
+                     isActive={activeConnection === connection.id}
+                     onActivate={selectActiveConnection}
                   />
                 ))}
               </AnimatePresence>

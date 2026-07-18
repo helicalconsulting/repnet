@@ -280,7 +280,7 @@ function SchemaReadingOverlay({ progress, onDone }) {
   );
 }
 
-function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, onDelete, isAdmin, isViewer, isActive, onActivate }) {
+function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, onDelete, isAdmin, isViewer, isActive, onActivate, isCollapsed, onToggleCollapse }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSchema, setShowSchema] = useState(false);
   const [isSyncingSchema, setIsSyncingSchema] = useState(false);
@@ -299,7 +299,6 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
   const [loadingColumnsTable, setLoadingColumnsTable] = useState(null);
 
   // New Collapsible and Configuration states
-  const [isCollapsed, setIsCollapsed] = useState(true);
   const [showAnalyzeConfig, setShowAnalyzeConfig] = useState(false);
   const [customHint, setCustomHint] = useState('');
   const [selectedTables, setSelectedTables] = useState([]);
@@ -618,7 +617,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
           </div>
 
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={onToggleCollapse}
             title={isCollapsed ? "Expand Details" : "Collapse Details"}
             className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-all duration-200"
           >
@@ -2049,6 +2048,7 @@ export default function DatabaseConnections() {
   const { connections, addConnection, removeConnection, syncConnection, syncSchema, generateAdapters, user, isLoadingConnections, activeConnection, selectActiveConnection } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
+  const [expandedConnectionId, setExpandedConnectionId] = useState(null);
 
   const isAdmin = user?.role === 'admin';
   const isViewer = user?.role === 'viewer';
@@ -2176,6 +2176,8 @@ export default function DatabaseConnections() {
                      isViewer={isViewer}
                      isActive={activeConnection === connection.id}
                      onActivate={selectActiveConnection}
+                     isCollapsed={expandedConnectionId !== connection.id}
+                     onToggleCollapse={() => setExpandedConnectionId(expandedConnectionId === connection.id ? null : connection.id)}
                   />
                 ))}
               </AnimatePresence>

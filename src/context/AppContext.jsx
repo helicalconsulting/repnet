@@ -262,8 +262,8 @@ export function AppProvider({ children, user }) {
     return await databaseApi.getTableColumns(id, tableName);
   }, []);
 
-  const generateAdapters = useCallback(async (id) => {
-    const res = await databaseApi.generateAdapters(id);
+  const generateAdapters = useCallback(async (id, payload = {}) => {
+    const res = await databaseApi.generateAdapters(id, payload);
     addNotification('success', 'Semantic mapping and adapters successfully generated!');
     return res;
   }, []);

@@ -415,8 +415,11 @@ export const databaseApi = {
   async syncSchema(id) {
     return request(`/connections/${id}/sync-schema`, { method: 'POST' });
   },
-  async generateAdapters(id) {
-    return request(`/connections/${id}/generate-adapters`, { method: 'POST' });
+  async generateAdapters(id, payload = {}) {
+    return request(`/connections/${id}/generate-adapters`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   },
   async getAdapterStatus(id) {
     return request(`/connections/${id}/adapter-status`);

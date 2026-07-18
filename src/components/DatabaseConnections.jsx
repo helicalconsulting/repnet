@@ -31,14 +31,13 @@ import { databaseApi } from "../services/api";
 
 const dbTypes = [
   { id: "postgres", name: "PostgreSQL", icon: "🐘", color: "#336791", port: "5432" },
-  { id: "supabase", name: "Supabase (Helios ERP)", icon: "⚡", color: "#3ECF8E", port: "5432", dialect: "postgres", hint: "postgresql://user:pass@db.xxx.supabase.co:5432/postgres" },
-  { id: "mssql", name: "SQL Server / Syspro", icon: "🔷", color: "#CC2927", port: "1433" },
+  { id: "mssql", name: "SQL Server", icon: "🔷", color: "#CC2927", port: "1433" },
   { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
   { id: "oracle", name: "Oracle", icon: "🔴", color: "#F80000", port: "1521" },
   { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
   { id: "mongodb", name: "MongoDB / NoSQL", icon: "🍃", color: "#47A248", port: "27017" },
-  { id: "custom", name: "Custom / Any DB", icon: "⚙️", color: "#6B7280", port: "5432" },
 ];
+
 
 
 const SCHEMA_STEPS = [
@@ -194,6 +193,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
   const [isGeneratingAdapters, setIsGeneratingAdapters] = useState(false);
   const [importProgress, setImportProgress] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
+  const [isAnalyzed, setIsAnalyzed] = useState(false);
 
   const { getTables, getTableColumns, getAdapterStatus } = useApp();
   
@@ -228,36 +228,41 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
     const checkJobStatus = async () => {
       try {
         const res = await getAdapterStatus(connection.id);
-        if (res && res.status === 'running') {
-          setIsGeneratingAdapters(true);
-          setShowOverlay(true);
-          setImportProgress(res.progress || 'Processing schema...');
+        if (res) {
+          if (res.status === 'success') {
+            setIsAnalyzed(true);
+          } else if (res.status === 'running') {
+            setIsGeneratingAdapters(true);
+            setShowOverlay(true);
+            setImportProgress(res.progress || 'Processing schema...');
 
-          // Start polling
-          activePoll = setInterval(async () => {
-            try {
-              const currentRes = await getAdapterStatus(connection.id);
-              if (currentRes) {
-                if (currentRes.status === 'running') {
-                  setImportProgress(currentRes.progress || 'Processing schema...');
-                } else if (currentRes.status === 'success') {
-                  setImportProgress('Ready — you can now query this database!');
-                  setTimeout(() => {
+            // Start polling
+            activePoll = setInterval(async () => {
+              try {
+                const currentRes = await getAdapterStatus(connection.id);
+                if (currentRes) {
+                  if (currentRes.status === 'running') {
+                    setImportProgress(currentRes.progress || 'Processing schema...');
+                  } else if (currentRes.status === 'success') {
+                    setImportProgress('Ready — you can now query this database!');
+                    setIsAnalyzed(true);
+                    setTimeout(() => {
+                      setShowOverlay(false);
+                      setIsGeneratingAdapters(false);
+                    }, 2000);
+                    clearInterval(activePoll);
+                  } else {
+                    // failed
                     setShowOverlay(false);
                     setIsGeneratingAdapters(false);
-                  }, 2000);
-                  clearInterval(activePoll);
-                } else {
-                  // failed
-                  setShowOverlay(false);
-                  setIsGeneratingAdapters(false);
-                  clearInterval(activePoll);
+                    clearInterval(activePoll);
+                  }
                 }
+              } catch (err) {
+                clearInterval(activePoll);
               }
-            } catch (err) {
-              clearInterval(activePoll);
-            }
-          }, 1500);
+            }, 1500);
+          }
         }
       } catch (err) {
         console.error("Error checking initial job status:", err);
@@ -304,6 +309,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
     try {
       await onGenerateAdapters(connection.id);
       setImportProgress('Ready — you can now query this database!');
+      setIsAnalyzed(true);
       setTimeout(() => {
         setShowOverlay(false);
       }, 2000);
@@ -332,7 +338,7 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
     }
   };
 
-  const dbType = dbTypes.find(d => d.id === connection.type);
+  const dbType = dbTypes.find(d => d.id === connection.type) || { id: connection.type, name: connection.type, icon: "⚙️", color: "#6B7280", port: "5432" };
 
   return (
     <motion.div
@@ -444,15 +450,26 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
               {isSyncing ? 'Syncing...' : 'Sync Now'}
             </button>
 
-            <button
-              onClick={handleGenerateAdapters}
-              disabled={isGeneratingAdapters || connection.tables === 0}
-              title={connection.tables === 0 ? 'Sync schema first to map concepts' : 'Run AI ontology mapping & index adapters'}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isGeneratingAdapters ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-              {isGeneratingAdapters ? 'Importing...' : 'Import Schema (AI)'}
-            </button>
+            {isAnalyzed ? (
+              <button
+                disabled={true}
+                title="Database schema has already been analyzed and indexed"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium cursor-default opacity-90 animate-fade-in"
+              >
+                <Check className="w-4 h-4 text-emerald-500" />
+                Analyzed (AI)
+              </button>
+            ) : (
+              <button
+                onClick={handleGenerateAdapters}
+                disabled={isGeneratingAdapters || connection.tables === 0}
+                title={connection.tables === 0 ? 'Sync schema first to map concepts' : 'Run AI mapping & index database'}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isGeneratingAdapters ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                {isGeneratingAdapters ? 'Importing...' : 'Import Schema (AI)'}
+              </button>
+            )}
 
             <button className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0">
               <ExternalLink className="w-4 h-4" />
@@ -625,7 +642,6 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [selectedType, setSelectedType] = useState(null);
   const [inputMode, setInputMode] = useState('fields'); // 'fields' | 'string'
   const [connectionMode, setConnectionMode] = useState('direct'); // 'direct' | 'gateway'
-  const [customDbType, setCustomDbType] = useState('postgres');
   const [agentName, setAgentName] = useState('my-laptop');
   const [localDbHost, setLocalDbHost] = useState('localhost');
   const [localDbPort, setLocalDbPort] = useState('');
@@ -633,6 +649,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [localDbPassword, setLocalDbPassword] = useState('');
   const [copied, setCopied] = useState(false);
   const [agentToken, setAgentToken] = useState('');
+  const [sslEnabled, setSslEnabled] = useState(false);
 
   useEffect(() => {
     if (isOpen && connectionMode === 'gateway' && !agentToken) {
@@ -659,17 +676,52 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     connectionString: '',
   });
 
-  const customPorts = {
-    postgres: '5432',
-    mysql: '3306',
-    mssql: '1433',
-    oracle: '1521',
-    mongodb: '27017',
+  const getFilteredDbTypes = () => {
+    if (connectionCategory === 'syspro') {
+      return [
+        { id: "mssql", name: "SQL Server", icon: "🔷", color: "#CC2927", port: "1433" },
+        { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
+      ];
+    } else if (connectionCategory === 'helios') {
+      return [
+        { id: "postgres", name: "PostgreSQL", icon: "🐘", color: "#336791", port: "5432" },
+      ];
+    } else {
+      return [
+        { id: "postgres", name: "PostgreSQL", icon: "🐘", color: "#336791", port: "5432" },
+        { id: "mssql", name: "SQL Server", icon: "🔷", color: "#CC2927", port: "1433" },
+        { id: "mysql", name: "MySQL", icon: "🐬", color: "#4479A1", port: "3306" },
+        { id: "oracle", name: "Oracle", icon: "🔴", color: "#F80000", port: "1521" },
+        { id: "cloudsql", name: "Cloud SQL", icon: "☁️", color: "#4285F4", port: "5432" },
+        { id: "mongodb", name: "MongoDB / NoSQL", icon: "🍃", color: "#47A248", port: "27017" },
+      ];
+    }
   };
 
-  const handleCustomDbTypeChange = (newType) => {
-    setCustomDbType(newType);
-    setFormData(prev => ({ ...prev, port: customPorts[newType] || '5432' }));
+  const handleDbSelect = (db) => {
+    setSelectedType(db.id);
+    let defaultName = '';
+    if (connectionCategory === 'syspro') {
+      defaultName = `Syspro ERP (${db.name})`;
+    } else if (connectionCategory === 'helios') {
+      defaultName = `Helios ERP (${db.name})`;
+    } else {
+      defaultName = `${db.name} Connection`;
+    }
+    setFormData(prev => ({ 
+      ...prev, 
+      port: db.port, 
+      name: prev.name || defaultName 
+    }));
+    
+    if (connectionCategory === 'helios' && db.id === 'postgres') {
+      setSslEnabled(true);
+    } else {
+      setSslEnabled(false);
+    }
+    
+    setInputMode('fields');
+    setStep(2);
   };
 
   const [isTesting, setIsTesting] = useState(false);
@@ -707,8 +759,8 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setAvailableDbs([]);
     setFormData(prev => ({ ...prev, database: '' }));
     setTestResult(null);
-    const resolvedType = selectedType === 'custom' ? customDbType : (selectedType === 'supabase' ? 'postgres' : selectedType);
-    const resolvedPort = parseInt(selectedType === 'custom' ? customPorts[customDbType] : defaultPorts[selectedType]);
+    const resolvedType = selectedType;
+    const resolvedPort = parseInt(formData.port || defaultPorts[selectedType] || '0');
     try {
       const dbs = await listDatabases({
         db_type: resolvedType,
@@ -716,6 +768,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         port: parseInt(formData.port) || resolvedPort || 0,
         username: formData.username,
         password: formData.password,
+        ssl_enabled: sslEnabled,
       });
       setAvailableDbs(dbs);
       if (dbs.length === 1) {
@@ -732,8 +785,8 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setIsTesting(true);
     setTestResult(null);
     
-    const resolvedType = selectedType === 'custom' ? customDbType : (selectedType === 'supabase' ? 'postgres' : selectedType);
-    const resolvedPort = parseInt(selectedType === 'custom' ? customPorts[customDbType] : defaultPorts[selectedType]);
+    const resolvedType = selectedType;
+    const resolvedPort = parseInt(formData.port || defaultPorts[selectedType] || '0');
 
     let payload;
     if (connectionMode === 'gateway') {
@@ -745,7 +798,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         db_name: formData.database,
         username: 'agent',
         password: 'agent',
-        ssl_enabled: false,
+        ssl_enabled: sslEnabled,
       };
     } else if (inputMode === 'string') {
       payload = {
@@ -757,7 +810,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         db_name: '',
         username: '',
         password: '',
-        ssl_enabled: selectedType === 'supabase',
+        ssl_enabled: sslEnabled,
       };
     } else {
       payload = {
@@ -768,7 +821,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         db_name: formData.database,
         username: formData.username,
         password: formData.password,
-        ssl_enabled: false,
+        ssl_enabled: sslEnabled,
       };
     }
     const result = await testConnection(payload);
@@ -779,8 +832,8 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const handleAdd = async () => {
     setIsAdding(true);
     
-    const resolvedType = selectedType === 'custom' ? customDbType : (selectedType === 'supabase' ? 'postgres' : selectedType);
-    const resolvedPort = parseInt(selectedType === 'custom' ? customPorts[customDbType] : defaultPorts[selectedType]);
+    const resolvedType = selectedType;
+    const resolvedPort = parseInt(formData.port || defaultPorts[selectedType] || '0');
 
     let payload;
     if (connectionMode === 'gateway') {
@@ -792,7 +845,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         db_name: formData.database,
         username: 'agent',
         password: 'agent',
-        ssl_enabled: false,
+        ssl_enabled: sslEnabled,
       };
     } else if (inputMode === 'string') {
       payload = {
@@ -804,7 +857,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         db_name: '',
         username: '',
         password: '',
-        ssl_enabled: selectedType === 'supabase',
+        ssl_enabled: sslEnabled,
       };
     } else {
       payload = {
@@ -815,7 +868,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         db_name: formData.database,
         username: formData.username,
         password: formData.password,
-        ssl_enabled: false,
+        ssl_enabled: sslEnabled,
       };
     }
     await onAdd(payload);
@@ -828,7 +881,6 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setStep(1);
     setConnectionCategory(null);
     setSelectedType(null);
-    setCustomDbType('postgres');
     setInputMode('fields');
     setConnectionMode('direct');
     setAgentName('my-laptop');
@@ -838,6 +890,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
     setLocalDbPassword('');
     setCopied(false);
     setAgentToken('');
+    setSslEnabled(false);
     setFormData({ name: '', host: '', port: '', database: '', username: '', password: '', connectionString: '' });
     setTestResult(null);
     setAvailableDbs([]);
@@ -846,6 +899,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
   const defaultPorts = {};
   dbTypes.forEach(d => { defaultPorts[d.id] = d.port; });
+
 
   if (!isOpen) return null;
 
@@ -891,46 +945,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 exit={{ opacity: 0, x: 20 }}
                 className="flex flex-col gap-3"
               >
-                {/* Option 1: Syspro DB */}
-                <button
-                  onClick={() => {
-                    setConnectionCategory('syspro');
-                    setSelectedType('mssql');
-                    setFormData(prev => ({ ...prev, name: prev.name || 'Syspro DB', port: '1433' }));
-                    setInputMode('fields');
-                    setStep(2);
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                >
-                  <span className="text-3xl">🔷</span>
-                  <div className="text-left font-sans">
-                    <p className="font-semibold text-foreground text-sm">Syspro DB (Adapter)</p>
-                    <p className="text-[11px] text-muted-foreground">Connect using the Syspro ERP ontology and schema adapters</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </button>
-
-                {/* Option 2: Helios */}
-                <button
-                  onClick={() => {
-                    setConnectionCategory('helios');
-                    setSelectedType('supabase');
-                    setFormData(prev => ({ ...prev, name: prev.name || 'Helios DB' }));
-                    setInputMode('string');
-                    setConnectionMode('direct');
-                    setStep(2);
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                >
-                  <span className="text-3xl">⚡</span>
-                  <div className="text-left font-sans">
-                    <p className="font-semibold text-foreground text-sm">Helios DB (Adapter)</p>
-                    <p className="text-[11px] text-muted-foreground">Connect using the Helios ERP ontology (via Supabase PostgreSQL)</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </button>
-
-                {/* Option 3: Own DB / Different DB */}
+                {/* Option 1: Own DB */}
                 <button
                   onClick={() => {
                     setConnectionCategory('custom');
@@ -940,8 +955,48 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 >
                   <span className="text-3xl">⚙️</span>
                   <div className="text-left font-sans">
-                    <p className="font-semibold text-foreground text-sm">Own DB / Different DB</p>
-                    <p className="text-[11px] text-muted-foreground">Connect a custom database (PostgreSQL, MySQL, MongoDB, MSSQL, Oracle, etc.)</p>
+                    <p className="font-semibold text-foreground text-sm">Own DB</p>
+                    <p className="text-[11px] text-muted-foreground">Connect a custom database (PostgreSQL, MySQL, SQL Server, MongoDB, Oracle, Cloud SQL)</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                </button>
+
+                {/* Option 2: Syspro ERP */}
+                <button
+                  onClick={() => {
+                    setConnectionCategory('syspro');
+                    setSelectedType('mssql');
+                    setFormData(prev => ({ ...prev, name: 'Syspro ERP (SQL Server)', port: '1433' }));
+                    setSslEnabled(false);
+                    setInputMode('fields');
+                    setStep(2);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                >
+                  <span className="text-3xl">🔷</span>
+                  <div className="text-left font-sans">
+                    <p className="font-semibold text-foreground text-sm">Syspro ERP</p>
+                    <p className="text-[11px] text-muted-foreground">Connect your Syspro ERP database and automatically map business concepts</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                </button>
+
+                {/* Option 3: Helios ERP */}
+                <button
+                  onClick={() => {
+                    setConnectionCategory('helios');
+                    setSelectedType('postgres');
+                    setFormData(prev => ({ ...prev, name: 'Helios ERP (PostgreSQL)', port: '5432' }));
+                    setSslEnabled(true);
+                    setInputMode('fields');
+                    setStep(2);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
+                >
+                  <span className="text-3xl">⚡</span>
+                  <div className="text-left font-sans">
+                    <p className="font-semibold text-foreground text-sm">Helios ERP</p>
+                    <p className="text-[11px] text-muted-foreground">Connect your Helios ERP database (via Supabase PostgreSQL)</p>
                   </div>
                   <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                 </button>
@@ -969,26 +1024,16 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 </button>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {dbTypes.map(db => (
+                  {getFilteredDbTypes().map(db => (
                     <button
                       key={db.id}
-                      onClick={() => {
-                        setSelectedType(db.id);
-                        setFormData(prev => ({ ...prev, port: db.port, name: prev.name || `${db.name} Connection` }));
-                        if (db.id === 'supabase') {
-                          setInputMode('string');
-                          setConnectionMode('direct');
-                        } else {
-                          setInputMode('fields');
-                        }
-                        setStep(2);
-                      }}
+                      onClick={() => handleDbSelect(db)}
                       className="flex items-center gap-3 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
                     >
                       <span className="text-3xl">{db.icon}</span>
                       <div className="text-left">
                         <p className="font-medium text-foreground text-sm">{db.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{db.id === 'supabase' ? 'Paste connection string' : 'Click to connect'}</p>
+                        <p className="text-[10px] text-muted-foreground">Click to connect</p>
                       </div>
                       <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </button>
@@ -1021,26 +1066,88 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 </button>
 
                 <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl">
-                  <span className="text-2xl">{dbTypes.find(d => d.id === selectedType)?.icon}</span>
+                  <span className="text-2xl">
+                    {connectionCategory === 'syspro' 
+                      ? (selectedType === 'mysql' ? '🐬' : '🔷') 
+                      : connectionCategory === 'helios' ? '⚡' : (dbTypes.find(d => d.id === selectedType)?.icon || '⚙️')}
+                  </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">{dbTypes.find(d => d.id === selectedType)?.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedType === 'supabase' ? 'Paste your Supabase PostgreSQL connection string below' : 'Enter your connection details below'}</p>
+                    <p className="font-medium">
+                      {connectionCategory === 'syspro' 
+                        ? `Syspro ERP (${selectedType === 'mysql' ? 'MySQL' : 'SQL Server'})` 
+                        : connectionCategory === 'helios' ? 'Helios ERP' : (dbTypes.find(d => d.id === selectedType)?.name || 'Custom Database')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {connectionCategory === 'syspro' 
+                        ? `Configure connection for Syspro ERP on ${selectedType === 'mysql' ? 'MySQL' : 'SQL Server'}`
+                        : connectionCategory === 'helios'
+                        ? 'Configure connection for Helios ERP on PostgreSQL'
+                        : `Enter connection details for your ${dbTypes.find(d => d.id === selectedType)?.name || 'database'}`
+                      }
+                    </p>
                   </div>
-                  {selectedType === 'supabase' && (
+                  {connectionCategory === 'syspro' && (
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20">Syspro ERP</span>
+                  )}
+                  {connectionCategory === 'helios' && (
                     <span className="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">Helios ERP</span>
                   )}
                 </div>
 
-                {/* Supabase info banner */}
-                {selectedType === 'supabase' && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-400">
-                    <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span>Use the PostgreSQL connection string from your Supabase project dashboard. Format: <code className="font-mono bg-black/10 dark:bg-white/10 px-1 rounded">postgresql://postgres:[PASSWORD]@db.[ID].supabase.co:5432/postgres</code></span>
+                {/* Syspro database selector inside Step 2 */}
+                {connectionCategory === 'syspro' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground/80 block uppercase tracking-wider">Database Technology</label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedType('mssql');
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            port: '1433', 
+                            name: prev.name.startsWith('Syspro ERP') || !prev.name ? 'Syspro ERP (SQL Server)' : prev.name 
+                          }));
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                          selectedType === 'mssql'
+                            ? 'border-blue-500/60 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                            : 'border-border/50 dark:border-white/5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground'
+                        }`}
+                      >
+                        <span>🔷</span> SQL Server (MSSQL)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedType('mysql');
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            port: '3306', 
+                            name: prev.name.startsWith('Syspro ERP') || !prev.name ? 'Syspro ERP (MySQL)' : prev.name 
+                          }));
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                          selectedType === 'mysql'
+                            ? 'border-blue-500/60 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                            : 'border-border/50 dark:border-white/5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground'
+                        }`}
+                      >
+                        <span>🐬</span> MySQL
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* Connection Mode toggle — hide for Supabase (always direct) */}
-                {selectedType !== 'supabase' && (
+                {/* Helios info banner */}
+                {connectionCategory === 'helios' && selectedType === 'postgres' && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-400">
+                    <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>Use the PostgreSQL connection details or connection string from your Helios database dashboard.</span>
+                  </div>
+                )}
+
+                {/* Connection Mode toggle */}
                 <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-sm">
                   <button
                     type="button"
@@ -1082,10 +1189,9 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                     Secure Gateway
                   </button>
                 </div>
-                )}
 
-                {/* Sub-mode toggle for Direct Mode — hide for Supabase (always string) */}
-                {connectionMode === 'direct' && selectedType !== 'supabase' && (
+                {/* Sub-mode toggle for Direct Mode */}
+                {connectionMode === 'direct' && (
                   <div className="flex rounded-xl overflow-hidden border border-border/50 dark:border-white/10 text-xs w-fit">
                     <button
                       type="button"
@@ -1112,23 +1218,22 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                   </div>
                 )}
 
-                {/* Database Engine (shown only for Custom selection) */}
-                {selectedType === 'custom' && (
-                  <div>
-                    <label className="text-sm font-medium text-foreground/80 mb-1.5 block">Database Engine</label>
-                    <select
-                      value={customDbType}
-                      onChange={e => handleCustomDbTypeChange(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-transparent focus:border-primary/50 outline-none transition-colors text-foreground dark:text-white dark:bg-[#1C1C1C]"
-                    >
-                      <option value="postgres">PostgreSQL</option>
-                      <option value="mysql">MySQL</option>
-                      <option value="mssql">SQL Server / Syspro</option>
-                      <option value="oracle">Oracle</option>
-                      <option value="mongodb">MongoDB / NoSQL</option>
-                    </select>
+                {/* SSL Option */}
+                {['postgres', 'mssql', 'mysql', 'cloudsql'].includes(selectedType) && (
+                  <div className="flex items-center gap-2 p-3 bg-black/5 dark:bg-white/5 rounded-xl">
+                    <input
+                      type="checkbox"
+                      id="sslEnabledCheckbox"
+                      checked={sslEnabled}
+                      onChange={e => setSslEnabled(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label htmlFor="sslEnabledCheckbox" className="text-xs font-medium text-foreground/85 cursor-pointer select-none">
+                      Enable SSL / Secure Connection
+                    </label>
                   </div>
                 )}
+
 
                 {/* Connection Name (always shown) */}
                 <div>

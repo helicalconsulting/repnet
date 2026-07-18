@@ -34,65 +34,74 @@ function DatabaseIcon({ type, className = "w-6 h-6" }) {
   
   if (normType === 'postgres' || normType === 'supabase') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="24" height="24" rx="6" fill="#336791" />
-        <path d="M17.1 11.2c-.3-.4-.7-.8-1.2-1-1.3-.6-3-.2-3.8.8-.4.5-.5 1.2-.4 1.8-.7.2-1.3.6-1.7 1.2-.5-.1-1-.1-1.5 0-.4-.6-1-1-1.7-1.2.1-.6 0-1.3-.4-1.8-.8-1-2.5-1.4-3.8-.8-.5.2-.9.6-1.2 1-.7.9-.9 2-.7 3.1.2.9.7 1.7 1.4 2.2-.2.5-.2 1.1-.1 1.6.4 1.7 1.7 3 3.4 3.2.7.1 1.4 0 2-.2.6.2 1.3.3 2 .2 1.7-.2 3-1.5 3.4-3.2.1-.5.1-1.1-.1-1.6.7-.5 1.2-1.3 1.4-2.2.2-1.1 0-2.2-.7-3.1z" fill="#FFFFFF"/>
-        <circle cx="12" cy="11.5" r="0.8" fill="#336791"/>
-      </svg>
+      <img 
+        src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" 
+        alt="PostgreSQL" 
+        className={`${className} object-contain`} 
+      />
     );
   }
   
-  if (normType === 'mssql' || normType === 'syspro') {
+  if (normType === 'mssql') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="24" height="24" rx="6" fill="#CC2927" />
-        <path d="M17 7.5c0 1.38-2.24 2.5-5 2.5S7 8.88 7 7.5 9.24 5 12 5s5 1.12 5 2.5z" fill="#FFFFFF"/>
-        <path d="M17 11.5c0 1.38-2.24 2.5-5 2.5S7 12.62 7 11.25V7.5c0 1.38 2.24 2.5 5 2.5s5-1.12 5-2.5v4z" fill="#FFFFFF" fillOpacity="0.75"/>
-        <path d="M17 15.5c0 1.38-2.24 2.5-5 2.5S7 16.62 7 15.25V11.5c0 1.38 2.24 2.5 5 2.5s5-1.12 5-2.5v4z" fill="#FFFFFF" fillOpacity="0.5"/>
-      </svg>
+      <img 
+        src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/microsoftsqlserver/microsoftsqlserver-original.svg" 
+        alt="SQL Server" 
+        className={`${className} object-contain`} 
+      />
     );
   }
   
   if (normType === 'mysql') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="24" height="24" rx="6" fill="#00758F" />
-        <path d="M17.5 13.5c-.3 1.7-1.5 3.1-3.1 3.7-1.2.5-2.6.4-3.7-.2-.2-.1-.3-.2-.5-.4-.4-.5-.6-1.1-.6-1.7v-2.3c0-.6.4-1.1.9-1.3.6-.2 1.3 0 1.6.5l1.1 1.7c.3.5.9.8 1.5.8.9 0 1.7-.7 1.7-1.7v-.6c0-.9-.7-1.7-1.7-1.7h-3.6c-.6 0-1.1-.4-1.3-.9-.2-.6 0-1.3.5-1.6L16 6.3c.5-.3.9-.8 1.1-1.3.3-1 .2-2.1-.4-3-.6-.8-1.5-1.3-2.5-1.4H13c-.9 0-1.7.7-1.7 1.7v4.6c0 .9-.7 1.7-1.7 1.7H7.7c-.9 0-1.7.7-1.7 1.7v4.6c0 1.2.5 2.3 1.4 3.1l4 3.3c.6.5 1.4.8 2.2.8h1.4c2.8 0 5.2-2 5.7-4.8.1-.4.1-.9.1-1.3V14c-.1-.2-.2-.4-.3-.5z" fill="#FFFFFF" />
-        <circle cx="14" cy="10" r="0.5" fill="#F29111"/>
-      </svg>
+      <img 
+        src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mysql/mysql-original.svg" 
+        alt="MySQL" 
+        className={`${className} object-contain`} 
+      />
     );
   }
   
   if (normType === 'mongodb') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="24" height="24" rx="6" fill="#47A248" />
-        <path d="M12 5C12 5 8.5 8.15 8.5 11.65c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5C15.5 8.15 12 5 12 5z" fill="#FFFFFF"/>
-        <path d="M12 5v10.15c1.23-.56 2.1-1.75 2.1-3.15 0-2.45-2.1-5.25-2.1-5.25z" fill="#E8F5E9"/>
-        <path d="M12 15.5v3" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
+      <img 
+        src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/mongodb/mongodb-original.svg" 
+        alt="MongoDB" 
+        className={`${className} object-contain`} 
+      />
     );
   }
   
   if (normType === 'oracle') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="24" height="24" rx="6" fill="#ea1c24" />
-        <ellipse cx="12" cy="12" rx="6" ry="4" stroke="#FFFFFF" strokeWidth="2.5" fill="none"/>
-      </svg>
+      <img 
+        src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/oracle/oracle-original.svg" 
+        alt="Oracle" 
+        className={`${className} object-contain`} 
+      />
     );
   }
 
   if (normType === 'cloudsql') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="24" height="24" rx="6" fill="#4285F4" />
-        <path d="M17.5 11.5c0-1.93-1.57-3.5-3.5-3.5-.28 0-.55.04-.81.11A4.5 4.5 0 0 0 9 6.5C6.79 6.5 5 8.29 5 10.5c0 .28.03.55.08.81A3.5 3.5 0 0 0 3 14.5c0 1.93 1.57 3.5 3.5 3.5h11c1.93 0 3.5-1.57 3.5-3.5 0-1.84-1.42-3.34-3.5-3.5z" fill="#FFFFFF" fillOpacity="0.4"/>
-        <path d="M13 14.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5v-2c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v2z" fill="#FFFFFF" />
-      </svg>
+      <img 
+        src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/googlecloud/googlecloud-original.svg" 
+        alt="Cloud SQL" 
+        className={`${className} object-contain`} 
+      />
     );
   }
   
+  if (normType === 'syspro') {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="6" fill="#00539C" />
+        <path d="M7 10C7 7.79086 8.79086 6 11 6H13C15.2091 6 17 7.79086 17 10V14C17 16.2091 15.2091 18 13 18H11C8.79086 18 7 16.2091 7 14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round"/>
+        <path d="M7 12H17" stroke="#FFFFFF" strokeWidth="2.5"/>
+      </svg>
+    );
+  }
+
   if (normType === 'helios') {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">

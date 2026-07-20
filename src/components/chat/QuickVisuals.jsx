@@ -129,7 +129,11 @@ export function QuickVisuals({ msg, initialTab }) {
                         <td key={ci} className={`px-3 py-2 font-mono ${tableCellColor}`}>
                           {typeof row[col] === 'number'
                             ? row[col].toLocaleString()
-                            : String(row[col] ?? '')}
+                            : (row[col] !== null && typeof row[col] === 'object'
+                                ? (row[col].type === 'Point' && Array.isArray(row[col].coordinates)
+                                    ? `Point(${row[col].coordinates.join(', ')})`
+                                    : JSON.stringify(row[col]))
+                                : String(row[col] ?? ''))}
                         </td>
                       ))}
                   </tr>

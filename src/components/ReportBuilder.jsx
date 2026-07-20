@@ -137,7 +137,13 @@ function SortableRow({ rowId, row, columns }) {
             ) : typeof value === 'number' ? (
               value.toLocaleString()
             ) : (
-              <span className="font-medium truncate block max-w-[140px] sm:max-w-[200px]">{value}</span>
+              <span className="font-medium truncate block max-w-[140px] sm:max-w-[200px]">
+                {value !== null && typeof value === 'object'
+                  ? (value.type === 'Point' && Array.isArray(value.coordinates)
+                      ? `Point(${value.coordinates.join(', ')})`
+                      : JSON.stringify(value))
+                  : String(value ?? '')}
+              </span>
             )}
           </td>
         );

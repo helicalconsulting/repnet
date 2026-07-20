@@ -10,7 +10,7 @@
  *     never hits a 401 during normal usage.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://repnex-production.up.railway.app/v1';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.helical.consulting/v1';
 
 const REFRESH_KEY = 'repnex-refresh-token';
 // Access token lives only in memory — not localStorage — for XSS safety.

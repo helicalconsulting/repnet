@@ -87,7 +87,11 @@ function DataPreview({ rows }) {
                   className="px-3 py-2 text-foreground whitespace-nowrap max-w-[180px] truncate"
                   title={String(row[h] ?? "")}
                 >
-                  {row[h] ?? <span className="text-muted-foreground/40 italic">null</span>}
+                  {row[h] !== null && typeof row[h] === 'object'
+                    ? (row[h].type === 'Point' && Array.isArray(row[h].coordinates)
+                        ? `Point(${row[h].coordinates.join(', ')})`
+                        : JSON.stringify(row[h]))
+                    : (row[h] ?? <span className="text-muted-foreground/40 italic">null</span>)}
                 </td>
               ))}
             </tr>

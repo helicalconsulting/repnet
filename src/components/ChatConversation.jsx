@@ -255,7 +255,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const isViewer = user?.role === 'viewer';
 
   const getWsServerUrl = () => {
-    const apiBase = import.meta.env.VITE_API_BASE || 'https://repnex-production.up.railway.app/v1';
+    const apiBase = import.meta.env.VITE_API_BASE || 'https://api.helical.consulting/v1';
     let wsBase = apiBase.replace(/\/v1\/?$/, '');
     wsBase = wsBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
     return wsBase;

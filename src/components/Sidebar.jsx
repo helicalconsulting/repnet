@@ -26,14 +26,28 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { sessionsApi } from "../services/api";
 import { useApp } from "../context/AppContext";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", path: "/dashboard" },
-  { icon: MessageSquare, label: "AI Chat", id: "chat", path: "/chat" },
-  { icon: Database, label: "Connections", id: "connections", path: "/connections" },
-
-  { icon: BarChart3, label: "Reports", id: "reports", path: "/report" },
-  { icon: Bookmark, label: "Saved Views", id: "saved", path: "/saved" },
-  { icon: Settings, label: "Settings", id: "settings", path: "/settings" },
+const navSections = [
+  {
+    label: "PLATFORM MENU",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", id: "dashboard", path: "/dashboard" },
+      { icon: MessageSquare, label: "AI Chat", id: "chat", path: "/chat" },
+      { icon: Database, label: "Connections", id: "connections", path: "/connections" },
+    ]
+  },
+  {
+    label: "ANALYTICS",
+    items: [
+      { icon: BarChart3, label: "Reports", id: "reports", path: "/report" },
+      { icon: Bookmark, label: "Saved Views", id: "saved", path: "/saved" },
+    ]
+  },
+  {
+    label: "PREFERENCES",
+    items: [
+      { icon: Settings, label: "Settings", id: "settings", path: "/settings" },
+    ]
+  }
 ];
 
 function timeAgo(dateStr) {
@@ -203,54 +217,56 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
 
           {/* Navigation */}
           <nav className="flex-1 space-y-5 overflow-y-auto custom-scrollbar">
-            <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-2">
-                PLATFORM MENU
-              </p>
-              <div className="space-y-0.5">
-                {navItems
-                  .filter((item) => {
-                    if (item.id === 'connections' && !isAdmin) return false;
-                    if (item.id === 'chat' && isViewer) return false;
-                    return true;
-                  })
-                  .map((item) => {
-                    const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path + '/'));
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          navigate(item.path);
-                          if (item.id === 'chat') {
-                            window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-                          }
-                        }}
-                        className={clsx(
-                          "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-sm relative",
-                          isActive
-                            ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
-                            : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-                        )}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="active-navLine"
-                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
-                            initial={false}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          />
-                        )}
-                        <Icon className={clsx("w-4 h-4 flex-shrink-0 relative z-10", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                        <span className={clsx("relative z-10", isActive ? "font-semibold text-foreground" : "font-medium")}>
-                          {item.label}
-                        </span>
-                        {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-foreground relative z-10" />}
-                      </button>
-                    );
-                  })}
+            {navSections.map((section, si) => (
+              <div key={si}>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-2 font-mono">
+                  {section.label}
+                </p>
+                <div className="space-y-0.5">
+                  {section.items
+                    .filter((item) => {
+                      if (item.id === 'connections' && !isAdmin) return false;
+                      if (item.id === 'chat' && isViewer) return false;
+                      return true;
+                    })
+                    .map((item) => {
+                      const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path + '/'));
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            navigate(item.path);
+                            if (item.id === 'chat') {
+                              window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+                            }
+                          }}
+                          className={clsx(
+                            "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-sm relative tracking-tight",
+                            isActive
+                              ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                          )}
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="active-navLine"
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
+                              initial={false}
+                              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                          )}
+                          <Icon className={clsx("w-4 h-4 flex-shrink-0 relative z-10", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                          <span className={clsx("relative z-10", isActive ? "font-semibold text-foreground" : "font-medium")}>
+                            {item.label}
+                          </span>
+                          {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-foreground relative z-10" />}
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
-            </div>
+            ))}
           </nav>
 
           {/* Recent Chats */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
-import { PanelLeftOpen, Sun, Moon, Bell, LogOut, MessageSquarePlus, Menu, Layers } from 'lucide-react';
+import { PanelLeftOpen, PanelLeftClose, Sun, Moon, Bell, LogOut, MessageSquarePlus, Menu, Layers } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import Sidebar from '../components/Sidebar';

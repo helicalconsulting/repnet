@@ -6,6 +6,7 @@ import { PersonalizationProvider } from './context/PersonalizationContext';
 import { authApi } from './services/api';
 
 import MainLayout from './layouts/MainLayout';
+import SuperAdminLayout from './layouts/SuperAdminLayout';
 import ChatPage from './pages/ChatPage';
 import ReportPage from './pages/ReportPage';
 import ReportsListPage from './pages/ReportsListPage';
@@ -19,19 +20,36 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SchemaExplorerPage from './pages/SchemaExplorerPage';
 
+// Super Admin Pages
+import SuperAdminOverview from './pages/super-admin/SuperAdminOverview';
+import SuperAdminOrgs from './pages/super-admin/SuperAdminOrgs';
+import SuperAdminOrgDetail from './pages/super-admin/SuperAdminOrgDetail';
+import SuperAdminUsers from './pages/super-admin/SuperAdminUsers';
+import SuperAdminQueryExplorer from './pages/super-admin/SuperAdminQueryExplorer';
+import SuperAdminGateway from './pages/super-admin/SuperAdminGateway';
+import SuperAdminLLM from './pages/super-admin/SuperAdminLLM';
+import SuperAdminWaitlist from './pages/super-admin/SuperAdminWaitlist';
+import SuperAdminHealth from './pages/super-admin/SuperAdminHealth';
+
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const redirectPath = location.state?.from?.pathname || '/dashboard';
+  const defaultRedirect = sessionUser?.role === 'super_admin' ? '/super-admin' : '/dashboard';
+  const redirectPath = location.state?.from?.pathname || defaultRedirect;
 
   if (sessionUser) {
+    // Super admins always go to their panel
+    if (sessionUser.role === 'super_admin') {
+      return <Navigate to="/super-admin" replace />;
+    }
     return <Navigate to={redirectPath} replace />;
   }
 
   const handleSuccess = (authenticatedUser) => {
     onAuthSuccess(authenticatedUser);
-    navigate(redirectPath, { replace: true });
+    const dest = authenticatedUser?.role === 'super_admin' ? '/super-admin' : redirectPath;
+    navigate(dest, { replace: true });
   };
 
   return <AuthPage onAuthSuccess={handleSuccess} />;
@@ -149,6 +167,30 @@ function App() {
           path="/accept-invite"
           element={<AcceptInvitePage onAuthSuccess={handleAuthSuccess} />}
         />
+
+        {/* ── Super Admin — completely isolated layout ────────────────── */}
+        <Route
+          path="/super-admin"
+          element={
+            sessionUser?.role === 'super_admin'
+              ? <SuperAdminLayout user={sessionUser} onSignOut={handleSignOut} />
+              : sessionUser
+                ? <Navigate to="/dashboard" replace />
+                : <Navigate to="/login" replace />
+          }
+        >
+          <Route index element={<SuperAdminOverview />} />
+          <Route path="organizations" element={<SuperAdminOrgs />} />
+          <Route path="organizations/:id" element={<SuperAdminOrgDetail />} />
+          <Route path="users" element={<SuperAdminUsers />} />
+          <Route path="queries" element={<SuperAdminQueryExplorer />} />
+          <Route path="gateway" element={<SuperAdminGateway />} />
+          <Route path="llm" element={<SuperAdminLLM />} />
+          <Route path="waitlist" element={<SuperAdminWaitlist />} />
+          <Route path="health" element={<SuperAdminHealth />} />
+        </Route>
+
+        {/* ── Main App — authenticated routes ────────────────────────── */}
         <Route element={<ProtectedLayout sessionUser={sessionUser} onSignOut={handleSignOut} />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route

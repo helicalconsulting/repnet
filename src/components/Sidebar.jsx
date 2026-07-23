@@ -159,7 +159,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 navigate('/chat');
                 window.dispatchEvent(new CustomEvent('repnex-new-chat'));
               }}
-              className="flex items-center justify-between gap-3 w-full p-3.5 mb-5 bg-gradient-to-r from-[#0055FF] to-[#2563EB] hover:from-[#004BD9] hover:to-[#1D4ED8] text-white rounded-xl transition-all shadow-lg shadow-[#0055FF]/30 active:scale-[0.98] font-semibold"
+              className="flex items-center justify-between gap-3 w-full p-3.5 mb-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl transition-all shadow-lg shadow-blue-500/30 active:scale-[0.98] font-semibold"
             >
               <span className="flex items-center gap-2.5 text-xs font-bold">
                 <div className="bg-white/20 p-1.5 rounded-lg">

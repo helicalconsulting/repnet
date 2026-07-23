@@ -60,7 +60,7 @@ function timeAgo(dateStr) {
 }
 
 export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDarkMode }) {
-  const { user, activeConnectionObj } = useApp();
+  const { user } = useApp();
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
   const [showHistory, setShowHistory] = useState(true);
   const [sessions, setSessions] = useState([]);
@@ -73,17 +73,6 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
 
   const isAdmin = user?.role === 'admin';
   const isViewer = user?.role === 'viewer';
-
-  const dbTypeIcons = {
-    postgres: "🐘",
-    supabase: "⚡",
-    mssql: "🔷",
-    mysql: "🐬",
-    oracle: "🔴",
-    cloudsql: "☁️",
-    mongodb: "🍃",
-    custom: "⚙️"
-  };
 
   const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -171,33 +160,6 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             </button>
           </div>
 
-          {/* Active Connection Info Card */}
-          {activeConnectionObj && (
-            <motion.div 
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => navigate('/connections')}
-              className="mb-5 p-3 bg-zinc-900/5 dark:bg-zinc-100/5 hover:bg-zinc-900/10 dark:hover:bg-zinc-100/10 border border-zinc-200 dark:border-zinc-800 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 group"
-            >
-              <div className="w-8 h-8 rounded-lg bg-zinc-200/80 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0 select-none">
-                {dbTypeIcons[activeConnectionObj.type] || "🔌"}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 justify-between">
-                  <span className="text-xs font-bold text-foreground truncate group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
-                    {activeConnectionObj.name}
-                  </span>
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 uppercase shrink-0 tracking-wider">
-                    Active
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate font-mono">
-                  {activeConnectionObj.database || 'No Database'} • {activeConnectionObj.tables || 0} tables
-                </p>
-              </div>
-            </motion.div>
-          )}
-
           {/* New Chat Button */}
           {!isViewer && (
             <button
@@ -205,13 +167,15 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 navigate('/chat');
                 window.dispatchEvent(new CustomEvent('repnex-new-chat'));
               }}
-              className="flex items-center justify-between gap-3 w-full p-3 mb-5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 rounded-xl transition-all shadow-md font-semibold"
+              className="flex items-center justify-between gap-3 w-full p-3 mb-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] font-semibold"
             >
-              <span className="flex items-center gap-2 text-xs font-bold">
-                <Plus className="w-4 h-4" />
+              <span className="flex items-center gap-2.5 text-xs font-bold">
+                <div className="bg-white/20 p-1 rounded-lg">
+                  <Plus className="w-4 h-4 text-white" />
+                </div>
                 New Report Chat
               </span>
-              <span className="text-[10px] bg-white/20 dark:bg-black/20 px-2 py-0.5 rounded font-mono font-bold">⌘N</span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono font-bold text-white">⌘N</span>
             </button>
           )}
 

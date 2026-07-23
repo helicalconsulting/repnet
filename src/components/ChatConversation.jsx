@@ -1334,11 +1334,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       {/* Connection Status Bar */}
       {activeConn && (
         <div className="absolute top-0 left-0 right-0 flex justify-center pt-4 z-10">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-card/80 dark:bg-[#1C1C1C]/80 backdrop-blur-md border border-border/50 dark:border-white/10 rounded-full text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-card/90 dark:bg-[#1C1C1C]/90 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-muted-foreground">Connected to</span>
-            <span className="font-medium text-foreground">{activeConn.name}</span>
+            <span className="text-muted-foreground font-medium">Connected to</span>
+            <span className="font-bold text-foreground">{activeConn.name}</span>
+            {activeConn.database && (
+              <span className="text-muted-foreground font-mono text-[11px]">
+                ({activeConn.database})
+              </span>
+            )}
+            {activeConn.tables > 0 && (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-500/20">
+                {activeConn.tables} tables
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -39,6 +39,13 @@ export const adminApi = {
   },
 
   // Users
+  async createUser(data) {
+    return adminRequest('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   async getAllUsers({ search = '', role = '', status = '', org_id = '', skip = 0, limit = 50 } = {}) {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
@@ -59,6 +66,30 @@ export const adminApi = {
 
   async forceLogoutUser(userId) {
     return adminRequest(`/admin/users/${userId}/force-logout`, { method: 'POST' });
+  },
+
+  // Audit Logs
+  async getAuditLogs({ search = '', action = '', skip = 0, limit = 50 } = {}) {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (action) params.set('action', action);
+    params.set('skip', skip);
+    params.set('limit', limit);
+    return adminRequest(`/admin/audit-logs?${params}`);
+  },
+
+  // System Errors
+  async getErrorLogs({ search = '', resolved = '', skip = 0, limit = 50 } = {}) {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (resolved) params.set('resolved', resolved);
+    params.set('skip', skip);
+    params.set('limit', limit);
+    return adminRequest(`/admin/error-logs?${params}`);
+  },
+
+  async resolveErrorLog(id) {
+    return adminRequest(`/admin/error-logs/${id}/resolve`, { method: 'PATCH' });
   },
 
   // Query History

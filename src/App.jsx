@@ -30,6 +30,8 @@ import SuperAdminGateway from './pages/super-admin/SuperAdminGateway';
 import SuperAdminLLM from './pages/super-admin/SuperAdminLLM';
 import SuperAdminWaitlist from './pages/super-admin/SuperAdminWaitlist';
 import SuperAdminHealth from './pages/super-admin/SuperAdminHealth';
+import SuperAdminAuditLogs from './pages/super-admin/SuperAdminAuditLogs';
+import SuperAdminErrorLogs from './pages/super-admin/SuperAdminErrorLogs';
 
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
@@ -188,6 +190,8 @@ function App() {
           <Route path="llm" element={<SuperAdminLLM />} />
           <Route path="waitlist" element={<SuperAdminWaitlist />} />
           <Route path="health" element={<SuperAdminHealth />} />
+          <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
+          <Route path="error-logs" element={<SuperAdminErrorLogs />} />
         </Route>
 
         {/* ── Main App — authenticated routes ────────────────────────── */}

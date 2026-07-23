@@ -440,3 +440,30 @@ body {
 .super-admin-root .bg-slate-700\/50 {
   background-color: var(--muted) !important;
 }
+
+/* Purple removal overrides for clean black/zinc aesthetic */
+.super-admin-root .bg-violet-600\/30,
+.super-admin-root .bg-violet-600\/20,
+.super-admin-root .bg-violet-600\/10,
+.super-admin-root .bg-purple-600\/20 {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .text-violet-200,
+.super-admin-root .text-violet-300,
+.super-admin-root .text-violet-400,
+.super-admin-root .text-violet-500,
+.super-admin-root .text-violet-600,
+.super-admin-root .text-purple-400 {
+  color: var(--foreground) !important;
+}
+
+.super-admin-root .border-violet-500\/40,
+.super-admin-root .border-violet-600\/30,
+.super-admin-root .border-violet-600\/20 {
+  border-color: var(--border) !important;
+}
+
+.super-admin-root .focus\:border-violet-500:focus {
+  border-color: var(--foreground) !important;
+}

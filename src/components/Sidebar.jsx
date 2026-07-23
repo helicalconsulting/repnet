@@ -62,7 +62,7 @@ function timeAgo(dateStr) {
 export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDarkMode }) {
   const { user } = useApp();
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
-  const [showHistory, setShowHistory] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState(null);
@@ -167,10 +167,10 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 navigate('/chat');
                 window.dispatchEvent(new CustomEvent('repnex-new-chat'));
               }}
-              className="flex items-center justify-between gap-3 w-full p-3 mb-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-[0.98] font-semibold"
+              className="flex items-center justify-between gap-3 w-full p-3.5 mb-5 bg-gradient-to-r from-[#0055FF] to-[#2563EB] hover:from-[#004BD9] hover:to-[#1D4ED8] text-white rounded-xl transition-all shadow-lg shadow-[#0055FF]/30 active:scale-[0.98] font-semibold"
             >
               <span className="flex items-center gap-2.5 text-xs font-bold">
-                <div className="bg-white/20 p-1 rounded-lg">
+                <div className="bg-white/20 p-1.5 rounded-lg">
                   <Plus className="w-4 h-4 text-white" />
                 </div>
                 New Report Chat

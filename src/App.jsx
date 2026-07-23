@@ -32,6 +32,7 @@ import SuperAdminWaitlist from './pages/super-admin/SuperAdminWaitlist';
 import SuperAdminHealth from './pages/super-admin/SuperAdminHealth';
 import SuperAdminAuditLogs from './pages/super-admin/SuperAdminAuditLogs';
 import SuperAdminErrorLogs from './pages/super-admin/SuperAdminErrorLogs';
+import SuperAdminFeedback from './pages/super-admin/SuperAdminFeedback';
 
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
@@ -185,6 +186,7 @@ function App() {
           <Route path="organizations" element={<SuperAdminOrgs />} />
           <Route path="organizations/:id" element={<SuperAdminOrgDetail />} />
           <Route path="users" element={<SuperAdminUsers />} />
+          <Route path="feedback" element={<SuperAdminFeedback />} />
           <Route path="queries" element={<SuperAdminQueryExplorer />} />
           <Route path="gateway" element={<SuperAdminGateway />} />
           <Route path="llm" element={<SuperAdminLLM />} />

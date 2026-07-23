@@ -131,4 +131,14 @@ export const adminApi = {
   async getWaitlist({ skip = 0, limit = 100 } = {}) {
     return adminRequest(`/admin/waitlist?skip=${skip}&limit=${limit}`);
   },
+
+  // User Feedbacks
+  async getFeedbacks({ search = '', rating = '', skip = 0, limit = 50 } = {}) {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (rating) params.set('rating', rating);
+    params.set('skip', skip);
+    params.set('limit', limit);
+    return adminRequest(`/admin/feedbacks?${params}`);
+  },
 };

@@ -190,14 +190,14 @@ export default function SuperAdminLayout({ user, onSignOut }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
         <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center gap-3 flex-shrink-0">
-          {!sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-          )}
+          {/* Always-visible sidebar toggle */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0"
+            title={sidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+          >
+            <Menu className="w-4 h-4" />
+          </button>
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
               <Shield className="w-3 h-3 text-foreground" />

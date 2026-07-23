@@ -89,26 +89,7 @@ async function copyLink(reportId, setCopied) {
   }
 }
 
-// ── Stats Card ───────────────────────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, sub, color }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-2xl px-6 py-5 flex items-center gap-4 shadow-sm"
-    >
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${color}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold text-foreground leading-none">{value}</p>
-        <p className="text-sm font-medium text-muted-foreground mt-0.5">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground/60 mt-0.5">{sub}</p>}
-      </div>
-    </motion.div>
-  );
-}
 
 // ── Report Card ──────────────────────────────────────────────────────────────
 
@@ -474,37 +455,62 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              icon={FileText}
-              label="Reports Generated"
-              value={stats.total}
-              sub={`Last ${statDays} days`}
-              color="bg-blue-500/10 text-blue-500"
-            />
-            <StatCard
-              icon={Zap}
-              label="Time Saved"
-              value={stats.timeSaved}
-              sub="~45 min per report"
-              color="bg-amber-500/10 text-amber-500"
-            />
-            <StatCard
-              icon={Activity}
-              label="Pinned Reports"
-              value={stats.pinned}
-              sub="On dashboard"
-              color="bg-emerald-500/10 text-emerald-500"
-            />
-            <StatCard
-              icon={Sparkles}
-              label="Templates Used"
-              value={stats.templates}
-              sub={`Last ${statDays} days`}
-              color="bg-violet-500/10 text-violet-500"
-            />
-          </div>
+          {/* Stat cards — Single Unified Container in Zinc Palette */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 md:p-3 shadow-sm"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-zinc-200 dark:divide-zinc-800/80">
+              {/* Stat 1 */}
+              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
+                  <FileText className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.total}</p>
+                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Reports Generated</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">Last {statDays} days</p>
+                </div>
+              </div>
+
+              {/* Stat 2 */}
+              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.timeSaved}</p>
+                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Time Saved</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">~45 min per report</p>
+                </div>
+              </div>
+
+              {/* Stat 3 */}
+              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.pinned}</p>
+                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Pinned Reports</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">On dashboard</p>
+                </div>
+              </div>
+
+              {/* Stat 4 */}
+              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.templates}</p>
+                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Templates Used</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">Last {statDays} days</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* ── Search + filters ────────────────────────────────────────── */}

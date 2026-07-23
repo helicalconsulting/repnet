@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, Users, Search, Cpu,
   Activity, List, LogOut, ChevronRight, Menu, X,
-  Shield, Wifi, BarChart3, Inbox
+  Shield, Wifi, BarChart3, Inbox, Sun, Moon
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -39,18 +39,33 @@ export default function SuperAdminLayout({ user, onSignOut }) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('repnex-theme') === 'dark';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    try {
+      localStorage.setItem('repnex-theme', darkMode ? 'dark' : 'light');
+    } catch {}
+  }, [darkMode]);
+
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase()
     || user?.email?.charAt(0)?.toUpperCase() || 'A';
 
   return (
-    <div className="flex h-screen w-full bg-slate-950 text-slate-100 overflow-hidden font-sans">
+    <div className="super-admin-root flex h-screen w-full bg-background text-foreground transition-colors duration-300 overflow-hidden font-sans">
 
       {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="md:hidden fixed inset-0 bg-black/70 z-40"
+            className="md:hidden fixed inset-0 bg-black/60 z-40"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -61,7 +76,7 @@ export default function SuperAdminLayout({ user, onSignOut }) {
         initial={false}
         animate={{ width: sidebarOpen ? 256 : 0, opacity: sidebarOpen ? 1 : 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-        className="h-full flex-shrink-0 overflow-hidden border-r border-slate-800 bg-slate-900/80 backdrop-blur-xl z-50 fixed md:relative"
+        className="h-full flex-shrink-0 overflow-hidden border-r border-border bg-card/80 backdrop-blur-xl z-50 fixed md:relative"
       >
         <div className="flex flex-col h-full min-w-[256px] p-4">
           {/* Logo */}
@@ -70,12 +85,12 @@ export default function SuperAdminLayout({ user, onSignOut }) {
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold text-white tracking-tight">Super Admin</p>
-              <p className="text-[10px] text-slate-400">Repnex Platform</p>
+              <p className="text-sm font-bold text-foreground tracking-tight">Super Admin</p>
+              <p className="text-[10px] text-muted-foreground">Repnex Platform</p>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="ml-auto p-1 text-slate-500 hover:text-slate-300 transition-colors md:hidden"
+              className="ml-auto p-1 text-muted-foreground hover:text-foreground transition-colors md:hidden"
             >
               <X className="w-4 h-4" />
             </button>
@@ -86,7 +101,7 @@ export default function SuperAdminLayout({ user, onSignOut }) {
             {NAV_SECTIONS.map((section, si) => (
               <div key={si}>
                 {section.label && (
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-2">
                     {section.label}
                   </p>
                 )}
@@ -103,20 +118,20 @@ export default function SuperAdminLayout({ user, onSignOut }) {
                         className={clsx(
                           'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-sm relative',
                           isActive
-                            ? 'bg-violet-600/20 text-violet-300 font-semibold'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                            ? 'bg-violet-600/10 dark:bg-violet-600/20 text-violet-600 dark:text-violet-300 font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5'
                         )}
                       >
                         {isActive && (
                           <motion.div
                             layoutId="sa-active-pill"
-                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-violet-500 rounded-r-full"
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-violet-600 dark:bg-violet-500 rounded-r-full"
                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                           />
                         )}
-                        <Icon className={clsx('w-4 h-4 flex-shrink-0', isActive ? 'text-violet-400' : 'text-slate-500 group-hover:text-slate-300')} />
+                        <Icon className={clsx('w-4 h-4 flex-shrink-0', isActive ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground group-hover:text-foreground')} />
                         <span>{item.label}</span>
-                        {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-violet-400" />}
+                        {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-violet-600 dark:text-violet-400" />}
                       </button>
                     );
                   })}
@@ -126,31 +141,42 @@ export default function SuperAdminLayout({ user, onSignOut }) {
           </nav>
 
           {/* Bottom: back to app + user */}
-          <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+          <div className="mt-4 pt-4 border-t border-border space-y-2">
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors"
             >
               <BarChart3 className="w-4 h-4" />
               Back to App
             </button>
-            <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
+            <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-violet-900/10">
                   {userInitial}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-200 truncate">{user?.email}</p>
-                  <p className="text-[10px] text-violet-400">super_admin</p>
+                  <p className="text-xs font-semibold text-foreground truncate">{user?.email}</p>
+                  <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">super_admin</p>
                 </div>
               </div>
-              <button
-                onClick={onSignOut}
-                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors"
-                title="Sign out"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                {/* Theme Toggle */}
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+                  title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                </button>
+                {/* Logout */}
+                <button
+                  onClick={onSignOut}
+                  className="p-1.5 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -159,21 +185,21 @@ export default function SuperAdminLayout({ user, onSignOut }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <header className="h-14 border-b border-slate-800 bg-slate-900/60 backdrop-blur-xl px-4 flex items-center gap-3 flex-shrink-0">
+        <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center gap-3 flex-shrink-0">
           {!sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
             >
               <Menu className="w-4 h-4" />
             </button>
           )}
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded bg-violet-600/20 flex items-center justify-center">
-              <Shield className="w-3 h-3 text-violet-400" />
+              <Shield className="w-3 h-3 text-violet-600 dark:text-violet-400" />
             </div>
-            <span className="text-sm font-semibold text-slate-200">Repnex Super Admin</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600/20 text-violet-300 border border-violet-600/30 font-medium">
+            <span className="text-sm font-semibold text-foreground">Repnex Super Admin</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-600/10 dark:bg-violet-600/20 text-violet-600 dark:text-violet-300 border border-violet-600/20 dark:border-violet-600/30 font-medium">
               Platform Control
             </span>
           </div>
@@ -199,8 +225,10 @@ export default function SuperAdminLayout({ user, onSignOut }) {
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 4px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
+        .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
       `}</style>
     </div>
   );

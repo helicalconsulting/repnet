@@ -346,3 +346,97 @@ body {
     @apply font-sans;
   }
 }
+
+/* Super Admin UI compatibility overrides for light/dark theme matching standard dashboard */
+.super-admin-root {
+  font-family: 'Manrope', var(--font-sans) !important;
+}
+
+.super-admin-root .bg-slate-950 {
+  background-color: var(--background) !important;
+}
+
+.super-admin-root .bg-slate-900 {
+  background-color: var(--card) !important;
+}
+
+.super-admin-root .border-slate-800 {
+  border-color: var(--border) !important;
+}
+
+.super-admin-root .border-slate-700 {
+  border-color: var(--border) !important;
+}
+
+.super-admin-root .bg-slate-800 {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .text-white {
+  color: var(--foreground) !important;
+}
+
+.super-admin-root .text-slate-100 {
+  color: var(--foreground) !important;
+}
+
+.super-admin-root .text-slate-200 {
+  color: var(--foreground) !important;
+}
+
+.super-admin-root .text-slate-300 {
+  color: var(--foreground) !important;
+}
+
+.super-admin-root .text-slate-400 {
+  color: var(--muted-foreground) !important;
+}
+
+.super-admin-root .text-slate-500 {
+  color: var(--muted-foreground) !important;
+}
+
+/* Transparent colors overrides */
+.super-admin-root .bg-slate-900\/80 {
+  background-color: var(--card) !important;
+}
+
+.super-admin-root .bg-slate-900\/60 {
+  background-color: var(--card) !important;
+}
+
+.super-admin-root .bg-slate-900\/50 {
+  background-color: var(--card) !important;
+}
+
+.super-admin-root .bg-slate-800\/60 {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .bg-slate-800\/50 {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .bg-slate-800\/30 {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .hover\:bg-slate-800:hover {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .hover\:bg-slate-800\/30:hover {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .border-slate-800\/50 {
+  border-color: var(--border) !important;
+}
+
+.super-admin-root .bg-slate-700\/40 {
+  background-color: var(--muted) !important;
+}
+
+.super-admin-root .bg-slate-700\/50 {
+  background-color: var(--muted) !important;
+}

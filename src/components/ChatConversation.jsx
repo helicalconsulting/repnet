@@ -1880,9 +1880,9 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <div className="flex items-center justify-between mt-auto px-2 py-1">
             <button
               type="button"
-              className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/70 hover:text-foreground transition-colors px-2 py-1 rounded bg-black/5 dark:bg-white/5"
+              className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground/80 hover:text-foreground transition-colors px-2 py-1 rounded bg-black/5 dark:bg-white/5 border border-border/40"
             >
-              <Sparkles className="w-3 h-3 text-primary" />
+              <Sparkles className="w-3 h-3 text-zinc-900 dark:text-zinc-100" />
               Repnex AI Pro
             </button>
             <div className="flex items-center gap-2">
@@ -1928,10 +1928,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 type={isProcessing ? "button" : "submit"}
                 onClick={isProcessing ? handleCancel : undefined}
                 disabled={isViewer || (!inputValue.trim() && !isProcessing)}
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-lg group ${
+                className={`w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-md group ${
                   isProcessing 
-                    ? "bg-neutral-800 dark:bg-neutral-200 hover:bg-neutral-700 dark:hover:bg-neutral-300 text-neutral-100 dark:text-neutral-900 shadow-sm" 
-                    : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30 disabled:opacity-30 disabled:bg-muted-foreground disabled:shadow-none"
+                    ? "bg-zinc-800 dark:bg-zinc-200 text-zinc-100 dark:text-zinc-900 shadow-sm" 
+                    : "bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 shadow-md disabled:opacity-30 disabled:bg-muted-foreground disabled:shadow-none"
                 }`}
               >
                 {isProcessing ? (

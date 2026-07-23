@@ -7,7 +7,6 @@ import {
   Bookmark,
   Settings,
   UserCircle,
-  PanelLeftClose,
   Plus,
   Database,
   History,
@@ -151,13 +150,6 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
               <p className="text-xs font-bold text-foreground tracking-tight">Repnex</p>
               <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="ml-auto p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
-              title="Collapse sidebar drawer"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
           </div>
 
           {/* New Chat Button */}

@@ -23,23 +23,23 @@ let _accessToken = null;          // in-memory
 let _accessExpiresAt = 0;         // unix ms
 let _refreshPromise = null;       // dedup concurrent refresh calls
 
-const memGetAccess   = ()      => _accessToken;
-const memSetAccess   = (t, exp) => { _accessToken = t; _accessExpiresAt = exp || (Date.now() + 14 * 60 * 1000); };
-const memClearAccess = ()      => { _accessToken = null; _accessExpiresAt = 0; };
+const memGetAccess = () => _accessToken;
+const memSetAccess = (t, exp) => { _accessToken = t; _accessExpiresAt = exp || (Date.now() + 14 * 60 * 1000); };
+const memClearAccess = () => { _accessToken = null; _accessExpiresAt = 0; };
 
 // ── localStorage helpers ──────────────────────────────────────────────
 
 const ls = () => (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
 
-const getRefreshToken  = ()  => ls()?.getItem(REFRESH_KEY) ?? null;
-const setRefreshToken  = (t) => ls()?.setItem(REFRESH_KEY, t);
-const clearRefreshToken= ()  => ls()?.removeItem(REFRESH_KEY);
+const getRefreshToken = () => ls()?.getItem(REFRESH_KEY) ?? null;
+const setRefreshToken = (t) => ls()?.setItem(REFRESH_KEY, t);
+const clearRefreshToken = () => ls()?.removeItem(REFRESH_KEY);
 
 /** Expose access token to legacy code (e.g., gateway command copy in UI). */
 export const getToken = () => _accessToken ?? ls()?.getItem(LEGACY_ACCESS_KEY) ?? null;
 
 const persistLegacy = (t) => ls()?.setItem(LEGACY_ACCESS_KEY, t);
-const clearLegacy   = ()  => ls()?.removeItem(LEGACY_ACCESS_KEY);
+const clearLegacy = () => ls()?.removeItem(LEGACY_ACCESS_KEY);
 
 const clearAll = () => {
   memClearAccess();
@@ -493,13 +493,13 @@ export const reportApi = {
     const response = await request('/reports');
     return Array.isArray(response) ? response : response.reports || [];
   },
-  async getReport(id)         { return request(`/reports/${id}`); },
-  async togglePin(id)         { return request(`/reports/${id}/pin`, { method: 'PATCH' }); },
+  async getReport(id) { return request(`/reports/${id}`); },
+  async togglePin(id) { return request(`/reports/${id}/pin`, { method: 'PATCH' }); },
   async updateReport(id, upd) { return request(`/reports/${id}`, { method: 'PATCH', body: JSON.stringify(upd) }); },
-  async deleteReport(id)      { return request(`/reports/${id}`, { method: 'DELETE' }); },
-  async saveReport(data)      { return request('/reports', { method: 'POST', body: JSON.stringify(data) }); },
-  async runReport(id, cid)    { return request(`/reports/${id}/run`, { method: 'POST', body: JSON.stringify({ connection_id: cid }) }); },
-  async searchReports(query)  {
+  async deleteReport(id) { return request(`/reports/${id}`, { method: 'DELETE' }); },
+  async saveReport(data) { return request('/reports', { method: 'POST', body: JSON.stringify(data) }); },
+  async runReport(id, cid) { return request(`/reports/${id}/run`, { method: 'POST', body: JSON.stringify({ connection_id: cid }) }); },
+  async searchReports(query) {
     const response = await request(`/reports?search=${encodeURIComponent(query)}`);
     return Array.isArray(response) ? response : response.reports || [];
   },
@@ -554,8 +554,8 @@ export const aiApi = {
       return { success: false, error: 'Query failed' };
     }
   },
-  async getChatHistory()  { return []; },
-  async getSuggestions()  {
+  async getChatHistory() { return []; },
+  async getSuggestions() {
     return [
       { text: 'Show AP ageing report', icon: '📊' },
       { text: 'List overdue invoices', icon: '⚠️' },
@@ -572,8 +572,8 @@ export const sessionsApi = {
     const response = await request('/sessions');
     return Array.isArray(response) ? response : response.sessions || [];
   },
-  async create(data)      { return request('/sessions', { method: 'POST', body: JSON.stringify(data) }); },
-  async get(sessionId)    { return request(`/sessions/${sessionId}`); },
+  async create(data) { return request('/sessions', { method: 'POST', body: JSON.stringify(data) }); },
+  async get(sessionId) { return request(`/sessions/${sessionId}`); },
   async delete(sessionId) { return request(`/sessions/${sessionId}`, { method: 'DELETE' }); },
   async editTurn(sessionId, turnIndex) {
     return request(`/sessions/${sessionId}/turns/${turnIndex}/edit`, { method: 'POST' });
@@ -631,9 +631,9 @@ export const exportApi = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ 
-        report_ids: reportIds, 
-        format, 
+      body: JSON.stringify({
+        report_ids: reportIds,
+        format,
         connection_id: connectionId,
         include_summary: includeSummary,
         include_table: includeTable
@@ -641,7 +641,7 @@ export const exportApi = {
     });
     if (!response.ok) throw new Error('Failed to perform bulk export');
     const blob = await response.blob();
-    
+
     let mimeType = 'application/zip';
     let fileExt = 'zip';
     if (format === 'excel') {
@@ -651,7 +651,7 @@ export const exportApi = {
       mimeType = 'application/pdf';
       fileExt = 'pdf';
     }
-    
+
     return { filename: `bulk_export_${Date.now()}.${fileExt}`, content: blob, mimeType };
   },
 };

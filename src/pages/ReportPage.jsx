@@ -29,7 +29,7 @@ export default function ReportPage() {
   const navigate = useNavigate();
   const { activeConnection, connections, user } = useApp();
   const isViewer = user?.role === 'viewer';
-  const { isSidebarOpen } = useOutletContext() || {};
+  const { isSidebarOpen, setHeaderConfig } = useOutletContext() || {};
 
   const [reportConfig, setReportConfig] = useState(null);  // raw config from API
   const [reportData, setReportData] = useState(location.state?.data || null);

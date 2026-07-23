@@ -156,7 +156,7 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
           >
             <GripVertical className="w-4 h-4" />
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/10 text-primary rounded-lg text-xs font-medium">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-100 dark:bg-zinc-800/80 text-foreground border border-border/50 rounded-lg text-xs font-semibold">
             {chartIcon[report.chartType] || <BarChart2 className="w-3.5 h-3.5" />}
             <span className="capitalize">{report.chartType || "bar"}</span>
           </div>
@@ -428,7 +428,7 @@ export default function Dashboard() {
         {/* ── Page header ─────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {reports.length} pinned report{reports.length !== 1 ? "s" : ""} • Drag to reorder
             </p>
@@ -436,10 +436,10 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowAllReports(!showAllReports)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
                 showAllReports
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border hover:bg-muted/60"
+                  ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm"
+                  : "bg-card border border-border hover:bg-muted/60 text-foreground"
               }`}
             >
               {showAllReports ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
@@ -453,16 +453,16 @@ export default function Dashboard() {
           {/* Day filter pills */}
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground font-medium">Period:</span>
-            <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Period:</span>
+            <div className="flex items-center gap-1 bg-card border border-border/80 rounded-xl p-1">
               {DAY_OPTIONS.map((d) => (
                 <button
                   key={d}
                   onClick={() => setStatDays(d)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                     statDays === d
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   }`}
                 >
                   {d}d

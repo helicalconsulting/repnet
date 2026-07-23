@@ -145,37 +145,37 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
               onClick={() => navigate('/')}
               className="flex items-center gap-3 cursor-pointer group"
             >
-              <div className="flex-shrink-0 w-11 h-11 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border group-hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] transition-shadow">
-                <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-md p-1 shrink-0">
+                <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter invert dark:invert-0" />
               </div>
               <div>
                 <motion.h1
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors"
+                  className="text-base font-bold tracking-tight text-foreground group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors"
                 >
                   Repnex
                 </motion.h1>
-                <p className="text-[10px] text-muted-foreground">AI-Powered ERP Reports</p>
+                <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-2 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground rounded-lg transition-colors"
+              className="p-1.5 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground rounded-lg transition-colors"
             >
               <PanelLeftClose className="w-[18px] h-[18px]" />
             </button>
           </div>
-          
+
           {/* Active Connection Info Card */}
           {activeConnectionObj && (
             <motion.div 
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => navigate('/connections')}
-              className="mb-4 p-3 bg-zinc-900/5 dark:bg-zinc-100/5 hover:bg-zinc-900/10 dark:hover:bg-zinc-100/10 border border-zinc-200 dark:border-zinc-800 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 group"
+              className="mb-5 p-3 bg-zinc-900/5 dark:bg-zinc-100/5 hover:bg-zinc-900/10 dark:hover:bg-zinc-100/10 border border-zinc-200 dark:border-zinc-800 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 group"
             >
-              <div className="w-8 h-8 rounded-lg bg-zinc-200/60 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0 select-none">
+              <div className="w-8 h-8 rounded-lg bg-zinc-200/80 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0 select-none">
                 {dbTypeIcons[activeConnectionObj.type] || "🔌"}
               </div>
               <div className="min-w-0 flex-1">
@@ -187,7 +187,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                     Active
                   </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground truncate">
+                <p className="text-[10px] text-muted-foreground truncate font-mono">
                   {activeConnectionObj.database || 'No Database'} • {activeConnectionObj.tables || 0} tables
                 </p>
               </div>
@@ -201,7 +201,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 navigate('/chat');
                 window.dispatchEvent(new CustomEvent('repnex-new-chat'));
               }}
-              className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 rounded-xl transition-all shadow-md font-semibold"
+              className="flex items-center justify-between gap-3 w-full p-3.5 mb-5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 rounded-xl transition-all shadow-md font-semibold"
             >
               <span className="flex items-center gap-2.5 text-sm font-bold">
                 <div className="bg-white/20 dark:bg-black/20 p-1.5 rounded-lg">
@@ -234,7 +234,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                       }
                     }}
                     className={clsx(
-                      "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-sm",
+                      "flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-all duration-200 group relative text-sm",
                       isActive
                         ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
@@ -259,7 +259,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
 
           {/* Recent Chats */}
           {!isViewer && (
-            <div className="mt-6 flex-1 overflow-hidden flex flex-col">
+            <div className="mt-5 flex-1 overflow-hidden flex flex-col">
               <button
                 onClick={() => setShowHistory(!showHistory)}
                 className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
@@ -317,7 +317,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.04 }}
                             onClick={() => navigate(`/chat/${session.id}`)}
-                            className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
+                            className="flex items-center justify-between w-full px-3 py-2 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
                           >
                             <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
                               <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -352,15 +352,15 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
           )}
 
           {/* Bottom Actions */}
-          <div className="mt-auto pt-4 space-y-2 border-t border-border/50">
+          <div className="mt-auto pt-4 border-t border-border/50">
             {/* User profile row */}
             <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 flex items-center justify-center text-sm font-bold shrink-0 shadow-md">
+                <div className="w-8 h-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold shrink-0 shadow-md">
                   {userInitial}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">{user?.name || 'User'}</p>
+                  <p className="text-xs font-bold text-foreground truncate">{user?.name || 'User'}</p>
                   <p className="text-[10px] text-muted-foreground truncate capitalize">{user?.role || 'member'}</p>
                 </div>
               </div>
@@ -397,19 +397,6 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 )}
               </div>
             </div>
-
-            <button
-              onClick={() => navigate('/settings')}
-              className={clsx(
-                "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all text-sm",
-                currentPath.includes('/settings')
-                  ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
-                  : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
-              )}
-            >
-              <Settings className="w-4 h-4 flex-shrink-0 text-muted-foreground" strokeWidth={2} />
-              <span className="font-medium">Settings</span>
-            </button>
           </div>
         </div>
       </motion.aside>

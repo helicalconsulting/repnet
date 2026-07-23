@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
@@ -106,55 +106,54 @@ export default function ReportsListPage() {
     r.description?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const { setHeaderConfig } = useOutletContext() || {};
+
+  useEffect(() => {
+    if (setHeaderConfig) {
+      setHeaderConfig({
+        title: "Reports",
+        subtitle: `${reports.length} saved report${reports.length !== 1 ? 's' : ''}`,
+        icon: <BarChart3 className="w-4 h-4 text-foreground" />,
+        actions: (
+          <div className="flex items-center gap-2">
+            {!isViewer && filtered.length > 0 && (
+              <button
+                onClick={() => {
+                  if (selectedIds.length === filtered.length) {
+                    setSelectedIds([]);
+                  } else {
+                    setSelectedIds(filtered.map(r => r.id));
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                {selectedIds.length === filtered.length ? 'Deselect All' : 'Select All'}
+              </button>
+            )}
+            <button
+              onClick={fetchReports}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            {!isViewer && (
+              <button
+                onClick={() => navigate('/chat')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New Report
+              </button>
+            )}
+          </div>
+        )
+      });
+    }
+  }, [setHeaderConfig, reports.length, filtered.length, selectedIds.length, isViewer]);
+
   return (
     <div className="flex-1 flex flex-col h-full bg-background overflow-auto relative">
-      {/* Header */}
-      <div className="border-b border-border/50 px-6 py-5 flex items-center justify-between gap-4 bg-background/80 backdrop-blur sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Reports</h1>
-            <p className="text-xs text-muted-foreground">
-              {reports.length} saved report{reports.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isViewer && filtered.length > 0 && (
-            <button
-              onClick={() => {
-                if (selectedIds.length === filtered.length) {
-                  setSelectedIds([]);
-                } else {
-                  setSelectedIds(filtered.map(r => r.id));
-                }
-              }}
-              className="px-3.5 py-2 rounded-xl border border-border/50 text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              {selectedIds.length === filtered.length ? 'Deselect All' : 'Select All'}
-            </button>
-          )}
-          <button
-            onClick={fetchReports}
-            className="p-2 rounded-xl text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          {!isViewer && (
-            <button
-              onClick={() => navigate('/chat')}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-blue-600 text-primary-foreground rounded-xl text-sm font-semibold shadow-md shadow-primary/25 hover:from-primary/90 hover:to-blue-600/90 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              New Report
-            </button>
-          )}
-        </div>
-      </div>
-
       <div className="flex-1 p-6 pb-24">
         {/* Search */}
         <div className="relative mb-6 max-w-md">

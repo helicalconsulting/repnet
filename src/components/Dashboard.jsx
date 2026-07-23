@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import ScheduleModal from "./ScheduleModal";
 import {
@@ -415,6 +415,31 @@ export default function Dashboard() {
     return f;
   }, [source, searchQuery, filterType]);
 
+  const { setHeaderConfig } = useOutletContext() || {};
+
+  useEffect(() => {
+    if (setHeaderConfig) {
+      setHeaderConfig({
+        title: "Dashboard",
+        subtitle: `${reports.length} pinned report${reports.length !== 1 ? "s" : ""} • Drag to reorder`,
+        icon: <LayoutDashboard className="w-4 h-4 text-foreground" />,
+        actions: (
+          <button
+            onClick={() => setShowAllReports((prev) => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              showAllReports
+                ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm"
+                : "bg-card border border-border hover:bg-muted/60 text-foreground"
+            }`}
+          >
+            {showAllReports ? <Star className="w-3.5 h-3.5" /> : <StarOff className="w-3.5 h-3.5" />}
+            {showAllReports ? "Showing All" : "All Reports"}
+          </button>
+        ),
+      });
+    }
+  }, [setHeaderConfig, reports.length, showAllReports]);
+
   // ── Stat day options ──────────────────────────────────────────────────────
 
   const DAY_OPTIONS = [7, 10, 30, 90];
@@ -423,30 +448,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 md:p-8 w-full h-full bg-background custom-scrollbar">
-      <div className="w-full space-y-8">
-
-        {/* ── Page header ─────────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {reports.length} pinned report{reports.length !== 1 ? "s" : ""} • Drag to reorder
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowAllReports(!showAllReports)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
-                showAllReports
-                  ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm"
-                  : "bg-card border border-border hover:bg-muted/60 text-foreground"
-              }`}
-            >
-              {showAllReports ? <Star className="w-4 h-4" /> : <StarOff className="w-4 h-4" />}
-              {showAllReports ? "Showing All" : "All Reports"}
-            </button>
-          </div>
-        </div>
+      <div className="w-full space-y-6">
 
         {/* ── Stats section ───────────────────────────────────────────── */}
         <div className="space-y-3">

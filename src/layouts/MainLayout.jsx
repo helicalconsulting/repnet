@@ -27,8 +27,26 @@ export default function MainLayout({ user, onSignOut }) {
   const { notifications } = useApp();
   const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [headerConfig, setHeaderConfig] = useState({
+    title: '',
+    subtitle: '',
+    icon: null,
+    actions: null,
+    hidden: false,
+  });
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Reset header config when changing route
+  useEffect(() => {
+    setHeaderConfig({
+      title: '',
+      subtitle: '',
+      icon: null,
+      actions: null,
+      hidden: false,
+    });
+  }, [location.pathname]);
   
   const isViewer = user?.role === 'viewer';
 
@@ -124,27 +142,51 @@ export default function MainLayout({ user, onSignOut }) {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-full">
-        {/* Top bar — 1-to-1 match with Super Admin */}
-        <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 z-20">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-              title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-            >
-              {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
-                <Layers className="w-3 h-3 text-foreground" />
-              </div>
-              <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
-                AI Active
-              </span>
+        {/* Dynamic Top bar */}
+        {!headerConfig.hidden && (
+          <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 z-20">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0"
+                title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+              >
+                {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+              </button>
+              {headerConfig.title ? (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {headerConfig.icon && (
+                    <div className="w-6 h-6 rounded-lg bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
+                      {headerConfig.icon}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h1 className="text-sm font-bold text-foreground leading-none truncate tracking-tight">{headerConfig.title}</h1>
+                    {headerConfig.subtitle && (
+                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">{headerConfig.subtitle}</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
+                    <Layers className="w-3 h-3 text-foreground" />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
+                    AI Active
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-        </header>
+
+            {headerConfig.actions && (
+              <div className="flex items-center gap-2 shrink-0">
+                {headerConfig.actions}
+              </div>
+            )}
+          </header>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto custom-scrollbar relative">
@@ -157,7 +199,7 @@ export default function MainLayout({ user, onSignOut }) {
                 transition={{ duration: 0.18 }}
                 className="h-full"
              >
-                <Outlet context={{ isSidebarOpen, setIsSidebarOpen }} />
+                <Outlet context={{ isSidebarOpen, setIsSidebarOpen, setHeaderConfig }} />
              </Motion.div>
           </AnimatePresence>
         </main>

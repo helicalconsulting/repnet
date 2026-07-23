@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import { 
@@ -2237,30 +2237,30 @@ export default function DatabaseConnections() {
     setSyncingId(null);
   };
 
+  const { setHeaderConfig } = useOutletContext() || {};
+
+  useEffect(() => {
+    if (setHeaderConfig) {
+      setHeaderConfig({
+        title: "Database Connections",
+        subtitle: `${connections.length} active connection${connections.length !== 1 ? 's' : ''} • Connect ERP and SQL databases`,
+        icon: <Database className="w-4 h-4 text-foreground" />,
+        actions: !isViewer ? (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Connection
+          </button>
+        ) : null,
+      });
+    }
+  }, [setHeaderConfig, connections.length, isViewer]);
+
   return (
     <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-background custom-scrollbar">
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
-              <Database className="w-7 h-7 text-primary" />
-              Database Connections
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Connect your ERP and SQL databases to generate AI-powered reports
-            </p>
-          </div>
-          {!isViewer && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-5 h-5" />
-              Add Connection
-            </button>
-          )}
-        </div>
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

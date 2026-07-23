@@ -6,7 +6,7 @@ import {
   Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi, sessionsApi, organizationApi, getToken } from "../services/api";
@@ -21,6 +21,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const { getCasualResponse, profile } = usePersonalization();
   const navigate = useNavigate();
   const location = useLocation();
+  const { setHeaderConfig } = useOutletContext() || {};
+
+  useEffect(() => {
+    if (setHeaderConfig) {
+      setHeaderConfig({
+        title: "",
+        subtitle: "",
+        icon: null,
+        actions: null,
+        hidden: false,
+      });
+    }
+  }, [setHeaderConfig]);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);

@@ -154,19 +154,23 @@ export default function MainLayout({ user, onSignOut }) {
                 {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
               </button>
               {headerConfig.title ? (
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {headerConfig.icon && (
-                    <div className="w-6 h-6 rounded-lg bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
-                      {headerConfig.icon}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <h1 className="text-sm font-bold text-foreground leading-none truncate tracking-tight">{headerConfig.title}</h1>
-                    {headerConfig.subtitle && (
-                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">{headerConfig.subtitle}</p>
+                typeof headerConfig.title === 'string' ? (
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {headerConfig.icon && (
+                      <div className="w-6 h-6 rounded-lg bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
+                        {headerConfig.icon}
+                      </div>
                     )}
+                    <div className="min-w-0">
+                      <h1 className="text-sm font-bold text-foreground leading-none truncate tracking-tight">{headerConfig.title}</h1>
+                      {headerConfig.subtitle && (
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">{headerConfig.subtitle}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  headerConfig.title
+                )
               ) : (
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">

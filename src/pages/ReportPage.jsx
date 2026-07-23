@@ -48,6 +48,100 @@ export default function ReportPage() {
   const [refreshError, setRefreshError] = useState(null);
   const [connections2, setConnections2] = useState([]);
 
+  const connId = activeConnection || connections?.[0]?.id || connections2?.[0]?.id;
+
+  const handleBack = () => {
+    const fromChat = location.state?.fromChat;
+    const sessionId = location.state?.sessionId;
+    if (fromChat) {
+      navigate(sessionId ? `/chat/${sessionId}` : '/chat');
+    } else {
+      navigate('/report');
+    }
+  };
+
+  // Configure Top Navigation Bar Header via Outlet Context
+  useEffect(() => {
+    if (setHeaderConfig) {
+      if (id && id !== 'new') {
+        setHeaderConfig({
+          title: (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                {location.state?.fromChat ? 'Chat' : 'Reports'}
+              </button>
+              <div className="h-4 w-[1px] bg-border" />
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 rounded-xl p-0.5 gap-0.5">
+                {TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'bg-background shadow-sm text-foreground font-bold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ),
+          subtitle: '',
+          icon: null,
+          actions: !isViewer ? (
+            <div className="flex items-center gap-2">
+              {((reportConfig?.refresh_interval_days > 0) || (reportConfig?.refresh_interval_minutes > 0)) && (
+                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-foreground font-semibold">
+                  <CalendarClock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                  {reportConfig.refresh_interval_days > 0 
+                    ? (reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`)
+                    : `Every ${reportConfig.refresh_interval_minutes}m`
+                  }
+                </div>
+              )}
+              <button
+                onClick={() => setShowSchedule(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                  reportConfig?.refresh_interval_days > 0
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 border-zinc-900 shadow-sm'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }`}
+              >
+                <CalendarClock className="w-3.5 h-3.5" />
+                Schedule
+              </button>
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing || !connId}
+                title={!connId ? 'No database connection available' : 'Refresh data now and save snapshot'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                  refreshError
+                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
+              </button>
+            </div>
+          ) : null,
+          hidden: false,
+        });
+      }
+    }
+  }, [setHeaderConfig, id, activeTab, reportConfig, refreshing, refreshError, isViewer, location.state, connId]);
+
   // Sync state if location.state changes
   useEffect(() => {
     if (location.state?.data) setReportData(location.state.data);
@@ -125,8 +219,6 @@ export default function ReportPage() {
     databaseApi.getConnections().then(setConnections2).catch(() => {});
   }, []);
 
-  const connId = activeConnection || connections?.[0]?.id || connections2?.[0]?.id;
-
   const handleManualRefresh = async () => {
     if (isViewer) return;
     if (!connId || !id) return;
@@ -150,16 +242,6 @@ export default function ReportPage() {
   const handleScheduleSaved = (updatedReport) => {
     setReportConfig(updatedReport);
     setShowSchedule(false);
-  };
-
-  const handleBack = () => {
-    const fromChat = location.state?.fromChat;
-    const sessionId = location.state?.sessionId;
-    if (fromChat) {
-      navigate(sessionId ? `/chat/${sessionId}` : '/chat');
-    } else {
-      navigate('/report');
-    }
   };
 
   const mockReportData = {
@@ -285,85 +367,6 @@ export default function ReportPage() {
         </div>
       ) : (
         <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
-          {/* ── Top action bar (only for saved reports) ─────────────────────── */}
-          {id && id !== 'new' && (
-            <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/80 backdrop-blur z-10 flex-shrink-0">
-              {/* Left: back + tabs */}
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleBack}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  {location.state?.fromChat ? 'Back to Chat' : 'Reports'}
-                </button>
-                <div className="flex items-center bg-muted/40 rounded-xl p-1 gap-0.5">
-                  {TABS.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          activeTab === tab.id
-                            ? 'bg-background shadow-sm text-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {tab.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right: actions */}
-              {!isViewer && (
-                <div className="flex items-center gap-2">
-                  {/* Schedule badge/info */}
-                  {((reportConfig?.refresh_interval_days > 0) || (reportConfig?.refresh_interval_minutes > 0)) && (
-                    <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-primary/5 border border-primary/20 rounded-xl text-xs text-primary font-medium">
-                      <CalendarClock className="w-3.5 h-3.5" />
-                      {reportConfig.refresh_interval_days > 0 
-                        ? (reportConfig.refresh_interval_days === 1 ? 'Daily' : `Every ${reportConfig.refresh_interval_days}d`)
-                        : `Every ${reportConfig.refresh_interval_minutes}m`
-                      }
-                    </div>
-                  )}
-
-                  {/* Schedule button */}
-                  <button
-                    onClick={() => setShowSchedule(true)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                      reportConfig?.refresh_interval_days > 0
-                        ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                        : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                    }`}
-                  >
-                    <CalendarClock className="w-3.5 h-3.5" />
-                    Schedule
-                  </button>
-
-                  {/* Refresh Now */}
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={refreshing || !connId}
-                    title={!connId ? 'No database connection available' : 'Refresh data now and save snapshot'}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                      refreshError
-                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-500'
-                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
-                    } disabled:opacity-40 disabled:cursor-not-allowed`}
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                    {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ── Tab content ──────────────────────────────────────────────────── */}
           <div className="flex-1 overflow-hidden relative">
             {/* Report tab */}

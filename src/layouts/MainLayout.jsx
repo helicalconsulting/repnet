@@ -127,15 +127,13 @@ export default function MainLayout({ user, onSignOut }) {
         {/* Top bar — 1-to-1 match with Super Admin */}
         <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 z-20">
           <div className="flex items-center gap-3">
-            {!isSidebarOpen && (
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-                title="Open Sidebar"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+              title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+            </button>
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
                 <Layers className="w-3 h-3 text-foreground" />

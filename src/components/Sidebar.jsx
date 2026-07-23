@@ -141,16 +141,17 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
         <div className="flex flex-col h-full min-w-[256px] p-4">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6 mt-1 px-2">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-sm shrink-0">
-              <Layers className="w-4 h-4 text-white dark:text-zinc-900" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white p-0.5 shadow-sm border border-border/40 shrink-0 flex items-center justify-center">
+              <img src="/270970406.jpeg" alt="Repnex Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="text-xs font-bold text-foreground tracking-tight">Repnex</p>
-              <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP</p>
+              <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="ml-auto p-1 text-muted-foreground hover:text-foreground transition-colors md:hidden"
+              className="ml-auto p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+              title="Collapse sidebar drawer"
             >
               <PanelLeftClose className="w-4 h-4" />
             </button>

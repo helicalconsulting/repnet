@@ -141,4 +141,12 @@ export const adminApi = {
     params.set('limit', limit);
     return adminRequest(`/admin/feedbacks?${params}`);
   },
+
+  // Token Estimator
+  async estimateTokens(payload) {
+    return adminRequest('/admin/token-estimator', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 };

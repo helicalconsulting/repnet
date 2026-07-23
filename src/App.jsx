@@ -33,6 +33,7 @@ import SuperAdminHealth from './pages/super-admin/SuperAdminHealth';
 import SuperAdminAuditLogs from './pages/super-admin/SuperAdminAuditLogs';
 import SuperAdminErrorLogs from './pages/super-admin/SuperAdminErrorLogs';
 import SuperAdminFeedback from './pages/super-admin/SuperAdminFeedback';
+import SuperAdminTokenEstimator from './pages/super-admin/SuperAdminTokenEstimator';
 
 
 function LoginRoute({ sessionUser, onAuthSuccess }) {
@@ -194,6 +195,7 @@ function App() {
           <Route path="health" element={<SuperAdminHealth />} />
           <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
           <Route path="error-logs" element={<SuperAdminErrorLogs />} />
+          <Route path="token-estimator" element={<SuperAdminTokenEstimator />} />
         </Route>
 
         {/* ── Main App — authenticated routes ────────────────────────── */}

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, Users, Search, Cpu,
   Activity, List, LogOut, ChevronRight, Menu, X,
-  Shield, Wifi, BarChart3, Inbox, Sun, Moon, FileText, AlertOctagon, MessageSquare
+  Shield, Wifi, BarChart3, Inbox, Sun, Moon, FileText, AlertOctagon, MessageSquare, Calculator
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -30,6 +30,7 @@ const NAV_SECTIONS = [
     items: [
       { icon: Wifi,           label: 'Gateway Monitor', path: '/super-admin/gateway' },
       { icon: Cpu,            label: 'LLM Usage',       path: '/super-admin/llm' },
+      { icon: Calculator,     label: 'Token Estimator', path: '/super-admin/token-estimator' },
       { icon: Activity,       label: 'System Health',   path: '/super-admin/health' },
       { icon: FileText,       label: 'Audit Logs',      path: '/super-admin/audit-logs' },
       { icon: AlertOctagon,   label: 'Error Logs',      path: '/super-admin/error-logs' },

@@ -173,17 +173,17 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => navigate('/connections')}
-              className="mb-4 p-3 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/15 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 group"
+              className="mb-4 p-3 bg-zinc-900/5 dark:bg-zinc-100/5 hover:bg-zinc-900/10 dark:hover:bg-zinc-100/10 border border-zinc-200 dark:border-zinc-800 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 group"
             >
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-base shrink-0 select-none">
+              <div className="w-8 h-8 rounded-lg bg-zinc-200/60 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0 select-none">
                 {dbTypeIcons[activeConnectionObj.type] || "🔌"}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 justify-between">
-                  <span className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                  <span className="text-xs font-bold text-foreground truncate group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
                     {activeConnectionObj.name}
                   </span>
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 uppercase shrink-0 tracking-wider">
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 uppercase shrink-0 tracking-wider">
                     Active
                   </span>
                 </div>
@@ -201,15 +201,15 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 navigate('/chat');
                 window.dispatchEvent(new CustomEvent('repnex-new-chat'));
               }}
-              className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground rounded-xl transition-all shadow-lg shadow-primary/30 font-medium"
+              className="flex items-center justify-between gap-3 w-full p-3.5 mb-6 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 rounded-xl transition-all shadow-md font-semibold"
             >
-              <span className="flex items-center gap-2.5 text-sm">
-                <div className="bg-white/20 p-1.5 rounded-lg">
+              <span className="flex items-center gap-2.5 text-sm font-bold">
+                <div className="bg-white/20 dark:bg-black/20 p-1.5 rounded-lg">
                   <Plus className="w-4 h-4" />
                 </div>
                 New Report Chat
               </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded">⌘N</span>
+              <span className="text-[10px] bg-white/20 dark:bg-black/20 px-2 py-0.5 rounded font-mono font-bold">⌘N</span>
             </button>
           )}
 
@@ -234,20 +234,22 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                       }
                     }}
                     className={clsx(
-                      "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
-                      isActive ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                      "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group relative text-sm",
+                      isActive
+                        ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
                     )}
                   >
                     {isActive && (
                       <motion.div
                         layoutId="active-navLine"
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
                         initial={false}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                       />
                     )}
-                    <Icon className={clsx("w-5 h-5 flex-shrink-0 relative z-10", isActive && "text-primary")} strokeWidth={isActive ? 2.5 : 2} />
-                    <span className={clsx("text-sm relative z-10", isActive ? "font-semibold" : "font-medium")}>
+                    <Icon className={clsx("w-4 h-4 flex-shrink-0 relative z-10", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                    <span className={clsx("relative z-10", isActive ? "font-semibold text-foreground" : "font-medium")}>
                       {item.label}
                     </span>
                   </button>
@@ -266,7 +268,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                   <History className="w-3.5 h-3.5" />
                   Recent Chats
                   {sessions.length > 0 && (
-                    <span className="bg-primary/15 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-medium">
+                    <span className="bg-zinc-100 dark:bg-zinc-800 text-foreground border border-zinc-200 dark:border-zinc-700 text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold">
                       {sessions.length}
                     </span>
                   )}
@@ -297,7 +299,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                           <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
                           <button
                             onClick={fetchSessions}
-                            className="text-xs text-primary hover:underline"
+                            className="text-xs text-foreground font-semibold underline"
                           >
                             Retry
                           </button>
@@ -354,7 +356,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             {/* User profile row */}
             <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-xl border border-black/10 dark:border-white/10 bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-lg shadow-primary/20">
+                <div className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 flex items-center justify-center text-sm font-bold shrink-0 shadow-md">
                   {userInitial}
                 </div>
                 <div className="min-w-0">
@@ -367,7 +369,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 {user?.role === 'super_admin' && (
                   <button
                     onClick={() => navigate('/super-admin')}
-                    className="p-1.5 text-violet-500 hover:text-violet-400 dark:text-violet-400 dark:hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-colors"
+                    className="p-1.5 text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
                     title="Go to Super Admin Panel"
                   >
                     <Shield className="w-4 h-4" />
@@ -399,12 +401,14 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             <button
               onClick={() => navigate('/settings')}
               className={clsx(
-                "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all",
-                currentPath.includes('/settings') ? "text-primary bg-primary/10" : "text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all text-sm",
+                currentPath.includes('/settings')
+                  ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
+                  : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
               )}
             >
-              <Settings className="w-5 h-5" strokeWidth={2} />
-              <span className="font-medium text-sm">Settings</span>
+              <Settings className="w-4 h-4 flex-shrink-0 text-muted-foreground" strokeWidth={2} />
+              <span className="font-medium">Settings</span>
             </button>
           </div>
         </div>

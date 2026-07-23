@@ -133,7 +133,7 @@ function _scheduleProactiveRefresh() {
 
 // ── Base request helper ───────────────────────────────────────────────
 
-const request = async (path, options = {}, _isRetry = false) => {
+export const request = async (path, options = {}, _isRetry = false) => {
   // If access token is expired, proactively refresh before sending
   if (_accessExpiresAt && _accessExpiresAt - Date.now() < 30_000 && !_isRetry) {
     await silentRefresh();

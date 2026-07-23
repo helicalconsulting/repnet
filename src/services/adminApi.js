@@ -1,30 +1,7 @@
-/**
- * Repnex Super Admin API Service
- * All calls require super_admin role (enforced on backend).
- * Uses the same request() helper from api.js via re-export pattern.
- */
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.helical.consulting/v1';
-const LEGACY_ACCESS_KEY = 'repnex-auth-token';
-
-const ls = () => (typeof window !== 'undefined' && window.localStorage) ? window.localStorage : null;
-const getToken = () => ls()?.getItem(LEGACY_ACCESS_KEY) ?? null;
+import { request } from './api';
 
 const adminRequest = async (path, options = {}) => {
-  const headers = new Headers(options.headers || {});
-  const token = getToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-  const url = `${API_BASE}${path}`;
-  const response = await fetch(url, { ...options, headers });
-  if (response.status === 204) return { success: true };
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.detail || payload?.error?.message || payload?.error || 'Admin request failed');
-  }
-  return payload;
+  return request(path, options);
 };
 
 // ── Platform Stats ────────────────────────────────────────────────────

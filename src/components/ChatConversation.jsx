@@ -161,23 +161,24 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const toggleSummaryCollapse = (id) => {
     setCollapsedSummaries(prev => ({
       ...prev,
-      [id]: prev[id] === false ? true : false
+      [id]: !prev[id]
     }));
   };
 
   const isSummaryCollapsed = (id) => {
-    return collapsedSummaries[id] !== false;
+    return collapsedSummaries[id] === true;
   };
 
   const toggleSqlCollapse = (id) => {
     setCollapsedSQLs(prev => ({
       ...prev,
-      [id]: prev[id] === false ? true : false
+      [id]: !prev[id]
     }));
   };
 
   const isSqlCollapsed = (id) => {
-    return collapsedSQLs[id] !== false;
+    return collapsedSQLs[id] === true;
+
   };
 
 
@@ -1522,18 +1523,18 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 8 }}
-                    className="mt-4 w-full border border-border/40 dark:border-white/5 rounded-2xl overflow-hidden shadow-lg bg-[#0E121E]"
+                    className="mt-4 w-full border border-border/60 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm bg-slate-100/90 dark:bg-[#0E121E]"
                   >
                     {/* Code block header */}
                     <div 
-                      className="flex items-center justify-between px-4 py-2.5 bg-black/40 border-b border-border/30 dark:border-white/5 select-none cursor-pointer"
+                      className="flex items-center justify-between px-4 py-2.5 bg-slate-200/80 dark:bg-black/40 border-b border-border/60 dark:border-white/10 select-none cursor-pointer"
                       onClick={() => toggleSqlCollapse(msg.id)}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-sky-400 border border-blue-500/15">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-sky-400 border border-blue-500/20">
                           SQL
                         </span>
-                        <span className="text-xs text-slate-400 font-medium font-sans">
+                        <span className="text-xs text-foreground font-semibold font-sans">
                           Query Execution
                         </span>
                       </div>
@@ -1541,16 +1542,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         {!isSqlCollapsed(msg.id) && (
                           <button
                             onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 hover:bg-white/10 dark:hover:bg-white/5 text-xs text-slate-300 hover:text-white transition-all font-sans"
+                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-xs text-foreground dark:text-slate-300 transition-all font-sans font-medium"
                           >
                             {copiedId === `sql-${msg.id}` ? (
                               <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-emerald-400 font-medium">Copied!</span>
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <span className="text-emerald-500 font-medium">Copied!</span>
                               </>
                             ) : (
                               <>
-                                <Copy className="w-3.5 h-3.5 text-slate-400" />
+                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                                 <span>Copy</span>
                               </>
                             )}
@@ -1558,7 +1559,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         )}
                         <button
                           onClick={() => toggleSqlCollapse(msg.id)}
-                          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 text-[10px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 transition-colors"
                         >
                           {isSqlCollapsed(msg.id) ? (
                             <>
@@ -1582,7 +1583,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2, ease: "easeInOut" }}
-                          className="p-4 text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none"
+                          className="p-4 text-foreground dark:text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none font-semibold"
                           dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
                         />
                       )}

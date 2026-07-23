@@ -17,7 +17,8 @@ import {
   Layers,
   Sun,
   Moon,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect, useCallback } from "react";
@@ -362,6 +363,16 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                {/* Super Admin Switcher */}
+                {user?.role === 'super_admin' && (
+                  <button
+                    onClick={() => navigate('/super-admin')}
+                    className="p-1.5 text-violet-500 hover:text-violet-400 dark:text-violet-400 dark:hover:text-violet-300 hover:bg-violet-500/10 rounded-lg transition-colors"
+                    title="Go to Super Admin Panel"
+                  >
+                    <Shield className="w-4 h-4" />
+                  </button>
+                )}
                 {/* Theme Toggle */}
                 {setDarkMode && (
                   <button 

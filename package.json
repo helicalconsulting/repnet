@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start:api": "node server.js"
+    "start:api": "node server.js",
+    "create-super-admin": "python3 ../repnex_backend_complete/create_super_admin.py"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

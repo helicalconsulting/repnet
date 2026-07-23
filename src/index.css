@@ -464,6 +464,34 @@ body {
   border-color: var(--border) !important;
 }
 
-.super-admin-root .focus\:border-violet-500:focus {
-  border-color: var(--foreground) !important;
+/* High contrast text overrides for crisp legibility in Super Admin */
+html:not(.dark) .super-admin-root .text-slate-400,
+html:not(.dark) .super-admin-root .text-slate-500,
+html:not(.dark) .super-admin-root .text-muted-foreground {
+  color: #475569 !important; /* crisp slate-600 */
+}
+
+html:not(.dark) .super-admin-root .text-slate-300,
+html:not(.dark) .super-admin-root .text-slate-200,
+html:not(.dark) .super-admin-root .text-slate-100,
+html:not(.dark) .super-admin-root .text-white {
+  color: #0f172a !important; /* deep slate-900 */
+}
+
+html:not(.dark) .super-admin-root th {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+.dark .super-admin-root .text-slate-400,
+.dark .super-admin-root .text-slate-500,
+.dark .super-admin-root .text-muted-foreground {
+  color: #94a3b8 !important;
+}
+
+.dark .super-admin-root .text-slate-300,
+.dark .super-admin-root .text-slate-200,
+.dark .super-admin-root .text-slate-100,
+.dark .super-admin-root .text-white {
+  color: #f8fafc !important;
 }

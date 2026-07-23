@@ -156,12 +156,12 @@ export default function SuperAdminUsers() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-black/[0.02] dark:bg-white/[0.02]">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">User</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Organization</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Joined</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-foreground uppercase tracking-wider">User</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-foreground uppercase tracking-wider">Organization</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-foreground uppercase tracking-wider">Role</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-foreground uppercase tracking-wider">Status</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-foreground uppercase tracking-wider">Joined</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-foreground uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -174,7 +174,7 @@ export default function SuperAdminUsers() {
                 </tr>
               ))
             ) : data.items.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">No users found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-foreground font-medium">No users found</td></tr>
             ) : (
               data.items.map((u, i) => {
                 const initial = u.email?.charAt(0)?.toUpperCase() || 'U';
@@ -189,19 +189,19 @@ export default function SuperAdminUsers() {
                         <div className="w-7 h-7 rounded-lg bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center text-xs font-bold text-white dark:text-zinc-900 flex-shrink-0">
                           {initial}
                         </div>
-                        <span className="text-foreground font-medium">{u.email}</span>
+                        <span className="text-foreground font-semibold">{u.email}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{u.org_name}</td>
+                    <td className="px-4 py-3 text-foreground font-medium text-xs">{u.org_name || 'none'}</td>
                     <td className="px-4 py-3">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border uppercase tracking-wider ${ROLE_BADGE[u.role] || ROLE_BADGE.viewer}`}>
                         {u.role}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-medium ${STATUS_BADGE[u.status] || 'text-muted-foreground'}`}>{u.status}</span>
+                      <span className={`text-xs font-semibold ${STATUS_BADGE[u.status] || 'text-foreground'}`}>{u.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
+                    <td className="px-4 py-3 text-foreground font-medium text-xs">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {u.status === 'active' ? (

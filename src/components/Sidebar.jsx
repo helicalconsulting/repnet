@@ -131,39 +131,34 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
       <motion.aside
         initial={{ width: 280, x: 0 }}
         animate={{
-          width: isOpen ? 300 : 0,
-          x: isOpen ? 0 : -300,
+          width: isOpen ? 256 : 0,
+          x: isOpen ? 0 : -256,
           opacity: isOpen ? 1 : 0
         }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="h-full bg-background border-r border-border/50 flex flex-col justify-between overflow-hidden absolute md:relative z-[60] shrink-0"
+        transition={{ type: "spring", stiffness: 300, damping: 32 }}
+        className="h-full flex-shrink-0 overflow-hidden border-r border-border bg-card/80 backdrop-blur-xl z-50 fixed md:relative"
       >
-        <div className="p-5 flex flex-col h-full min-w-[300px]">
+        <div className="flex flex-col h-full min-w-[256px] p-4">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div
-              onClick={() => navigate('/')}
-              className="flex items-center gap-3 cursor-pointer group"
-            >
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-md p-1 shrink-0">
-                <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter invert dark:invert-0" />
-              </div>
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-base font-bold tracking-tight text-foreground group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors"
-                >
-                  Repnex
-                </motion.h1>
-                <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
-              </div>
+          <div className="flex items-center gap-3 mb-6 mt-1 px-2">
+            <div className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-md shrink-0">
+              <Layers className="w-5 h-5 text-white dark:text-zinc-900" />
+            </div>
+            <div>
+              <motion.h1
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm font-bold text-foreground tracking-tight"
+              >
+                Repnex App
+              </motion.h1>
+              <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 hover:text-foreground rounded-lg transition-colors"
+              className="ml-auto p-1 text-muted-foreground hover:text-foreground transition-colors md:hidden"
             >
-              <PanelLeftClose className="w-[18px] h-[18px]" />
+              <PanelLeftClose className="w-4 h-4" />
             </button>
           </div>
 
@@ -201,12 +196,10 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 navigate('/chat');
                 window.dispatchEvent(new CustomEvent('repnex-new-chat'));
               }}
-              className="flex items-center justify-between gap-3 w-full p-3.5 mb-5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 rounded-xl transition-all shadow-md font-semibold"
+              className="flex items-center justify-between gap-3 w-full p-3 mb-5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 rounded-xl transition-all shadow-md font-semibold"
             >
-              <span className="flex items-center gap-2.5 text-sm font-bold">
-                <div className="bg-white/20 dark:bg-black/20 p-1.5 rounded-lg">
-                  <Plus className="w-4 h-4" />
-                </div>
+              <span className="flex items-center gap-2 text-xs font-bold">
+                <Plus className="w-4 h-4" />
                 New Report Chat
               </span>
               <span className="text-[10px] bg-white/20 dark:bg-black/20 px-2 py-0.5 rounded font-mono font-bold">⌘N</span>
@@ -214,47 +207,55 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
           )}
 
           {/* Navigation */}
-          <nav className="space-y-1">
-            {navItems
-              .filter((item) => {
-                if (item.id === 'connections' && !isAdmin) return false;
-                if (item.id === 'chat' && isViewer) return false;
-                return true;
-              })
-              .map((item) => {
-                const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      navigate(item.path);
-                      if (item.id === 'chat') {
-                        window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-                      }
-                    }}
-                    className={clsx(
-                      "flex items-center gap-3 w-full px-3 py-2 rounded-xl transition-all duration-200 group relative text-sm",
-                      isActive
-                        ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
-                    )}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="active-navLine"
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      />
-                    )}
-                    <Icon className={clsx("w-4 h-4 flex-shrink-0 relative z-10", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                    <span className={clsx("relative z-10", isActive ? "font-semibold text-foreground" : "font-medium")}>
-                      {item.label}
-                    </span>
-                  </button>
-                );
-              })}
+          <nav className="flex-1 space-y-5 overflow-y-auto custom-scrollbar">
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-2">
+                PLATFORM MENU
+              </p>
+              <div className="space-y-0.5">
+                {navItems
+                  .filter((item) => {
+                    if (item.id === 'connections' && !isAdmin) return false;
+                    if (item.id === 'chat' && isViewer) return false;
+                    return true;
+                  })
+                  .map((item) => {
+                    const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path + '/'));
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          navigate(item.path);
+                          if (item.id === 'chat') {
+                            window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+                          }
+                        }}
+                        className={clsx(
+                          "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-sm relative",
+                          isActive
+                            ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                        )}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="active-navLine"
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          />
+                        )}
+                        <Icon className={clsx("w-4 h-4 flex-shrink-0 relative z-10", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                        <span className={clsx("relative z-10", isActive ? "font-semibold text-foreground" : "font-medium")}>
+                          {item.label}
+                        </span>
+                        {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-foreground relative z-10" />}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
           </nav>
 
           {/* Recent Chats */}

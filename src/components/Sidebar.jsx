@@ -141,18 +141,12 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
         <div className="flex flex-col h-full min-w-[256px] p-4">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6 mt-1 px-2">
-            <div className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-md shrink-0">
-              <Layers className="w-5 h-5 text-white dark:text-zinc-900" />
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-sm shrink-0">
+              <Layers className="w-4 h-4 text-white dark:text-zinc-900" />
             </div>
             <div>
-              <motion.h1
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm font-bold text-foreground tracking-tight"
-              >
-                Repnex App
-              </motion.h1>
-              <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
+              <p className="text-xs font-bold text-foreground tracking-tight">Repnex</p>
+              <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -356,13 +350,13 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
           <div className="mt-auto pt-4 border-t border-border/50">
             {/* User profile row */}
             <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-8 h-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold shrink-0 shadow-md">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center text-xs font-bold text-white dark:text-zinc-900 shadow-sm shrink-0">
                   {userInitial}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-foreground truncate">{user?.name || 'User'}</p>
-                  <p className="text-[10px] text-muted-foreground truncate capitalize">{user?.role || 'member'}</p>
+                  <p className="text-xs font-semibold text-foreground truncate">{user?.name || user?.email || 'User'}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium capitalize">{user?.role || 'member'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
-import { PanelLeftOpen, Sun, Moon, Bell, LogOut, MessageSquarePlus } from 'lucide-react';
+import { PanelLeftOpen, Sun, Moon, Bell, LogOut, MessageSquarePlus, Menu, Layers } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import Sidebar from '../components/Sidebar';
@@ -83,11 +83,6 @@ export default function MainLayout({ user, onSignOut }) {
     }
   };
 
-  const handleNewChat = () => {
-    navigate('/chat');
-    window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-  };
-
   const getLayoutTransitionKey = (pathname) => {
     if (pathname.startsWith('/chat')) {
       return '/chat';
@@ -120,23 +115,6 @@ export default function MainLayout({ user, onSignOut }) {
         </AnimatePresence>
       </div>
 
-      {/* Floating Left Side Sidebar Open Toggle */}
-      <div className="absolute top-4 left-4 md:top-6 md:left-6 z-40 pointer-events-auto cursor-pointer transition-all">
-         <AnimatePresence>
-           {!isSidebarOpen && (
-             <Motion.button 
-               initial={{ opacity: 0, x: -20, scale: 0.8 }}
-               animate={{ opacity: 1, x: 0, scale: 1 }}
-               exit={{ opacity: 0, x: -20, scale: 0.8 }}
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2.5 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors bg-card/80 backdrop-blur-md border border-border/50 shadow-sm"
-             >
-               <PanelLeftOpen className="w-5 h-5" />
-             </Motion.button>
-           )}
-         </AnimatePresence>
-      </div>
-
       <Sidebar 
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
@@ -145,19 +123,47 @@ export default function MainLayout({ user, onSignOut }) {
         setDarkMode={setDarkMode}
       />
 
-      <main className="flex-1 flex flex-col relative w-full min-w-0 h-full overflow-hidden mix-blend-normal z-10 transition-all duration-300">
-         <AnimatePresence mode="wait">
-            <Motion.div 
-               key={getLayoutTransitionKey(location.pathname)}
-               initial={{ opacity: 0, y: 10 }} 
-               animate={{ opacity: 1, y: 0 }} 
-               exit={{ opacity: 0, y: -10 }} 
-               className="flex-1 h-full flex flex-col"
-            >
-               <Outlet context={{ isSidebarOpen, setIsSidebarOpen }} />
-            </Motion.div>
-         </AnimatePresence>
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-full">
+        {/* Top bar — 1-to-1 match with Super Admin */}
+        <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 z-20">
+          <div className="flex items-center gap-3">
+            {!isSidebarOpen && (
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                title="Open Sidebar"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
+                <Layers className="w-3 h-3 text-foreground" />
+              </div>
+              <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
+                AI Active
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+          <AnimatePresence mode="wait">
+             <Motion.div 
+                key={getLayoutTransitionKey(location.pathname)}
+                initial={{ opacity: 0, y: 8 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -8 }} 
+                transition={{ duration: 0.18 }}
+                className="h-full"
+             >
+                <Outlet context={{ isSidebarOpen, setIsSidebarOpen }} />
+             </Motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
 
     </div>
   );

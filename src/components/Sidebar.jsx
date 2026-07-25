@@ -324,7 +324,7 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             {/* User profile row */}
             <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center text-xs font-bold text-white dark:text-zinc-900 shadow-sm shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-800 dark:text-zinc-200 shadow-sm shrink-0">
                   {userInitial}
                 </div>
                 <div className="min-w-0">

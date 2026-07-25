@@ -174,24 +174,23 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const toggleSummaryCollapse = (id) => {
     setCollapsedSummaries(prev => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: !isSummaryCollapsed(id)
     }));
   };
 
   const isSummaryCollapsed = (id) => {
-    return collapsedSummaries[id] === true;
+    return collapsedSummaries[id] !== false;
   };
 
   const toggleSqlCollapse = (id) => {
     setCollapsedSQLs(prev => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: !isSqlCollapsed(id)
     }));
   };
 
   const isSqlCollapsed = (id) => {
-    return collapsedSQLs[id] === true;
-
+    return collapsedSQLs[id] !== false;
   };
 
 

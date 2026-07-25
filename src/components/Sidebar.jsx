@@ -345,8 +345,8 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 )}
                 {/* Theme Toggle */}
                 {setDarkMode && (
-                  <button 
-                    onClick={() => setDarkMode(!darkMode)} 
+                  <button
+                    onClick={() => setDarkMode(!darkMode)}
                     className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
                     title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
                   >

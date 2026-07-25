@@ -144,52 +144,63 @@ export default function MainLayout({ user, onSignOut }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-full">
         {/* Dynamic Top bar */}
         {!headerConfig.hidden && (
-          <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 z-20">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0"
-                title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-              >
-                {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-              </button>
-              {headerConfig.title ? (
-                typeof headerConfig.title === 'string' ? (
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {headerConfig.icon && (
-                      <div className="w-6 h-6 rounded-lg bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
-                        {headerConfig.icon}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <h1 className="text-sm font-bold text-foreground leading-none truncate tracking-tight">{headerConfig.title}</h1>
-                      {headerConfig.subtitle && (
-                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">{headerConfig.subtitle}</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  headerConfig.title
-                )
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
-                    <Layers className="w-3 h-3 text-foreground" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
-                    AI Active
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {headerConfig.actions && (
-              <div className="flex items-center gap-2 shrink-0">
-                {headerConfig.actions}
+          <div className={headerConfig.autoHide ? "group/topbar absolute top-0 left-0 right-0 z-30" : "w-full z-20"}>
+            {headerConfig.autoHide && (
+              <div className="h-4 w-full cursor-pointer flex justify-center items-start pt-1">
+                <div className="w-10 h-1 rounded-full bg-border/50 group-hover/topbar:opacity-0 transition-opacity" />
               </div>
             )}
-          </header>
+            <header className={`h-14 border-b border-border bg-card/90 dark:bg-[#121212]/90 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 transition-all duration-300 ease-in-out ${
+              headerConfig.autoHide
+                ? "transform -translate-y-full opacity-0 group-hover/topbar:translate-y-0 group-hover/topbar:opacity-100 shadow-xl"
+                : ""
+            }`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0"
+                  title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+                >
+                  {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+                </button>
+                {headerConfig.title ? (
+                  typeof headerConfig.title === 'string' ? (
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {headerConfig.icon && (
+                        <div className="w-6 h-6 rounded-lg bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
+                          {headerConfig.icon}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h1 className="text-sm font-bold text-foreground leading-none truncate tracking-tight">{headerConfig.title}</h1>
+                        {headerConfig.subtitle && (
+                          <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">{headerConfig.subtitle}</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    headerConfig.title
+                  )
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
+                      <Layers className="w-3 h-3 text-foreground" />
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
+                      AI Active
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {headerConfig.actions && (
+                <div className="flex items-center gap-2 shrink-0">
+                  {headerConfig.actions}
+                </div>
+              )}
+            </header>
+          </div>
         )}
 
         {/* Page content */}

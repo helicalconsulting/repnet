@@ -23,17 +23,47 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const location = useLocation();
   const { setHeaderConfig } = useOutletContext() || {};
 
+  const activeConn = connections.find((c) => c.id === activeConnection);
+
   useEffect(() => {
     if (setHeaderConfig) {
       setHeaderConfig({
-        title: "",
+        title: activeConn ? (
+          <div className="flex items-center gap-2 px-3 py-1 bg-card/90 dark:bg-[#1C1C1C]/90 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-muted-foreground font-medium">Connected to</span>
+            <span className="font-bold text-foreground">{activeConn.name}</span>
+            {activeConn.database && (
+              <span className="text-muted-foreground font-mono text-[11px]">
+                ({activeConn.database})
+              </span>
+            )}
+            {activeConn.tables > 0 && (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-500/20">
+                {activeConn.tables} tables
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
+              <Database className="w-3 h-3 text-foreground" />
+            </div>
+            <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
+              AI Active
+            </span>
+          </div>
+        ),
         subtitle: "",
         icon: null,
         actions: null,
         hidden: false,
+        autoHide: true,
       });
     }
-  }, [setHeaderConfig]);
+  }, [setHeaderConfig, activeConn]);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -263,7 +293,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }
   };
 
-  const activeConn = connections.find((c) => c.id === activeConnection);
   const { isDark } = useTheme();
   const isViewer = user?.role === 'viewer';
 
@@ -1330,29 +1359,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
-      {/* Connection Status Bar */}
-      {activeConn && (
-        <div className="absolute top-0 left-0 right-0 flex justify-center pt-4 z-10">
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-card/90 dark:bg-[#1C1C1C]/90 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-muted-foreground font-medium">Connected to</span>
-            <span className="font-bold text-foreground">{activeConn.name}</span>
-            {activeConn.database && (
-              <span className="text-muted-foreground font-mono text-[11px]">
-                ({activeConn.database})
-              </span>
-            )}
-            {activeConn.tables > 0 && (
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-500/20">
-                {activeConn.tables} tables
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="w-full flex-1 flex flex-col pt-20 pb-40 overflow-y-auto custom-scrollbar">
+      <div className="w-full flex-1 flex flex-col pt-6 pb-40 overflow-y-auto custom-scrollbar">
         <div className="w-full max-w-6xl mx-auto px-6 flex-1 flex flex-col">
         <SmartSkeleton loading={loadingHistory}>
           {loadingHistory ? (

@@ -28,42 +28,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   useEffect(() => {
     if (setHeaderConfig) {
       setHeaderConfig({
-        title: activeConn ? (
-          <div className="flex items-center gap-2 px-3 py-1 bg-card/90 dark:bg-[#1C1C1C]/90 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-muted-foreground font-medium">Connected to</span>
-            <span className="font-bold text-foreground">{activeConn.name}</span>
-            {activeConn.database && (
-              <span className="text-muted-foreground font-mono text-[11px]">
-                ({activeConn.database})
-              </span>
-            )}
-            {activeConn.tables > 0 && (
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-500/20">
-                {activeConn.tables} tables
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center">
-              <Database className="w-3 h-3 text-foreground" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">Repnex Workspace</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
-              AI Active
-            </span>
-          </div>
-        ),
+        title: "",
         subtitle: "",
         icon: null,
         actions: null,
         hidden: false,
-        autoHide: true,
       });
     }
-  }, [setHeaderConfig, activeConn]);
+  }, [setHeaderConfig]);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1359,7 +1331,37 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
-      <div className="w-full flex-1 flex flex-col pt-6 pb-40 overflow-y-auto custom-scrollbar">
+      {/* Floating Hover Connection Status Bar */}
+      {activeConn && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 group">
+          {/* Collapsed Indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-card/80 dark:bg-[#1C1C1C]/80 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm cursor-pointer group-hover:opacity-0 transition-opacity duration-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold text-foreground text-[11px] sm:text-xs truncate max-w-[130px] sm:max-w-xs">{activeConn.name}</span>
+          </div>
+
+          {/* Expanded Full Connection Details Badge on Hover */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-200 ease-out flex items-center gap-2 px-3.5 py-1.5 bg-card/95 dark:bg-[#1C1C1C]/95 backdrop-blur-xl border border-border/80 dark:border-white/15 rounded-full text-xs shadow-xl max-w-[92vw] sm:max-w-max whitespace-nowrap overflow-hidden">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-muted-foreground font-medium shrink-0">Connected to</span>
+            <span className="font-bold text-foreground truncate max-w-[150px] sm:max-w-none">{activeConn.name}</span>
+            {activeConn.database && (
+              <span className="text-muted-foreground font-mono text-[11px] truncate max-w-[100px] sm:max-w-none">
+                ({activeConn.database})
+              </span>
+            )}
+            {activeConn.tables > 0 && (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-500/20 shrink-0">
+                {activeConn.tables} tables
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="w-full flex-1 flex flex-col pt-10 pb-40 overflow-y-auto custom-scrollbar">
         <div className="w-full max-w-6xl mx-auto px-6 flex-1 flex flex-col">
         <SmartSkeleton loading={loadingHistory}>
           {loadingHistory ? (

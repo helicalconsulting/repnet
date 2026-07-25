@@ -104,21 +104,23 @@ export default function SuperAdminFeedback() {
                 >
                   <td className="px-4 py-3 whitespace-nowrap">
                     {fb.is_positive ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         <ThumbsUp className="w-3.5 h-3.5" /> Positive
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                         <ThumbsDown className="w-3.5 h-3.5" /> Negative
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-xs font-bold text-foreground">{fb.user_email}</p>
-                    <p className="text-[11px] text-muted-foreground font-medium">{fb.org_name}</p>
+                    <p className="text-[11px] text-muted-foreground font-medium">
+                      {fb.org_name && fb.org_name !== 'none' && fb.org_name !== 'Unknown' ? fb.org_name : 'Repnex Platform'}
+                    </p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-muted text-foreground border border-border capitalize">
+                    <span className="text-xs font-medium px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/60 capitalize">
                       {fb.category || 'General'}
                     </span>
                   </td>
@@ -203,11 +205,11 @@ export default function SuperAdminFeedback() {
                   </div>
                   <div>
                     {selectedFeedback.is_positive ? (
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                         <ThumbsUp className="w-3.5 h-3.5" /> Thumbs Up
                       </span>
                     ) : (
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center gap-1">
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center gap-1">
                         <ThumbsDown className="w-3.5 h-3.5" /> Thumbs Down
                       </span>
                     )}

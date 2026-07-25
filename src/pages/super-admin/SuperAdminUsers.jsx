@@ -4,16 +4,16 @@ import { Search, RefreshCw, CheckCircle2, XCircle, LogOut, UserX, Shield, UserPl
 import { adminApi } from '../../services/adminApi';
 
 const ROLE_BADGE = {
-  super_admin: 'bg-zinc-800 text-zinc-100 border-zinc-700',
-  admin:       'bg-blue-600/20 text-blue-400 border-blue-600/30',
-  editor:      'bg-emerald-600/20 text-emerald-400 border-emerald-600/30',
-  viewer:      'bg-slate-700/50 text-slate-400 border-slate-600/30',
+  super_admin: 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/20',
+  admin:       'bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/20',
+  editor:      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/20',
+  viewer:      'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20',
 };
 
 const STATUS_BADGE = {
-  active:  'text-emerald-400',
-  pending: 'text-amber-400',
-  expired: 'text-rose-400',
+  active:  'text-emerald-600 dark:text-emerald-400',
+  pending: 'text-amber-600 dark:text-amber-400',
+  expired: 'text-rose-600 dark:text-rose-400',
 };
 
 export default function SuperAdminUsers() {

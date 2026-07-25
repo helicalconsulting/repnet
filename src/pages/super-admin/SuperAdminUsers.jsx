@@ -87,13 +87,14 @@ export default function SuperAdminUsers() {
     setAddSuccess('');
     if (!addForm.email.includes('@')) return setAddError('Please enter a valid email');
     if (addForm.password.length < 6) return setAddError('Password must be at least 6 characters');
-    if (!addForm.org_id) return setAddError('Please select an organization');
+
+    const targetOrgId = addForm.org_id && addForm.org_id !== 'none' ? addForm.org_id : 'default';
 
     setIsSubmitting(true);
     try {
-      await adminApi.createUser(addForm);
+      await adminApi.createUser({ ...addForm, org_id: targetOrgId });
       setAddSuccess('User created successfully!');
-      setAddForm({ email: '', password: '', org_id: orgs[0]?.id || '', role: 'viewer', status: 'active' });
+      setAddForm({ email: '', password: '', org_id: orgs[0]?.id || 'default', role: 'viewer', status: 'active' });
       load();
       setTimeout(() => { setShowAddModal(false); setAddSuccess(''); }, 1200);
     } catch (err) {
@@ -186,16 +187,22 @@ export default function SuperAdminUsers() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center text-xs font-bold text-white dark:text-zinc-900 flex-shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-800 dark:text-zinc-200 flex-shrink-0">
                           {initial}
                         </div>
                         <span className="text-foreground font-semibold">{u.email}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-foreground font-medium text-xs">{u.org_name || 'none'}</td>
+                    <td className="px-4 py-3 font-medium text-xs">
+                      {u.org_name && u.org_name !== 'none' && u.org_name !== 'Unknown' ? (
+                        <span className="text-foreground">{u.org_name}</span>
+                      ) : (
+                        <span className="text-muted-foreground italic">Repnex Platform</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border uppercase tracking-wider ${ROLE_BADGE[u.role] || ROLE_BADGE.viewer}`}>
-                        {u.role}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wider ${ROLE_BADGE[u.role] || ROLE_BADGE.viewer}`}>
+                        {u.role === 'super_admin' ? 'Super Admin' : u.role === 'admin' ? 'Admin' : u.role === 'editor' ? 'Editor' : 'Viewer'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -312,11 +319,11 @@ export default function SuperAdminUsers() {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Organization</label>
                   <select
-                    value={addForm.org_id}
+                    value={addForm.org_id || 'default'}
                     onChange={e => setAddForm(prev => ({ ...prev, org_id: e.target.value }))}
                     className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground outline-none"
                   >
-                    {orgs.length === 0 && <option value="default">Default Organization</option>}
+                    <option value="default">Repnex Platform (Default Org)</option>
                     {orgs.map(o => (
                       <option key={o.id} value={o.id}>{o.name}</option>
                     ))}

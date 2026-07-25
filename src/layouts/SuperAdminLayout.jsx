@@ -78,9 +78,16 @@ export default function SuperAdminLayout({ user, onSignOut }) {
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: sidebarOpen ? 256 : 0, opacity: sidebarOpen ? 1 : 0 }}
+        animate={{
+          width: sidebarOpen ? 256 : 0,
+          x: sidebarOpen ? 0 : -256,
+          opacity: sidebarOpen ? 1 : 0
+        }}
         transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-        className="h-full flex-shrink-0 overflow-hidden border-r border-border bg-card/80 backdrop-blur-xl z-50 fixed md:relative"
+        className={clsx(
+          "h-full flex-shrink-0 overflow-hidden border-r border-border bg-card/80 backdrop-blur-xl z-50 fixed md:relative",
+          !sidebarOpen && "border-none pointer-events-none"
+        )}
       >
         <div className="flex flex-col h-full min-w-[256px] p-4">
           {/* Logo */}

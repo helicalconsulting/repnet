@@ -3,7 +3,8 @@ import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
-  Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff
+  Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff,
+  PanelLeftOpen, PanelLeftClose
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
@@ -21,20 +22,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const { getCasualResponse, profile } = usePersonalization();
   const navigate = useNavigate();
   const location = useLocation();
-  const { setHeaderConfig } = useOutletContext() || {};
+  const { isSidebarOpen, setIsSidebarOpen, setHeaderConfig } = useOutletContext() || {};
 
   const activeConn = connections.find((c) => c.id === activeConnection);
 
   useEffect(() => {
     if (setHeaderConfig) {
       setHeaderConfig({
-        title: "",
-        subtitle: "",
-        icon: null,
-        actions: null,
-        hidden: false,
+        hidden: true,
       });
     }
+    return () => {
+      if (setHeaderConfig) {
+        setHeaderConfig({ hidden: false });
+      }
+    };
   }, [setHeaderConfig]);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
@@ -1331,9 +1333,24 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
+      {/* Floating Sidebar Toggle Button (Drawer Icon) */}
+      {setIsSidebarOpen && (
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="absolute top-3 left-4 z-30 p-2 text-muted-foreground hover:text-foreground bg-card/80 dark:bg-[#1C1C1C]/80 hover:bg-black/10 dark:hover:bg-white/10 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-xl transition-all shadow-sm group"
+          title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+        >
+          {isSidebarOpen ? (
+            <PanelLeftClose className="w-4 h-4 text-foreground/80 group-hover:text-foreground" />
+          ) : (
+            <PanelLeftOpen className="w-4 h-4 text-foreground/80 group-hover:text-foreground" />
+          )}
+        </button>
+      )}
+
       {/* Floating Hover Connection Status Bar */}
       {activeConn && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 group">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 group">
           {/* Collapsed Indicator */}
           <div className="flex items-center gap-1.5 px-3 py-1 bg-card/80 dark:bg-[#1C1C1C]/80 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm cursor-pointer group-hover:opacity-0 transition-opacity duration-200">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

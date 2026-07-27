@@ -190,6 +190,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [xAxisKey, setXAxisKey] = useState("product");
   const [zAxisKey, setZAxisKey] = useState("");
   const [barMode, setBarMode] = useState("stacked"); // 'stacked' | 'grouped'
+  const [is3DView, setIs3DView] = useState(false); // 3D Isometric Perspective Mode
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState(query || "");
@@ -232,28 +233,61 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     return reportData ? [] : Object.keys(dummyData[0]).filter(k => k !== 'id' && k !== '__rowId');
   });
   
-  const availableKeys = columns.filter(k => 
-    data.length > 0 && 
-    data.some(row => 
-      row[k] !== undefined && 
-      row[k] !== null && 
-      row[k] !== '' &&
-      !isNaN(Number(row[k])) &&
-      typeof row[k] !== 'boolean'
-    )
-  );
+  const isIdColumn = (colName) => {
+    const lower = String(colName).toLowerCase();
+    return lower === 'id' || lower === '__rowid' || lower.endsWith('id') || lower.endsWith('_id') ||
+           lower === 'job' || lower === 'orderno' || lower === 'invoiceno' || lower === 'seq' || lower === 'num';
+  };
 
-  // Unique values for Z-Axis if selected
+  const availableKeys = useMemo(() => {
+    if (!data.length) return [];
+    
+    // First priority: Numeric columns that are NOT ID/Key columns
+    const metricCols = columns.filter(k => 
+      !isIdColumn(k) &&
+      data.some(row => 
+        row[k] !== undefined && 
+        row[k] !== null && 
+        row[k] !== '' &&
+        !isNaN(Number(row[k])) &&
+        typeof row[k] !== 'boolean'
+      )
+    );
+
+    if (metricCols.length > 0) return metricCols;
+
+    // Fallback: All numeric columns
+    return columns.filter(k => 
+      data.some(row => 
+        row[k] !== undefined && 
+        row[k] !== null && 
+        row[k] !== '' &&
+        !isNaN(Number(row[k])) &&
+        typeof row[k] !== 'boolean'
+      )
+    );
+  }, [columns, data]);
+
+  // Check if Z-Axis column is numeric
+  const zIsNumeric = useMemo(() => {
+    if (!zAxisKey || !data.length) return false;
+    return data.some(r => typeof r[zAxisKey] === 'number' || (!isNaN(Number(r[zAxisKey])) && r[zAxisKey] !== '' && r[zAxisKey] !== null));
+  }, [zAxisKey, data]);
+
+  // Unique values or buckets for Z-Axis
   const zValues = useMemo(() => {
     if (!zAxisKey || !data.length) return [];
+    if (zIsNumeric && chartType !== 'scatter') {
+      return ["Low", "Medium", "High"];
+    }
     const set = new Set();
     data.forEach(r => {
       if (r[zAxisKey] !== undefined && r[zAxisKey] !== null) {
         set.add(String(r[zAxisKey]));
       }
     });
-    return Array.from(set).slice(0, 10);
-  }, [zAxisKey, data]);
+    return Array.from(set).slice(0, 6);
+  }, [zAxisKey, data, zIsNumeric, chartType]);
 
   // Pivot or clean data for chart visualization
   const processedDataForChart = useMemo(() => {
@@ -274,24 +308,46 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       });
     }
 
-    // Z-Axis active: Pivot data by xAxisKey and zAxisKey
     const primaryMetric = selectedDataKeys[0] || availableKeys[0] || 'revenue';
     const groupMap = new Map();
 
-    data.forEach(row => {
-      const xVal = String(row[xAxisKey] ?? 'Unknown');
-      const zVal = String(row[zAxisKey] ?? 'Other');
-      const val = Number(row[primaryMetric]) || 0;
+    if (zIsNumeric && chartType !== 'scatter') {
+      // Calculate min, max for numeric bucketization
+      const numVals = data.map(r => Number(r[zAxisKey]) || 0);
+      const minV = Math.min(...numVals);
+      const maxV = Math.max(...numVals);
+      const range = (maxV - minV) || 1;
 
-      if (!groupMap.has(xVal)) {
-        groupMap.set(xVal, { [xAxisKey]: xVal });
-      }
-      const entry = groupMap.get(xVal);
-      entry[zVal] = (entry[zVal] || 0) + val;
-    });
+      data.forEach(row => {
+        const xVal = String(row[xAxisKey] ?? 'Unknown');
+        const numV = Number(row[zAxisKey]) || 0;
+        let bucket = "Medium";
+        if (numV <= minV + range / 3) bucket = "Low";
+        else if (numV >= maxV - range / 3) bucket = "High";
+
+        const val = Number(row[primaryMetric]) || 0;
+        if (!groupMap.has(xVal)) {
+          groupMap.set(xVal, { [xAxisKey]: xVal });
+        }
+        const entry = groupMap.get(xVal);
+        entry[bucket] = (entry[bucket] || 0) + val;
+      });
+    } else {
+      data.forEach(row => {
+        const xVal = String(row[xAxisKey] ?? 'Unknown');
+        const zVal = String(row[zAxisKey] ?? 'Other');
+        const val = Number(row[primaryMetric]) || 0;
+
+        if (!groupMap.has(xVal)) {
+          groupMap.set(xVal, { [xAxisKey]: xVal });
+        }
+        const entry = groupMap.get(xVal);
+        entry[zVal] = (entry[zVal] || 0) + val;
+      });
+    }
 
     return Array.from(groupMap.values());
-  }, [data, availableKeys, zAxisKey, xAxisKey, selectedDataKeys]);
+  }, [data, availableKeys, zAxisKey, xAxisKey, selectedDataKeys, zIsNumeric, chartType]);
 
   const displayedTab = isMobile && activeTab === 'split' ? 'chart' : activeTab;
   const chartHeight = displayedTab === 'split'
@@ -695,8 +751,19 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       fontSize: isMobile ? 10 : 11,
       tickLine: false,
       axisLine: false,
-      tickFormatter: (value) => String(value).split(' ')[0],
-      angle: isMobile ? -30 : -45,
+      tickFormatter: (value) => {
+        const str = String(value ?? '');
+        if (!str) return '';
+        const clean = str.includes('T') ? str.split('T')[0] : str.split(' ')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+          const [yyyy, mm, dd] = clean.split('-');
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const mIdx = parseInt(mm, 10) - 1;
+          return `${dd} ${months[mIdx] || mm}`;
+        }
+        return clean.length > 16 ? clean.slice(0, 14) + '...' : clean;
+      },
+      angle: isMobile ? -30 : -35,
       textAnchor: "end",
       height: isMobile ? 50 : 60,
       interval: isMobile ? 0 : 'preserveStartEnd'
@@ -1059,6 +1126,18 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                       </button>
                     </div>
                   )}
+
+                  {/* 3D View Mode Toggle */}
+                  <button
+                    onClick={() => setIs3DView(!is3DView)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                      is3DView 
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30' 
+                        : 'bg-card border-border/50 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {is3DView ? '3D Active ✨' : '3D View'}
+                  </button>
                 </>
               )}
             </div>
@@ -1179,7 +1258,9 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                    )}
                 </div>
               </div>
-              <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
+              <div className={`p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px] transition-transform duration-500 ${
+                is3DView ? 'perspective-[1000px] [transform:rotateX(20deg)_rotateY(-6deg)] [transform-style:preserve-3d] drop-shadow-2xl' : ''
+              }`}>
                 <ResponsiveContainer width="100%" height={chartHeight}>
                   {renderChart()}
                 </ResponsiveContainer>

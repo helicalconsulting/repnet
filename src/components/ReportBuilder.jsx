@@ -1228,7 +1228,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                   <div className={`flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border transition-all text-xs gap-1.5 ${
                     zAxisKey ? 'border-primary/60 bg-primary/5 text-primary' : 'border-border/50 dark:border-white/10'
                   }`}>
-                    <span className="font-semibold text-[11px] uppercase">Z (Group):</span>
+                    <span className="font-semibold text-[11px] uppercase">Breakdown (3rd Col):</span>
                     <select
                       value={zAxisKey}
                       onChange={(e) => setZAxisKey(e.target.value)}
@@ -1262,7 +1262,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        Grouped
+                        Side-by-Side
                       </button>
                     </div>
                   )}
@@ -1337,26 +1337,24 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     <span>Export</span>
                   </button>
               </div>
-              <div className="overflow-x-auto flex-1 p-2 sm:p-3">
+              <div className="flex-1 overflow-auto max-h-[500px]">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={columns.map(c => `col-${c}`)} strategy={horizontalListSortingStrategy}>
                     <SortableContext items={data.map(r => `row-${r.__rowId}`)} strategy={verticalListSortingStrategy}>
-                      <table className="w-full min-w-[640px] text-sm text-left border-collapse">
-                        <thead className="text-xs text-muted-foreground uppercase sticky top-0 z-20">
-                          <tr>
-                            <th className="px-2 py-3 w-10 bg-muted dark:bg-muted first:rounded-tl-lg border-r border-border/20"></th>
-                            {columns.map(key => (
-                              <SortableColumn 
-                                key={`col-${key}`} 
-                                id={key} 
-                                title={key.charAt(0).toUpperCase() + key.slice(1)} 
-                              />
+                      <table className="w-full text-left text-xs sm:text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b border-border/50 text-muted-foreground sticky top-0 bg-card z-20">
+                            <th className="px-2 py-2.5 sm:py-3 w-10 text-center font-medium bg-muted dark:bg-muted first:rounded-tl-lg">
+                              #
+                            </th>
+                            {columns.map(col => (
+                              <SortableColumn key={`col-${col}`} id={col} title={col} />
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {data.length > 0 ? (
-                            data.map(row => (
+                            data.map((row) => (
                               <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
                             ))
                           ) : (
@@ -1394,10 +1392,26 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                    <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[80px] sm:max-w-[120px]">X: {xAxisKey}</span>
                    <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[200px]">Y: {selectedDataKeys.join(', ')}</span>
                    {zAxisKey && (
-                     <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[100px] sm:max-w-[140px]">Z: {zAxisKey}</span>
+                     <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Breakdown: {zAxisKey}</span>
                    )}
                 </div>
               </div>
+
+              {/* 3-Column Breakdown Guide Banner */}
+              {zAxisKey && (
+                <div className="mx-3 sm:mx-4 mt-3 px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-indigo-400">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-indigo-300">📊 3-Column Breakdown:</span>
+                    <span>
+                      Comparing <strong className="text-foreground">{selectedDataKeys[0] || availableKeys[0] || 'Metric'}</strong> (Y-Axis) across <strong className="text-foreground">{xAxisKey}</strong> (X-Axis), split by <strong className="text-indigo-200">{zAxisKey}</strong> (Breakdown).
+                    </span>
+                  </div>
+                  <span className="text-[11px] opacity-80 shrink-0 hidden sm:inline">
+                    Mode: <strong>{barMode === 'stacked' ? 'Stacked' : 'Side-by-Side'}</strong>
+                  </span>
+                </div>
+              )}
+
               <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
                 <ResponsiveContainer width="100%" height={chartHeight}>
                   {renderChart()}

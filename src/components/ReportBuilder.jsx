@@ -185,6 +185,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
     return false;
   });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedDataKeys, setSelectedDataKeys] = useState(["revenue", "margin"]);
   const [xAxisKey, setXAxisKey] = useState("product");
   const [zAxisKey, setZAxisKey] = useState("");

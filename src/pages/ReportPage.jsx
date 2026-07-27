@@ -200,11 +200,21 @@ export default function ReportPage() {
                   summary: config.parameters?.summary || '',
                 });
               } else {
-                setReportData(config);
+                setReportData({
+                  ...config,
+                  rows: config.rows || config.parameters?.data || [],
+                  sql: config.sql || config.parameters?.sql || '',
+                  summary: config.parameters?.summary || '',
+                });
               }
             } catch (runErr) {
               console.error('Failed to run report:', runErr);
-              setReportData(config);
+              setReportData({
+                ...config,
+                rows: config.rows || config.parameters?.data || [],
+                sql: config.sql || config.parameters?.sql || '',
+                summary: config.parameters?.summary || '',
+              });
             }
           }
           setQuery(config.name || 'Report');

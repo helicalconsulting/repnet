@@ -850,6 +850,61 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   };
 
 
+// ── Custom 3D Extruded Bar Component for Executive 3D View ─────────────────────
+const adjustHexColor = (color, percent) => {
+  if (!color || typeof color !== 'string' || !color.startsWith('#')) return color;
+  let num = parseInt(color.replace('#', ''), 16);
+  if (isNaN(num)) return color;
+  let amt = Math.round(2.55 * percent);
+  let R = (num >> 16) + amt;
+  let G = (num >> 8 & 0x00FF) + amt;
+  let B = (num & 0x0000FF) + amt;
+  return '#' + (
+    0x1000000 +
+    (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+    (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+    (B < 255 ? (B < 1 ? 0 : B) : 255)
+  ).toString(16).slice(1);
+};
+
+const Custom3DBar = (props) => {
+  const { fill, x, y, width, height } = props;
+  if (!width || !height || height <= 0 || isNaN(x) || isNaN(y)) return null;
+
+  const depth = Math.min(Math.max(width * 0.35, 6), 16); // 3D depth offset
+  const topColor = adjustHexColor(fill, 30);
+  const sideColor = adjustHexColor(fill, -30);
+
+  return (
+    <g className="transition-all duration-300 hover:brightness-110">
+      {/* 1. Ground Drop Shadow */}
+      <polygon
+        points={`${x},${y + height} ${x + depth},${y + height - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
+        fill="rgba(0, 0, 0, 0.35)"
+      />
+      {/* 2. Right Side Face */}
+      <polygon
+        points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
+        fill={sideColor}
+      />
+      {/* 3. Top Face */}
+      <polygon
+        points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
+        fill={topColor}
+      />
+      {/* 4. Front Face */}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={fill}
+        rx={1}
+      />
+    </g>
+  );
+};
+
   const renderChart = () => {
     const colors = selectedColors.colors;
     const xAxisProps = {
@@ -895,22 +950,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       return isCurrency ? `$${formatted}` : formatted;
     };
     
-    if (is3DView) {
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center relative min-h-[300px]">
-          <div className="absolute top-2 right-2 z-20 bg-black/50 backdrop-blur px-3 py-1 rounded-full border border-white/10 text-[10px] text-muted-foreground pointer-events-none select-none">
-            🖱️ Drag to rotate 360° • Scroll to zoom
-          </div>
-          <Plot
-            data={plotly3DData}
-            layout={plotly3DLayout}
-            useResizeHandler={true}
-            style={{ width: '100%', height: '100%', minHeight: chartHeight }}
-            config={{ responsive: true, displayModeBar: true, displaylogo: false }}
-          />
-        </div>
-      );
-    }
+
 
     const seriesKeys = zAxisKey && zValues.length > 0 ? zValues : selectedDataKeys;
 
@@ -1055,6 +1095,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                 fill={colors[i % colors.length]} 
                 stackId={zAxisKey && barMode === 'stacked' ? 'a' : undefined}
                 radius={zAxisKey && barMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]} 
+                shape={is3DView ? <Custom3DBar /> : undefined}
               />
             ))}
           </BarChart>
@@ -1389,7 +1430,9 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                    )}
                 </div>
               </div>
-              <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
+              <div className={`p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px] transition-all duration-500 ${
+                is3DView ? 'perspective-[1200px] [transform:rotateX(18deg)_rotateY(-5deg)] [transform-style:preserve-3d] drop-shadow-2xl' : ''
+              }`}>
                 <ResponsiveContainer width="100%" height={chartHeight}>
                   {renderChart()}
                 </ResponsiveContainer>

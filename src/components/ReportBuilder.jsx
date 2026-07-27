@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import createPlotlyComponent from 'react-plotly.js/factory';
+import Plotly from 'plotly.js-dist-min';
+const Plot = createPlotlyComponent(Plotly);
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "./ui/drawer";
 import { 
   Table as TableIcon, 
@@ -348,6 +351,110 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
     return Array.from(groupMap.values());
   }, [data, availableKeys, zAxisKey, xAxisKey, selectedDataKeys, zIsNumeric, chartType]);
+
+  // ── Plotly 3D WebGL Chart Data ──────────────────────────────────────────────
+  const plotly3DData = useMemo(() => {
+    if (!data || !data.length) return [];
+
+    const xCol = xAxisKey;
+    const yCol = zAxisKey || (columns.find(c => c !== xAxisKey && !availableKeys.includes(c)) || 'Category');
+    const zCol = selectedDataKeys[0] || availableKeys[0] || 'revenue';
+
+    const xVals = [];
+    const yVals = [];
+    const zVals = [];
+    const textVals = [];
+
+    const formatDate = (val) => {
+      const str = String(val ?? '');
+      if (!str) return '';
+      const clean = str.includes('T') ? str.split('T')[0] : str.split(' ')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+        const [yyyy, mm, dd] = clean.split('-');
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return `${dd} ${months[parseInt(mm, 10) - 1] || mm}`;
+      }
+      return clean;
+    };
+
+    data.forEach(r => {
+      const xV = formatDate(r[xCol]);
+      const yV = String(r[yCol] ?? 'General');
+      const zV = Number(r[zCol]) || 0;
+
+      xVals.push(xV);
+      yVals.push(yV);
+      zVals.push(zV);
+      textVals.push(`${xCol}: ${xV}<br>${yCol}: ${yV}<br>${zCol}: ${zV.toLocaleString()}`);
+    });
+
+    return [
+      {
+        type: 'scatter3d',
+        mode: 'markers+lines',
+        x: xVals,
+        y: yVals,
+        z: zVals,
+        text: textVals,
+        hoverinfo: 'text',
+        marker: {
+          size: 7,
+          color: zVals,
+          colorscale: 'Turbo',
+          showscale: true,
+          colorbar: {
+            thickness: 10,
+            len: 0.7,
+            title: { text: zCol, font: { color: '#888', size: 10 } },
+            tickfont: { color: '#888', size: 9 }
+          },
+          opacity: 0.95
+        },
+        line: {
+          color: 'rgba(99, 102, 241, 0.4)',
+          width: 3
+        }
+      }
+    ];
+  }, [data, xAxisKey, zAxisKey, selectedDataKeys, availableKeys, columns]);
+
+  const plotly3DLayout = useMemo(() => {
+    const yColName = zAxisKey || 'Grouping';
+    const zColName = selectedDataKeys[0] || availableKeys[0] || 'Metric';
+
+    return {
+      autosize: true,
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 0, r: 0, b: 0, t: 0 },
+      scene: {
+        xaxis: {
+          title: { text: xAxisKey, font: { color: '#94a3b8', size: 11 } },
+          gridcolor: 'rgba(255, 255, 255, 0.1)',
+          showbackground: true,
+          backgroundcolor: 'rgba(15, 23, 42, 0.4)',
+          tickfont: { color: '#64748b', size: 9 }
+        },
+        yaxis: {
+          title: { text: yColName, font: { color: '#94a3b8', size: 11 } },
+          gridcolor: 'rgba(255, 255, 255, 0.1)',
+          showbackground: true,
+          backgroundcolor: 'rgba(15, 23, 42, 0.4)',
+          tickfont: { color: '#64748b', size: 9 }
+        },
+        zaxis: {
+          title: { text: zColName, font: { color: '#94a3b8', size: 11 } },
+          gridcolor: 'rgba(255, 255, 255, 0.1)',
+          showbackground: true,
+          backgroundcolor: 'rgba(15, 23, 42, 0.4)',
+          tickfont: { color: '#64748b', size: 9 }
+        },
+        camera: {
+          eye: { x: 1.6, y: 1.6, z: 1.2 }
+        }
+      }
+    };
+  }, [xAxisKey, zAxisKey, selectedDataKeys, availableKeys]);
 
   const displayedTab = isMobile && activeTab === 'split' ? 'chart' : activeTab;
   const chartHeight = displayedTab === 'split'
@@ -788,6 +895,23 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       return isCurrency ? `$${formatted}` : formatted;
     };
     
+    if (is3DView) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center relative min-h-[300px]">
+          <div className="absolute top-2 right-2 z-20 bg-black/50 backdrop-blur px-3 py-1 rounded-full border border-white/10 text-[10px] text-muted-foreground pointer-events-none select-none">
+            🖱️ Drag to rotate 360° • Scroll to zoom
+          </div>
+          <Plot
+            data={plotly3DData}
+            layout={plotly3DLayout}
+            useResizeHandler={true}
+            style={{ width: '100%', height: '100%', minHeight: chartHeight }}
+            config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+          />
+        </div>
+      );
+    }
+
     const seriesKeys = zAxisKey && zValues.length > 0 ? zValues : selectedDataKeys;
 
     switch (chartType) {
@@ -1265,9 +1389,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                    )}
                 </div>
               </div>
-              <div className={`p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px] transition-transform duration-500 ${
-                is3DView ? 'perspective-[1000px] [transform:rotateX(20deg)_rotateY(-6deg)] [transform-style:preserve-3d] drop-shadow-2xl' : ''
-              }`}>
+              <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
                 <ResponsiveContainer width="100%" height={chartHeight}>
                   {renderChart()}
                 </ResponsiveContainer>

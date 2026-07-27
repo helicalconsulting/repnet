@@ -193,7 +193,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [xAxisKey, setXAxisKey] = useState("product");
   const [zAxisKey, setZAxisKey] = useState("");
   const [barMode, setBarMode] = useState("stacked"); // 'stacked' | 'grouped'
-  const [is3DView, setIs3DView] = useState(false); // 3D Isometric Perspective Mode
+  const [isGlassMode, setIsGlassMode] = useState(true); // Stripe/Vercel Glassmorphic Aesthetic Mode
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState(query || "");
@@ -850,58 +850,22 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   };
 
 
-// ── Custom 3D Extruded Bar Component for Executive 3D View ─────────────────────
-const adjustHexColor = (color, percent) => {
-  if (!color || typeof color !== 'string' || !color.startsWith('#')) return color;
-  let num = parseInt(color.replace('#', ''), 16);
-  if (isNaN(num)) return color;
-  let amt = Math.round(2.55 * percent);
-  let R = (num >> 16) + amt;
-  let G = (num >> 8 & 0x00FF) + amt;
-  let B = (num & 0x0000FF) + amt;
-  return '#' + (
-    0x1000000 +
-    (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-    (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-    (B < 255 ? (B < 1 ? 0 : B) : 255)
-  ).toString(16).slice(1);
-};
-
-const Custom3DBar = (props) => {
-  const { fill, x, y, width, height } = props;
-  if (!width || !height || height <= 0 || isNaN(x) || isNaN(y)) return null;
-
-  const depth = Math.min(Math.max(width * 0.35, 6), 16); // 3D depth offset
-  const topColor = adjustHexColor(fill, 30);
-  const sideColor = adjustHexColor(fill, -30);
-
+// ── Glassmorphic Custom Tooltip Component (Stripe / Vercel Aesthetic) ─────────
+const CustomGlassTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
   return (
-    <g className="transition-all duration-300 hover:brightness-110">
-      {/* 1. Ground Drop Shadow */}
-      <polygon
-        points={`${x},${y + height} ${x + depth},${y + height - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
-        fill="rgba(0, 0, 0, 0.35)"
-      />
-      {/* 2. Right Side Face */}
-      <polygon
-        points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
-        fill={sideColor}
-      />
-      {/* 3. Top Face */}
-      <polygon
-        points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
-        fill={topColor}
-      />
-      {/* 4. Front Face */}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={fill}
-        rx={1}
-      />
-    </g>
+    <div className="bg-card/90 backdrop-blur-xl border border-white/10 dark:border-white/15 p-3 rounded-2xl shadow-2xl space-y-1.5 text-xs z-50">
+      <p className="font-semibold text-foreground border-b border-border/40 pb-1">{label}</p>
+      {payload.map((entry, index) => (
+        <div key={index} className="flex items-center justify-between gap-4 text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+            <span className="capitalize">{entry.name}:</span>
+          </div>
+          <span className="font-semibold text-foreground">{typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}</span>
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -1077,25 +1041,29 @@ const Custom3DBar = (props) => {
       default: // bar
         return (
           <BarChart data={processedDataForChart}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} vertical={false} />
+            <defs>
+              {colors.map((color, i) => (
+                <linearGradient key={`glassGrad-${i}`} id={`glassGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={isGlassMode ? 0.95 : 1} />
+                  <stop offset="100%" stopColor={color} stopOpacity={isGlassMode ? 0.3 : 1} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.3} vertical={false} />
             <XAxis {...xAxisProps} />
             <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
-            <Tooltip 
-              cursor={{ fill: 'var(--muted)', opacity: 0.1 }} 
-              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
-              labelStyle={{ color: 'var(--foreground)' }}
-              itemStyle={{ color: 'var(--foreground)' }}
-            />
+            <Tooltip content={<CustomGlassTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.15 }} />
             <Legend {...legendProps} />
             {seriesKeys.map((key, i) => (
               <Bar 
                 key={key} 
                 dataKey={key} 
                 name={key.charAt(0).toUpperCase() + key.slice(1)} 
-                fill={colors[i % colors.length]} 
+                fill={isGlassMode ? `url(#glassGrad-${i % colors.length})` : colors[i % colors.length]} 
                 stackId={zAxisKey && barMode === 'stacked' ? 'a' : undefined}
-                radius={zAxisKey && barMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]} 
-                shape={is3DView ? <Custom3DBar /> : undefined}
+                radius={zAxisKey && barMode === 'stacked' ? [0, 0, 0, 0] : [6, 6, 2, 2]} 
+                stroke={isGlassMode ? colors[i % colors.length] : undefined}
+                strokeWidth={isGlassMode ? 1 : 0}
               />
             ))}
           </BarChart>
@@ -1299,16 +1267,16 @@ const Custom3DBar = (props) => {
                     </div>
                   )}
 
-                  {/* 3D View Mode Toggle */}
+                  {/* Glassmorphic Gradient Aesthetic Toggle */}
                   <button
-                    onClick={() => setIs3DView(!is3DView)}
+                    onClick={() => setIsGlassMode(!isGlassMode)}
                     className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                      is3DView 
+                      isGlassMode 
                         ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30' 
                         : 'bg-card border-border/50 text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {is3DView ? '3D Active ✨' : '3D View'}
+                    {isGlassMode ? 'Glass Mode ✨' : 'Classic View'}
                   </button>
                 </>
               )}
@@ -1430,9 +1398,7 @@ const Custom3DBar = (props) => {
                    )}
                 </div>
               </div>
-              <div className={`p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px] transition-all duration-500 ${
-                is3DView ? 'perspective-[1200px] [transform:rotateX(18deg)_rotateY(-5deg)] [transform-style:preserve-3d] drop-shadow-2xl' : ''
-              }`}>
+              <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
                 <ResponsiveContainer width="100%" height={chartHeight}>
                   {renderChart()}
                 </ResponsiveContainer>

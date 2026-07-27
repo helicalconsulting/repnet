@@ -315,6 +315,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         return active.length ? active : (numCols.length > 0 ? [numCols[0]] : []);
       });
       
+      const nonNumCols = columns.filter(k => !numCols.includes(k));
+
       // 3. Profile X-Axis (Date/Time or Primary Dimension)
       const dateKeywords = ["date", "month", "year", "quarter", "time", "day", "period", "created"];
       const dateCol = nonNumCols.find(c => dateKeywords.some(kw => c.toLowerCase().includes(kw)));

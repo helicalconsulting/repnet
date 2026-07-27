@@ -185,10 +185,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
     return false;
   });
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedDataKeys, setSelectedDataKeys] = useState(["revenue", "margin"]);
   const [xAxisKey, setXAxisKey] = useState("product");
   const [zAxisKey, setZAxisKey] = useState("");
+  const [barMode, setBarMode] = useState("stacked"); // 'stacked' | 'grouped'
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState(query || "");
@@ -319,6 +319,13 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         setXAxisKey(nonNumCols[0]);
       } else if (columns.length > 0) {
         setXAxisKey(columns[0]);
+      }
+
+      // Auto-detect 2nd category column as Z-Axis grouping
+      if (nonNumCols.length > 1) {
+        setZAxisKey(nonNumCols[1]);
+      } else {
+        setZAxisKey("");
       }
     }
   }, [columns, data]);
@@ -774,12 +781,30 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       
       case 'scatter':
         if (zAxisKey && zValues.length > 0) {
+          const isNumericZ = data.some(r => typeof r[zAxisKey] === 'number' || (!isNaN(Number(r[zAxisKey])) && r[zAxisKey] !== '' && r[zAxisKey] !== null));
+          if (isNumericZ) {
+            return (
+              <ScatterChart>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+                <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+                <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+                <ZAxis dataKey={zAxisKey} name={zAxisKey} range={[60, 500]} />
+                <Tooltip 
+                  cursor={{ strokeDasharray: '3 3' }} 
+                  contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+                  labelStyle={{ color: 'var(--foreground)' }}
+                  itemStyle={{ color: 'var(--foreground)' }}
+                />
+                <Legend {...legendProps} />
+                <Scatter name={`Scatter (${zAxisKey} size)`} data={processedDataForChart} fill={colors[0]} />
+              </ScatterChart>
+            );
+          }
           return (
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
               <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
               <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
-              <ZAxis dataKey={zAxisKey} name={zAxisKey} range={[60, 400]} />
               <Tooltip 
                 cursor={{ strokeDasharray: '3 3' }} 
                 contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
@@ -822,7 +847,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
             />
             <Legend {...legendProps} />
             {seriesKeys.map((key, i) => (
-              <Bar key={key} dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} />
+              <Bar 
+                key={key} 
+                dataKey={key} 
+                name={key.charAt(0).toUpperCase() + key.slice(1)} 
+                fill={colors[i % colors.length]} 
+                stackId={zAxisKey && barMode === 'stacked' ? 'a' : undefined}
+                radius={zAxisKey && barMode === 'stacked' ? [0, 0, 0, 0] : [4, 4, 0, 0]} 
+              />
             ))}
           </BarChart>
         );
@@ -918,32 +950,110 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
         {/* Chart Customization Bar */}
         <div className="pb-1">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            {/* View Toggles */}
-            <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-1 rounded-xl border border-border/50 dark:border-white/10">
-              <button 
-                onClick={() => setActiveTab("table")} 
-                className={`p-1.5 rounded-lg transition-all ${displayedTab === "table" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                title="Table View"
-              >
-                <TableIcon className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => setActiveTab("chart")} 
-                className={`p-1.5 rounded-lg transition-all ${displayedTab === "chart" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                title="Chart View"
-              >
-                <BarChart2 className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => setActiveTab("split")} 
-                className={`hidden lg:inline-flex p-1.5 rounded-lg transition-all ${displayedTab === "split" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                title="Split View"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-              </button>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-between">
+            {/* View Toggles & Axis Selectors */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-1 rounded-xl border border-border/50 dark:border-white/10">
+                <button 
+                  onClick={() => setActiveTab("table")} 
+                  className={`p-1.5 rounded-lg transition-all ${displayedTab === "table" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Table View"
+                >
+                  <TableIcon className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setActiveTab("chart")} 
+                  className={`p-1.5 rounded-lg transition-all ${displayedTab === "chart" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Chart View"
+                >
+                  <BarChart2 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setActiveTab("split")} 
+                  className={`hidden lg:inline-flex p-1.5 rounded-lg transition-all ${displayedTab === "split" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Split View"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                </button>
+              </div>
+
+              {displayedTab !== "table" && (
+                <>
+                  {/* X Axis Selector */}
+                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5">
+                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">X:</span>
+                    <select
+                      value={xAxisKey}
+                      onChange={(e) => setXAxisKey(e.target.value)}
+                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs"
+                    >
+                      {columns.map(col => (
+                        <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Y Axis Selector */}
+                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5">
+                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">Y:</span>
+                    <select
+                      value={selectedDataKeys[0] || ''}
+                      onChange={(e) => setSelectedDataKeys([e.target.value])}
+                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs"
+                    >
+                      {availableKeys.map(col => (
+                        <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Z Axis Selector */}
+                  <div className={`flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border transition-all text-xs gap-1.5 ${
+                    zAxisKey ? 'border-primary/60 bg-primary/5 text-primary' : 'border-border/50 dark:border-white/10'
+                  }`}>
+                    <span className="font-semibold text-[11px] uppercase">Z (Group):</span>
+                    <select
+                      value={zAxisKey}
+                      onChange={(e) => setZAxisKey(e.target.value)}
+                      className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
+                    >
+                      <option value="" className="bg-card text-foreground">None</option>
+                      {columns.filter(c => c !== xAxisKey).map(col => (
+                        <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Stacked vs Grouped Toggle (when chart is Bar & Z is active) */}
+                  {chartType === 'bar' && zAxisKey && (
+                    <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-0.5 rounded-xl border border-border/50 dark:border-white/10 text-xs">
+                      <button
+                        onClick={() => setBarMode('stacked')}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                          barMode === 'stacked'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Stacked
+                      </button>
+                      <button
+                        onClick={() => setBarMode('grouped')}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                          barMode === 'grouped'
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        Grouped
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            {/* Customize Chart Button (Drawer Trigger) */}
+
+            {/* Customize Chart Drawer Trigger */}
             <AnimatePresence mode="wait">
               {displayedTab !== "table" && (
                 <motion.button
@@ -952,10 +1062,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={() => setShowSettingsDrawer(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-sm font-semibold hover:border-primary/50 transition-colors shadow-sm cursor-pointer animate-pulse"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-xs font-semibold hover:border-primary/50 transition-colors shadow-sm cursor-pointer"
                 >
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  <span>Customize Chart</span>
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>Customize</span>
                 </motion.button>
               )}
             </AnimatePresence>

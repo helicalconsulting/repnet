@@ -314,19 +314,26 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         return active.length ? active : (numCols.length > 0 ? [numCols[0]] : []);
       });
       
-      const nonNumCols = columns.filter(k => !numCols.includes(k));
-      if (nonNumCols.length > 0) {
-        setXAxisKey(nonNumCols[0]);
-      } else if (columns.length > 0) {
-        setXAxisKey(columns[0]);
-      }
+      // 3. Profile X-Axis (Date/Time or Primary Dimension)
+      const dateKeywords = ["date", "month", "year", "quarter", "time", "day", "period", "created"];
+      const dateCol = nonNumCols.find(c => dateKeywords.some(kw => c.toLowerCase().includes(kw)));
+      const bestX = dateCol || (nonNumCols.length > 0 ? nonNumCols[0] : columns[0]);
+      setXAxisKey(bestX);
 
-      // Auto-detect 2nd category column as Z-Axis grouping
-      if (nonNumCols.length > 1) {
-        setZAxisKey(nonNumCols[1]);
-      } else {
-        setZAxisKey("");
+      // 4. Profile Z-Axis (Grouping dimension with 2–12 unique values)
+      const remainingNonNum = nonNumCols.filter(c => c !== bestX);
+      let bestZ = "";
+      for (const col of remainingNonNum) {
+        const uniqueSet = new Set(data.map(r => String(r[col] ?? '')));
+        if (uniqueSet.size >= 2 && uniqueSet.size <= 12) {
+          bestZ = col;
+          break;
+        }
       }
+      if (!bestZ && remainingNonNum.length > 0) {
+        bestZ = remainingNonNum[0];
+      }
+      setZAxisKey(bestZ);
     }
   }, [columns, data]);
 

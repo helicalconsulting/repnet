@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "./ui/drawer";
 import { 
@@ -37,6 +37,7 @@ import {
   Bar, 
   XAxis, 
   YAxis, 
+  ZAxis,
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
@@ -187,6 +188,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedDataKeys, setSelectedDataKeys] = useState(["revenue", "margin"]);
   const [xAxisKey, setXAxisKey] = useState("product");
+  const [zAxisKey, setZAxisKey] = useState("");
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState(query || "");
@@ -240,18 +242,55 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     )
   );
 
-  const processedDataForChart = data.map(row => {
-    const cleanRow = { ...row };
-    availableKeys.forEach(key => {
-      if (cleanRow[key] !== undefined && cleanRow[key] !== null) {
-        const val = Number(cleanRow[key]);
-        cleanRow[key] = isNaN(val) ? 0 : val;
-      } else {
-        cleanRow[key] = 0;
+  // Unique values for Z-Axis if selected
+  const zValues = useMemo(() => {
+    if (!zAxisKey || !data.length) return [];
+    const set = new Set();
+    data.forEach(r => {
+      if (r[zAxisKey] !== undefined && r[zAxisKey] !== null) {
+        set.add(String(r[zAxisKey]));
       }
     });
-    return cleanRow;
-  });
+    return Array.from(set).slice(0, 10);
+  }, [zAxisKey, data]);
+
+  // Pivot or clean data for chart visualization
+  const processedDataForChart = useMemo(() => {
+    if (!data.length) return [];
+
+    if (!zAxisKey) {
+      return data.map(row => {
+        const cleanRow = { ...row };
+        availableKeys.forEach(key => {
+          if (cleanRow[key] !== undefined && cleanRow[key] !== null) {
+            const val = Number(cleanRow[key]);
+            cleanRow[key] = isNaN(val) ? 0 : val;
+          } else {
+            cleanRow[key] = 0;
+          }
+        });
+        return cleanRow;
+      });
+    }
+
+    // Z-Axis active: Pivot data by xAxisKey and zAxisKey
+    const primaryMetric = selectedDataKeys[0] || availableKeys[0] || 'revenue';
+    const groupMap = new Map();
+
+    data.forEach(row => {
+      const xVal = String(row[xAxisKey] ?? 'Unknown');
+      const zVal = String(row[zAxisKey] ?? 'Other');
+      const val = Number(row[primaryMetric]) || 0;
+
+      if (!groupMap.has(xVal)) {
+        groupMap.set(xVal, { [xAxisKey]: xVal });
+      }
+      const entry = groupMap.get(xVal);
+      entry[zVal] = (entry[zVal] || 0) + val;
+    });
+
+    return Array.from(groupMap.values());
+  }, [data, availableKeys, zAxisKey, xAxisKey, selectedDataKeys]);
 
   const displayedTab = isMobile && activeTab === 'split' ? 'chart' : activeTab;
   const chartHeight = displayedTab === 'split'
@@ -665,6 +704,8 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       return isCurrency ? `$${formatted}` : formatted;
     };
     
+    const seriesKeys = zAxisKey && zValues.length > 0 ? zValues : selectedDataKeys;
+
     switch (chartType) {
       case 'line':
         return (
@@ -678,7 +719,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               itemStyle={{ color: 'var(--foreground)' }}
             />
             <Legend {...legendProps} />
-            {selectedDataKeys.map((key, i) => (
+            {seriesKeys.map((key, i) => (
               <Line key={key} type="monotone" dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} stroke={colors[i % colors.length]} strokeWidth={2} dot={{ fill: colors[i % colors.length], r: 4 }} />
             ))}
           </LineChart>
@@ -696,7 +737,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               itemStyle={{ color: 'var(--foreground)' }}
             />
             <Legend {...legendProps} />
-            {selectedDataKeys.map((key, i) => (
+            {seriesKeys.map((key, i) => (
               <Area key={key} type="monotone" dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} fill={colors[i % colors.length]} fillOpacity={0.3} stroke={colors[i % colors.length]} strokeWidth={2} />
             ))}
           </AreaChart>
@@ -732,6 +773,26 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         );
       
       case 'scatter':
+        if (zAxisKey && zValues.length > 0) {
+          return (
+            <ScatterChart>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+              <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+              <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+              <ZAxis dataKey={zAxisKey} name={zAxisKey} range={[60, 400]} />
+              <Tooltip 
+                cursor={{ strokeDasharray: '3 3' }} 
+                contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+                labelStyle={{ color: 'var(--foreground)' }}
+                itemStyle={{ color: 'var(--foreground)' }}
+              />
+              <Legend {...legendProps} />
+              {zValues.map((zVal, i) => (
+                <Scatter key={zVal} name={zVal} data={data.filter(r => String(r[zAxisKey]) === zVal)} fill={colors[i % colors.length]} />
+              ))}
+            </ScatterChart>
+          );
+        }
         return (
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
@@ -760,7 +821,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
               itemStyle={{ color: 'var(--foreground)' }}
             />
             <Legend {...legendProps} />
-            {selectedDataKeys.map((key, i) => (
+            {seriesKeys.map((key, i) => (
               <Bar key={key} dataKey={key} name={key.charAt(0).toUpperCase() + key.slice(1)} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} />
             ))}
           </BarChart>
@@ -993,6 +1054,9 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                 <div className="flex gap-1 sm:gap-2 flex-wrap justify-end">
                    <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[80px] sm:max-w-[120px]">X: {xAxisKey}</span>
                    <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[200px]">Y: {selectedDataKeys.join(', ')}</span>
+                   {zAxisKey && (
+                     <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[100px] sm:max-w-[140px]">Z: {zAxisKey}</span>
+                   )}
                 </div>
               </div>
               <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
@@ -1262,6 +1326,44 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
                       <button
                         key={key}
                         onClick={() => setXAxisKey(key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                          isActive 
+                            ? 'bg-primary border-primary text-primary-foreground shadow-sm' 
+                            : 'border-border/50 bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {key}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 5. Z-Axis (Grouping / Breakdown) */}
+            {columns.length > 0 && (
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block flex items-center justify-between">
+                  <span>Z-Axis (Grouping / Breakdown)</span>
+                  <span className="text-[10px] text-primary lowercase font-normal">(optional)</span>
+                </label>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                  <button
+                    onClick={() => setZAxisKey("")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                      !zAxisKey 
+                        ? 'bg-primary border-primary text-primary-foreground shadow-sm' 
+                        : 'border-border/50 bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    None
+                  </button>
+                  {columns.filter(k => k !== xAxisKey).map(key => {
+                    const isActive = zAxisKey === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setZAxisKey(key)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
                           isActive 
                             ? 'bg-primary border-primary text-primary-foreground shadow-sm' 

@@ -153,7 +153,7 @@ function SortableRow({ rowId, row, columns }) {
   );
 }
 
-export default function ReportBuilder({ query, onClose, reportData, onToggleInsights, isSidebarOpen }) {
+export default function ReportBuilder({ query, onClose, reportData, onToggleInsights, isSidebarOpen, isPreview = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { togglePinReport, saveReport, addNotification, pinnedReports, user } = useApp();
@@ -950,11 +950,18 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           <button onClick={onClose} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-muted-foreground shrink-0">
             <X className="w-5 h-5" />
           </button>
-          <div className="overflow-hidden min-w-0">
-            <h2 className="font-semibold text-foreground flex items-center gap-2 truncate text-sm sm:text-base">
-              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
-              {query}
-            </h2>
+          <div className="overflow-hidden min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h2 className="font-semibold text-foreground flex items-center gap-2 truncate text-sm sm:text-base">
+                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                <span className="truncate">{query}</span>
+              </h2>
+              {isPreview && (
+                <span className="text-[10px] font-semibold px-2.5 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full shrink-0">
+                  Preview — new query still running
+                </span>
+              )}
+            </div>
             <p className="text-[10px] text-muted-foreground">Generated from live ERP data • Just now</p>
           </div>
         </div>

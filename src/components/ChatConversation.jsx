@@ -2031,31 +2031,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               className="relative w-full max-w-5xl h-full bg-background shadow-2xl flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-sm font-semibold text-foreground truncate max-w-sm">
-                    {previewReport.query}
-                  </span>
-                  <span className="text-[10px] font-medium px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full">
-                    Preview — new query still running
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowReportPreview(false)}
-                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
               {/* Report content */}
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden flex flex-col">
                 <ReportBuilder
                   query={previewReport.query}
                   reportData={previewReport.data}
                   onClose={() => setShowReportPreview(false)}
+                  isPreview={true}
                 />
               </div>
             </motion.div>

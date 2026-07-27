@@ -4,7 +4,7 @@ import {
   ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
   Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
   Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff,
-  PanelLeftOpen, PanelLeftClose
+  PanelLeftOpen, PanelLeftClose, X
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
@@ -15,6 +15,7 @@ import { useTheme } from "../hooks/useTheme";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 import { QuickVisuals } from "./chat/QuickVisuals";
+import ReportBuilder from "./ReportBuilder";
 import { format } from "date-fns";
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
@@ -65,6 +66,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
+
+  // ── Report preview popup (shown instead of navigating when WS is active) ──
+  const [previewReport, setPreviewReport] = useState(null); // { query, data }
+  const [showReportPreview, setShowReportPreview] = useState(false);
 
   const progressQueue = useRef([]);
   const progressTimer = useRef(null);
@@ -1332,6 +1337,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
+    <>
     <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
       {/* Floating Sidebar Toggle Button (Drawer Icon) */}
       {setIsSidebarOpen && (
@@ -1693,18 +1699,31 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   className="mt-4"
                 >
                   <button
-                    onClick={() => onOpenReport(msg.templateDescription || initialQuery, { 
-                      rows: msg.rows, 
-                      columns: msg.columns,
-                      sql: msg.sql, 
-                      templateId: msg.templateId, 
-                      extractedParams: msg.extractedParams,
-                      summary: msg.summary || msg.content || ''
-                    })}
+                    onClick={() => {
+                      const reportData = {
+                        rows: msg.rows,
+                        columns: msg.columns,
+                        sql: msg.sql,
+                        templateId: msg.templateId,
+                        extractedParams: msg.extractedParams,
+                        summary: msg.summary || msg.content || ''
+                      };
+                      const reportQuery = msg.templateDescription || initialQuery;
+                      if (isProcessing) {
+                        // WS is active — open as popup to avoid killing the connection
+                        setPreviewReport({ query: reportQuery, data: reportData });
+                        setShowReportPreview(true);
+                      } else {
+                        onOpenReport(reportQuery, reportData);
+                      }
+                    }}
                     className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-muted/40 hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10 text-foreground border border-border/80 dark:border-white/10 rounded-xl transition-all shadow-sm group font-semibold text-sm select-none"
                   >
                     <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-foreground/70 group-hover:text-primary animate-pulse" />
                     <span>View Interactive Report with Data</span>
+                    {isProcessing && (
+                      <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
+                    )}
                   </button>
                 </motion.div>
               )}
@@ -1993,5 +2012,56 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         </form>
       </div>
     </div>
+
+      {/* ── Report Preview Modal (shown when WS is active to avoid breaking connection) ── */}
+      <AnimatePresence>
+        {showReportPreview && previewReport && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-stretch justify-end"
+            onClick={() => setShowReportPreview(false)}
+          >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="relative w-full max-w-5xl h-full bg-background shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  <span className="text-sm font-semibold text-foreground truncate max-w-sm">
+                    {previewReport.query}
+                  </span>
+                  <span className="text-[10px] font-medium px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full">
+                    Preview — new query still running
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowReportPreview(false)}
+                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Report content */}
+              <div className="flex-1 overflow-hidden">
+                <ReportBuilder
+                  query={previewReport.query}
+                  reportData={previewReport.data}
+                  onClose={() => setShowReportPreview(false)}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

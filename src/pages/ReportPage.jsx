@@ -319,18 +319,7 @@ export default function ReportPage() {
               </div>
             </div>
 
-            {/* KPI Cards Grid Skeleton */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-card backdrop-blur-sm border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
-                  <div className="h-4 bg-muted/70 rounded w-24 animate-pulse" />
-                  <div className="flex justify-between items-end">
-                    <div className="h-7 bg-muted rounded w-16 animate-pulse" />
-                    <div className="h-5 bg-muted/50 rounded-full w-12 animate-pulse" />
-                  </div>
-                </div>
-              ))}
-            </div>
+
 
             {/* Chart Customization Control Bar Skeleton */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-border/30">

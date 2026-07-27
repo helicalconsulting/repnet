@@ -630,78 +630,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     addNotification('success', 'SQL copied to clipboard');
   };
 
-  const getDynamicKPIs = () => {
-    if (!data || data.length === 0) {
-      return [
-        { label: "Data Points", value: 0, change: "Live", type: "neutral" },
-        { label: "Columns", value: columns.length, change: "Meta", type: "neutral" }
-      ];
-    }
-
-    const kpis = [];
-
-    // Add up to 3 numeric KPIs dynamically based on availableKeys
-    availableKeys.slice(0, 3).forEach(col => {
-      const sum = data.reduce((acc, row) => acc + (Number(row[col]) || 0), 0);
-      const avg = sum / data.length;
-      
-      const lowerCol = col.toLowerCase();
-      const isPercentage = lowerCol.includes('margin') || lowerCol.includes('rate') || lowerCol.includes('percent') || lowerCol.includes('pct') || (avg < 1.0 && avg > 0 && !lowerCol.includes('price') && !lowerCol.includes('cost'));
-      const isCurrency = lowerCol.includes('revenue') || lowerCol.includes('amount') || lowerCol.includes('price') || lowerCol.includes('sales') || lowerCol.includes('cost');
-      
-      let formattedValue = "";
-      let label = "";
-
-      if (isPercentage) {
-        formattedValue = `${(avg * (avg <= 1 && avg > 0 ? 100 : 1)).toFixed(1)}%`;
-        label = `Avg ${col.charAt(0).toUpperCase() + col.slice(1)}`;
-      } else if (isCurrency) {
-        if (sum >= 1000000) {
-          formattedValue = `$${(sum / 1000000).toFixed(1)}M`;
-        } else if (sum >= 1000) {
-          formattedValue = `$${(sum / 1000).toFixed(0)}K`;
-        } else {
-          formattedValue = `$${sum.toLocaleString()}`;
-        }
-        label = `Total ${col.charAt(0).toUpperCase() + col.slice(1)}`;
-      } else {
-        const isSumPreferable = lowerCol.includes('quantity') || lowerCol.includes('unit') || lowerCol.includes('count') || lowerCol.includes('volume') || lowerCol.includes('qty');
-        if (isSumPreferable) {
-          formattedValue = sum >= 1000000 ? `${(sum / 1000000).toFixed(1)}M` : (sum >= 1000 ? `${(sum / 1000).toFixed(0)}K` : sum.toLocaleString());
-          label = `Total ${col.charAt(0).toUpperCase() + col.slice(1)}`;
-        } else {
-          formattedValue = avg >= 1000 ? `${(avg / 1000).toFixed(0)}K` : (avg % 1 === 0 ? String(avg) : avg.toFixed(1));
-          label = `Avg ${col.charAt(0).toUpperCase() + col.slice(1)}`;
-        }
-      }
-
-      kpis.push({
-        label: label,
-        value: formattedValue,
-        change: "Active",
-        type: "positive"
-      });
-    });
-
-    // Add general count metrics to pad/fill up to 4 cards
-    kpis.push({
-      label: "Total Data Points",
-      value: data.length.toLocaleString(),
-      change: "Live",
-      type: "neutral"
-    });
-
-    if (kpis.length < 4) {
-      kpis.push({
-        label: "Total Columns",
-        value: columns.length,
-        change: "Schema",
-        type: "neutral"
-      });
-    }
-
-    return kpis;
-  };
 
   const renderChart = () => {
     const colors = selectedColors.colors;
@@ -926,31 +854,6 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 flex flex-col gap-4 sm:gap-6 custom-scrollbar bg-background">
-        
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-          {getDynamicKPIs().map((kpi, i) => (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + (i * 0.05) }}
-              key={i} 
-              className="bg-card backdrop-blur-sm border border-border/50 rounded-2xl p-4 sm:p-5 hover:border-border transition-colors shadow-sm"
-            >
-              <p className="text-sm font-medium text-muted-foreground mb-1">{kpi.label}</p>
-              <div className="flex justify-between items-end">
-                <span className="text-xl sm:text-2xl font-bold">{kpi.value}</span>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  kpi.type === 'positive' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 
-                  kpi.type === 'negative' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
-                  'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                }`}>
-                  {kpi.change}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
 
         {/* Chart Customization Bar */}
         <div className="pb-1">

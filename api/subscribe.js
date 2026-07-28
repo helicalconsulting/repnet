@@ -56,8 +56,8 @@ export default async function handler(req, res) {
 
     // 2. Attempt to send Email (Non-fatal)
     try {
-      const SMTP_USER = (process.env.SMTP_USER || '').trim();
-      const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/["\s]/g, '');
+      const SMTP_USER = (process.env.SMTP_USER || 'helicalconsulting@gmail.com').trim();
+      const SMTP_PASS = (process.env.SMTP_PASS || 'clqd febp ziry hopz').replace(/["\s]/g, '');
       const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
       const SMTP_TO = (process.env.SMTP_TO || 'jai@helical.consulting,keshav@helical.consulting,helicalconsulting@gmail.com')
         .split(',')
@@ -89,6 +89,9 @@ export default async function handler(req, res) {
             </div>
           `,
         });
+        console.log('Early bird subscription email sent successfully.');
+      } else {
+        console.error('SMTP credentials missing.');
       }
     } catch (emailError) {
       console.error('Subscribe SMTP Error (non-fatal):', emailError.message, emailError.code);

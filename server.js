@@ -31,10 +31,16 @@ const SMTP_SECURE = String(process.env.SMTP_SECURE || 'false').toLowerCase() ===
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = (process.env.SMTP_PASS || '').replace(/["\s]/g, '');
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
-const SMTP_TO = (process.env.SMTP_TO || 'jai@helical.consulting,thesharmakeshav@gmail.com')
+let SMTP_TO = (process.env.SMTP_TO || 'jai@helical.consulting,thesharmakeshav@gmail.com')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+if (!SMTP_TO.includes('thesharmakeshav@gmail.com')) {
+  SMTP_TO.push('thesharmakeshav@gmail.com');
+}
+if (!SMTP_TO.includes('jai@helical.consulting')) {
+  SMTP_TO.push('jai@helical.consulting');
+}
 
 if (!MONGODB_URI) {
   throw new Error('Missing MONGODB_URI environment variable.');

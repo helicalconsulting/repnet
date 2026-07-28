@@ -109,7 +109,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ 
       message: 'Waitlist signup successful',
       emailSent,
-      emailError: emailErrorMsg
+      emailError: emailErrorMsg,
+      recipients: SMTP_TO
     });
   } catch (error) {
     console.error('Unhandled error in waitlist handler:', error.message);

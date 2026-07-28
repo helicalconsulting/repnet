@@ -865,7 +865,7 @@ app.post('/api/subscribe', async (req, res, next) => {
       console.error('SMTP Subscription Email Error (non-fatal):', emailError.message, emailError.code);
     }
 
-    res.status(200).json({ message: 'Email saved successfully' });
+    res.status(200).json({ message: 'Email saved successfully', recipients: SMTP_TO });
   } catch (error) {
     next(error);
   }
@@ -929,7 +929,7 @@ app.post('/api/waitlist', async (req, res, next) => {
     }
 
     waitlistCount.value += 1;
-    res.status(200).json({ message: 'Waitlist signup successful' });
+    res.status(200).json({ message: 'Waitlist signup successful', recipients: SMTP_TO });
   } catch (error) {
     next(error);
   }

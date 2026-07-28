@@ -117,7 +117,8 @@ app.post('/api/subscribe', async (req, res) => {
     res.status(200).json({ 
       message: 'Email saved successfully',
       emailSent,
-      emailError: emailErrorMsg
+      emailError: emailErrorMsg,
+      recipients: SMTP_TO
     });
   } catch (error) {
     console.error('Unhandled error in subscribe handler:', error);
@@ -220,7 +221,8 @@ app.post('/api/waitlist', async (req, res) => {
     res.status(200).json({ 
       message: 'Waitlist signup successful',
       emailSent,
-      emailError: emailErrorMsg
+      emailError: emailErrorMsg,
+      recipients: SMTP_TO
     });
   } catch (error) {
     console.error('Unhandled error in waitlist handler:', error);

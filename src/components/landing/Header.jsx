@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -93,13 +92,6 @@ export default function Header() {
             </nav>
 
             <div className="hidden md:flex items-center gap-3">
-              <Link
-                to="/login"
-                data-testid="nav-login-btn"
-                className="px-5 py-2 rounded-lg text-sm font-bold transition-all border-[2px] border-black bg-white text-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-              >
-                Login
-              </Link>
               <motion.button
                 data-testid="nav-dashboard-btn"
                 onClick={() => scrollTo("#waitlist")}
@@ -145,14 +137,6 @@ export default function Header() {
                     {link.label}
                   </motion.button>
                 ))}
-                <Link
-                  to="/login"
-                  onClick={() => setMobileOpen(false)}
-                  data-testid="mobile-login-btn"
-                  className="block w-full text-center text-sm font-bold text-slate-900 bg-white py-2.5 px-3 rounded-lg transition-all mt-3 border-[2px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                >
-                  Login
-                </Link>
                 <motion.button
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}

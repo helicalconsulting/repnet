@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, Users, Sparkles } from "lucide-react";
 import axios from "axios";
 
-const API = "/api";
+const API = import.meta.env.VITE_API_BASE || 'https://api.helical.consulting/v1';
 const subscribeReasons = [
   "Replace Crystal Reports and Power BI back-and-forth with natural language analytics.",
   "Get launch updates, demos, and product education before public release.",

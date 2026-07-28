@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, CheckCircle2 } from 'lucide-react';
 import { countryCodes } from '../utils/countryCodes';
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.helical.consulting/v1';
+
 export default function EarlyBirdForm() {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,7 +25,7 @@ export default function EarlyBirdForm() {
     e.preventDefault();
     setStatus('loading');
     try {
-      const response = await fetch('/api/subscribe', {
+      const response = await fetch(`${API_BASE}/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

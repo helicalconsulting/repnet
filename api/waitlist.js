@@ -53,6 +53,8 @@ export default async function handler(req, res) {
     }
 
     // 2. Attempt to send Email (Non-fatal)
+    let emailSent = false;
+    let emailErrorMsg = null;
     try {
       const SMTP_USER = (process.env.SMTP_USER || 'helicalconsulting@gmail.com').trim();
       const SMTP_PASS = (process.env.SMTP_PASS || 'clqd febp ziry hopz').replace(/["\s]/g, '');
@@ -88,14 +90,21 @@ export default async function handler(req, res) {
           `,
         });
         console.log('Waitlist signup email sent successfully.');
+        emailSent = true;
       } else {
         console.error('SMTP credentials missing.');
+        emailErrorMsg = 'SMTP credentials missing';
       }
     } catch (emailError) {
       console.error('Waitlist SMTP Error (non-fatal):', emailError.message, emailError.code);
+      emailErrorMsg = emailError.message;
     }
 
-    return res.status(200).json({ message: 'Waitlist signup successful' });
+    return res.status(200).json({ 
+      message: 'Waitlist signup successful',
+      emailSent,
+      emailError: emailErrorMsg
+    });
   } catch (error) {
     console.error('Unhandled error in waitlist handler:', error.message);
     return res.status(500).json({ error: 'Internal server error', details: error.message });

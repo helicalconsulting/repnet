@@ -59,6 +59,8 @@ app.post('/api/subscribe', async (req, res) => {
     }
 
     // 2. Attempt to send Email (Non-fatal)
+    let emailSent = false;
+    let emailErrorMsg = null;
     try {
       const SMTP_USER = (process.env.SMTP_USER || 'helicalconsulting@gmail.com').trim();
       const SMTP_PASS = (process.env.SMTP_PASS || 'clqd febp ziry hopz').replace(/["\s]/g, '');
@@ -96,14 +98,21 @@ app.post('/api/subscribe', async (req, res) => {
 
         await transporter.sendMail(mailOptions);
         console.log('Early bird subscription email sent successfully.');
+        emailSent = true;
       } else {
         console.error('SMTP credentials missing.');
+        emailErrorMsg = 'SMTP credentials missing';
       }
     } catch (emailError) {
       console.error('SMTP Subscription Email Error (non-fatal):', emailError);
+      emailErrorMsg = emailError.message;
     }
 
-    res.status(200).json({ message: 'Email saved successfully' });
+    res.status(200).json({ 
+      message: 'Email saved successfully',
+      emailSent,
+      emailError: emailErrorMsg
+    });
   } catch (error) {
     console.error('Unhandled error in subscribe handler:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -146,6 +155,8 @@ app.post('/api/waitlist', async (req, res) => {
     }
 
     // 2. Attempt to send Email (Non-fatal)
+    let emailSent = false;
+    let emailErrorMsg = null;
     try {
       const SMTP_USER = (process.env.SMTP_USER || 'helicalconsulting@gmail.com').trim();
       const SMTP_PASS = (process.env.SMTP_PASS || 'clqd febp ziry hopz').replace(/["\s]/g, '');
@@ -183,15 +194,22 @@ app.post('/api/waitlist', async (req, res) => {
 
         await transporter.sendMail(mailOptions);
         console.log('Waitlist signup email sent successfully.');
+        emailSent = true;
       } else {
         console.error('SMTP credentials missing.');
+        emailErrorMsg = 'SMTP credentials missing';
       }
     } catch (emailError) {
       console.error('SMTP Waitlist Email Error (non-fatal):', emailError);
+      emailErrorMsg = emailError.message;
     }
 
     waitlistCount += 1;
-    res.status(200).json({ message: 'Waitlist signup successful' });
+    res.status(200).json({ 
+      message: 'Waitlist signup successful',
+      emailSent,
+      emailError: emailErrorMsg
+    });
   } catch (error) {
     console.error('Unhandled error in waitlist handler:', error);
     res.status(500).json({ error: 'Internal server error' });

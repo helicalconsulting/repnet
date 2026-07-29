@@ -40,13 +40,12 @@ import SuperAdminConversationalQueries from './pages/super-admin/SuperAdminConve
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const isSuperAdminUser = sessionUser?.role === 'super_admin' || sessionUser?.email?.toLowerCase() === 'jaisinghbly@gmail.com';
-  const defaultRedirect = isSuperAdminUser ? '/super-admin' : '/dashboard';
+  const defaultRedirect = sessionUser?.role === 'super_admin' ? '/super-admin' : '/dashboard';
   const redirectPath = location.state?.from?.pathname || defaultRedirect;
 
   if (sessionUser) {
     // Super admins always go to their panel
-    if (isSuperAdminUser) {
+    if (sessionUser.role === 'super_admin') {
       return <Navigate to="/super-admin" replace />;
     }
     return <Navigate to={redirectPath} replace />;
@@ -54,8 +53,7 @@ function LoginRoute({ sessionUser, onAuthSuccess }) {
 
   const handleSuccess = (authenticatedUser) => {
     onAuthSuccess(authenticatedUser);
-    const isSA = authenticatedUser?.role === 'super_admin' || authenticatedUser?.email?.toLowerCase() === 'jaisinghbly@gmail.com';
-    const dest = isSA ? '/super-admin' : redirectPath;
+    const dest = authenticatedUser?.role === 'super_admin' ? '/super-admin' : redirectPath;
     navigate(dest, { replace: true });
   };
 
@@ -179,7 +177,7 @@ function App() {
         <Route
           path="/super-admin"
           element={
-            (sessionUser?.role === 'super_admin' || sessionUser?.email?.toLowerCase() === 'jaisinghbly@gmail.com')
+            sessionUser?.role === 'super_admin'
               ? <SuperAdminLayout user={sessionUser} onSignOut={handleSignOut} />
               : sessionUser
                 ? <Navigate to="/dashboard" replace />

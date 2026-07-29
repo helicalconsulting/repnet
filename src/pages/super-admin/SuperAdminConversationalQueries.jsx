@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, RefreshCw, ChevronDown, ChevronUp,
   ChevronLeft, ChevronRight, MessageCircle, AlertTriangle,
   Lock, HelpCircle, BarChart2, TrendingUp,
 } from 'lucide-react';
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
 import { adminApi } from '../../services/adminApi';
 
 // ── Type badge config ─────────────────────────────────────────────────────────
@@ -38,6 +42,149 @@ function TypeBadge({ type }) {
       <Icon className="w-2.5 h-2.5" />
       {cfg.label}
     </span>
+  );
+}
+
+// ── Custom recharts tooltip ───────────────────────────────────────────────────
+const ChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border rounded-xl px-3 py-2.5 text-xs shadow-xl">
+      <p className="text-foreground font-semibold mb-1.5">{label}</p>
+      {payload.map((p) => (
+        <p key={p.dataKey} className="flex items-center gap-1.5" style={{ color: p.color }}>
+          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+          {p.name}: <strong>{p.value}</strong>
+        </p>
+      ))}
+    </div>
+  );
+};
+
+// ── Dual-axis Combo Chart ─────────────────────────────────────────────────────
+function ConvQueryChart({ dailyTrend, byType }) {
+  // Build chart data: each day has stacked bars by type + cumulative line
+  const chartData = useMemo(() => {
+    // daily_trend from stats is [{date, count}] — we enrich with type breakdown later
+    // For the line, compute running cumulative total
+    let running = 0;
+    return (dailyTrend || []).map((d) => {
+      running += d.count;
+      return {
+        date: d.date ? d.date.slice(5) : '', // Show MM-DD
+        total: d.count,
+        cumulative: running,
+      };
+    });
+  }, [dailyTrend]);
+
+  const hasData = chartData.length > 0;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+      {/* Chart header */}
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <p className="text-sm font-bold text-foreground">Daily Volume — Conversational Queries</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Bars = daily count &nbsp;·&nbsp; Line = cumulative total (right axis)</p>
+        </div>
+        {/* Breakdown pills */}
+        <div className="hidden sm:flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20">
+            <MessageCircle className="w-2.5 h-2.5" /> {byType?.conversational ?? 0} chat
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            <HelpCircle className="w-2.5 h-2.5" /> {byType?.out_of_schema ?? 0} schema
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20">
+            <Lock className="w-2.5 h-2.5" /> {byType?.access_denied ?? 0} denied
+          </span>
+        </div>
+      </div>
+
+      {!hasData ? (
+        <div className="h-[220px] flex flex-col items-center justify-center gap-2 text-muted-foreground">
+          <BarChart2 className="w-8 h-8 opacity-25" />
+          <p className="text-xs">No data yet — chart will populate automatically as users chat</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <ComposedChart data={chartData} margin={{ top: 8, right: 32, left: -16, bottom: 0 }}>
+            <defs>
+              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.7} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.5 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            {/* Left Y-axis — daily count */}
+            <YAxis
+              yAxisId="left"
+              orientation="left"
+              tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.5 }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+              label={{
+                value: 'Daily Count',
+                angle: -90,
+                position: 'insideLeft',
+                offset: 16,
+                style: { fontSize: 9, fill: 'currentColor', opacity: 0.35 },
+              }}
+            />
+            {/* Right Y-axis — cumulative (Z-axis like secondary measure) */}
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 10, fill: '#f59e0b', opacity: 0.7 }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+              label={{
+                value: 'Cumulative',
+                angle: 90,
+                position: 'insideRight',
+                offset: 12,
+                style: { fontSize: 9, fill: '#f59e0b', opacity: 0.55 },
+              }}
+            />
+            <Tooltip content={<ChartTooltip />} />
+            <Legend
+              iconType="circle"
+              iconSize={7}
+              wrapperStyle={{ fontSize: 10, paddingTop: 8 }}
+            />
+            {/* Bars — daily total */}
+            <Bar
+              yAxisId="left"
+              dataKey="total"
+              name="Daily Total"
+              fill="url(#barGrad)"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
+            />
+            {/* Line — cumulative (secondary / right Z-axis) */}
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="cumulative"
+              name="Cumulative Total"
+              stroke="#f59e0b"
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: '#f59e0b', strokeWidth: 0 }}
+              activeDot={{ r: 5, stroke: '#f59e0b', strokeWidth: 2, fill: '#fff' }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      )}
+    </div>
   );
 }
 
@@ -228,6 +375,14 @@ export default function SuperAdminConversationalQueries() {
             color="bg-rose-500/10 text-rose-500"
           />
         </div>
+      )}
+
+      {/* ── Dual-axis Chart: auto-populates from daily_trend stats ── */}
+      {stats && (
+        <ConvQueryChart
+          dailyTrend={stats.daily_trend}
+          byType={stats.by_type}
+        />
       )}
 
       {/* Top Orgs (if stats loaded) */}

@@ -54,7 +54,8 @@ import {
   Pie,
   Cell,
   ScatterChart,
-  Scatter
+  Scatter,
+  ComposedChart
 } from 'recharts';
 import { 
   DndContext, 
@@ -193,6 +194,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [selectedDataKeys, setSelectedDataKeys] = useState(["revenue", "margin"]);
   const [xAxisKey, setXAxisKey] = useState("product");
   const [zAxisKey, setZAxisKey] = useState("");
+  const [secondaryLineKey, setSecondaryLineKey] = useState("");
   const [barMode, setBarMode] = useState("stacked"); // 'stacked' | 'grouped'
   const [isGlassMode, setIsGlassMode] = useState(true); // Stripe/Vercel Glassmorphic Aesthetic Mode
 
@@ -363,6 +365,13 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         }
         const entry = groupMap.get(xVal);
         entry[zVal] = (entry[zVal] || 0) + val;
+        
+        if (secondaryLineKey && row[secondaryLineKey] !== undefined) {
+          const lineVal = Number(row[secondaryLineKey]);
+          if (!isNaN(lineVal)) {
+            entry[secondaryLineKey] = lineVal;
+          }
+        }
       });
     }
 
@@ -517,6 +526,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
         bestZ = remainingNonNum[0];
       }
       setZAxisKey(bestZ);
+
+      // 5. Profile Secondary Line Metric (Profit Margin, Growth, Rate, %, or 2nd numeric key)
+      const lineKeywords = ["margin", "profit", "rate", "growth", "percent", "%", "ratio", "tax", "discount"];
+      const candidateLine = numCols.find(k => k !== numCols[0] && lineKeywords.some(kw => k.toLowerCase().includes(kw)));
+      const defaultLineKey = candidateLine || (numCols.length > 1 && selectedDataKeys.length > 1 ? selectedDataKeys[1] : (numCols.length > 1 ? numCols[1] : ""));
+      if (defaultLineKey) {
+        setSecondaryLineKey(defaultLineKey);
+      }
     }
   }, [columns, data]);
 
@@ -873,15 +890,22 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-card/90 backdrop-blur-xl border border-white/10 dark:border-white/15 p-3 rounded-2xl shadow-2xl space-y-1.5 text-xs z-50">
       <p className="font-semibold text-foreground border-b border-border/40 pb-1">{label}</p>
-      {payload.map((entry, index) => (
-        <div key={index} className="flex items-center justify-between gap-4 text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-            <span className="capitalize">{entry.name}:</span>
+      {payload.map((entry, index) => {
+        const isPct = entry.name?.toLowerCase().includes('margin') || entry.name?.toLowerCase().includes('rate') || entry.name?.toLowerCase().includes('%') || entry.name?.toLowerCase().includes('growth') || entry.name?.toLowerCase().includes('profit');
+        return (
+          <div key={index} className="flex items-center justify-between gap-4 text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+              <span className="capitalize">{entry.name}:</span>
+            </div>
+            <span className="font-semibold text-foreground">
+              {typeof entry.value === 'number'
+                ? (isPct ? `${entry.value.toFixed(1)}%` : entry.value.toLocaleString())
+                : entry.value}
+            </span>
           </div>
-          <span className="font-semibold text-foreground">{typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -1072,7 +1096,70 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           </div>
         );
       
-      default: // bar
+      default: { // bar (with ComposedChart dual Y-axis yellow line support)
+        const lineKey = secondaryLineKey || (selectedDataKeys.length > 1 ? selectedDataKeys[1] : null);
+        const isPercentLine = lineKey && (
+          lineKey.toLowerCase().includes('margin') || 
+          lineKey.toLowerCase().includes('rate') || 
+          lineKey.toLowerCase().includes('%') || 
+          lineKey.toLowerCase().includes('percent') || 
+          lineKey.toLowerCase().includes('growth') ||
+          lineKey.toLowerCase().includes('profit')
+        );
+
+        if (lineKey) {
+          const barKeys = zAxisKey && zValues.length > 0 ? zValues : [selectedDataKeys[0] || availableKeys[0] || 'revenue'];
+          return (
+            <ComposedChart data={processedDataForChart}>
+              <defs>
+                {colors.map((color, i) => (
+                  <linearGradient key={`glassGrad-${i}`} id={`glassGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity={isGlassMode ? 0.95 : 1} />
+                    <stop offset="100%" stopColor={color} stopOpacity={isGlassMode ? 0.3 : 1} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.3} vertical={false} />
+              <XAxis {...xAxisProps} />
+              <YAxis yAxisId="left" orientation="left" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={formatYAxis} />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#f59e0b"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => typeof v === 'number' ? (isPercentLine ? `${v.toFixed(1)}%` : formatYAxis(v)) : v}
+              />
+              <Tooltip content={<CustomGlassTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.15 }} />
+              <Legend {...legendProps} />
+              {barKeys.map((key, i) => (
+                <Bar 
+                  key={key} 
+                  yAxisId="left"
+                  dataKey={key} 
+                  name={key.charAt(0).toUpperCase() + key.slice(1)} 
+                  fill={isGlassMode ? `url(#glassGrad-${i % colors.length})` : colors[i % colors.length]} 
+                  stackId={zAxisKey && barMode === 'stacked' ? 'a' : undefined}
+                  radius={zAxisKey && barMode === 'stacked' ? [0, 0, 0, 0] : [6, 6, 2, 2]} 
+                  stroke={isGlassMode ? colors[i % colors.length] : undefined}
+                  strokeWidth={isGlassMode ? 1 : 0}
+                />
+              ))}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey={lineKey}
+                name={lineKey.charAt(0).toUpperCase() + lineKey.slice(1)}
+                stroke="#f59e0b"
+                strokeWidth={3}
+                dot={{ fill: '#f59e0b', r: 4, strokeWidth: 1.5, stroke: '#ffffff' }}
+                activeDot={{ r: 7, stroke: '#f59e0b', strokeWidth: 2, fill: '#ffffff' }}
+              />
+            </ComposedChart>
+          );
+        }
+
         return (
           <BarChart data={processedDataForChart}>
             <defs>
@@ -1102,6 +1189,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
             ))}
           </BarChart>
         );
+      }
     }
   };
 
@@ -1275,6 +1363,25 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </select>
                   </div>
 
+                  {/* Yellow Line (Y2 Secondary Axis) Selector */}
+                  {availableKeys.length > 1 && (
+                    <div className={`flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border transition-all text-xs gap-1.5 ${
+                      secondaryLineKey ? 'border-amber-500/60 bg-amber-500/10 text-amber-500 font-bold' : 'border-border/50 dark:border-white/10'
+                    }`}>
+                      <span className="font-semibold text-[11px] uppercase">📈 Yellow Line (Y2):</span>
+                      <select
+                        value={secondaryLineKey}
+                        onChange={(e) => setSecondaryLineKey(e.target.value)}
+                        className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
+                      >
+                        <option value="" className="bg-card text-foreground">None</option>
+                        {availableKeys.map(col => (
+                          <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Stacked vs Grouped Toggle (when chart is Bar & Z is active) */}
                   {chartType === 'bar' && zAxisKey && (
                     <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-0.5 rounded-xl border border-border/50 dark:border-white/10 text-xs">
@@ -1427,6 +1534,9 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                    <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[200px]">Y: {selectedDataKeys.join(', ')}</span>
                    {zAxisKey && (
                      <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Breakdown: {zAxisKey}</span>
+                   )}
+                   {secondaryLineKey && (
+                     <span className="text-[10px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Line (Y2): {secondaryLineKey}</span>
                    )}
                 </div>
               </div>

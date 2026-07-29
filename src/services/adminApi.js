@@ -149,4 +149,43 @@ export const adminApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Conversational / Non-Reporting Queries
+  async getConversationalQueries({
+    search = '', org_id = '', user_id = '', response_type = '',
+    from_date = '', to_date = '', skip = 0, limit = 50,
+  } = {}) {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (org_id) params.set('org_id', org_id);
+    if (user_id) params.set('user_id', user_id);
+    if (response_type) params.set('response_type', response_type);
+    if (from_date) params.set('from_date', from_date);
+    if (to_date) params.set('to_date', to_date);
+    params.set('skip', skip);
+    params.set('limit', limit);
+    return adminRequest(`/admin/conversational-queries?${params}`);
+  },
+
+  async getConversationalQueryStats(days = 30) {
+    return adminRequest(`/admin/conversational-queries/stats?days=${days}`);
+  },
+
+  // Permission Requests
+  async getPermissionRequests({ status = '', org_id = '', skip = 0, limit = 50 } = {}) {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (org_id) params.set('org_id', org_id);
+    params.set('skip', skip);
+    params.set('limit', limit);
+    return adminRequest(`/admin/permission-requests?${params}`);
+  },
+
+  async approvePermissionRequest(id) {
+    return adminRequest(`/admin/permission-requests/${id}/approve`, { method: 'PATCH' });
+  },
+
+  async denyPermissionRequest(id) {
+    return adminRequest(`/admin/permission-requests/${id}/deny`, { method: 'PATCH' });
+  },
 };

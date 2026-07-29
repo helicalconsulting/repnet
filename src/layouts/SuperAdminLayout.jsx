@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, Users, Search, Cpu,
   Activity, List, LogOut, ChevronRight, Menu, X,
-  Shield, Wifi, BarChart3, Inbox, Sun, Moon, FileText, AlertOctagon, MessageSquare, Calculator
+  Shield, Wifi, BarChart3, Inbox, Sun, Moon, FileText, AlertOctagon, MessageSquare, Calculator, MessageCircle
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -18,11 +18,12 @@ const NAV_SECTIONS = [
   {
     label: 'Management',
     items: [
-      { icon: Building2,      label: 'Organizations', path: '/super-admin/organizations' },
-      { icon: Users,          label: 'All Users',     path: '/super-admin/users' },
-      { icon: MessageSquare,  label: 'User Feedback', path: '/super-admin/feedback' },
-      { icon: Search,         label: 'Query Explorer',path: '/super-admin/queries' },
-      { icon: Inbox,          label: 'Waitlist',      path: '/super-admin/waitlist' },
+      { icon: Building2,      label: 'Organizations',          path: '/super-admin/organizations' },
+      { icon: Users,          label: 'All Users',              path: '/super-admin/users' },
+      { icon: MessageSquare,  label: 'User Feedback',          path: '/super-admin/feedback' },
+      { icon: Search,         label: 'Query Explorer',         path: '/super-admin/queries' },
+      { icon: MessageCircle,  label: 'Conversational Queries', path: '/super-admin/conversational-queries' },
+      { icon: Inbox,          label: 'Waitlist',               path: '/super-admin/waitlist' },
     ],
   },
   {

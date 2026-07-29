@@ -266,8 +266,10 @@ export const chartTypes = [
   { id: "pie", name: "Pie Chart", icon: "PieChart" },
   { id: "donut", name: "Donut Chart", icon: "Circle" },
   { id: "scatter", name: "Scatter Plot", icon: "Target" },
+  { id: "3d", name: "3D Graph", icon: "Box" },
   { id: "table", name: "Data Table", icon: "Table" },
 ];
+
 
 export const mockChatHistory = [
   { id: "chat-1", title: "Top sales analysis", date: "Today", messages: 4 },

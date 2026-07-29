@@ -33,7 +33,8 @@ import {
   ArrowDownToLine,
   Sparkles,
   FileSpreadsheet,
-  File
+  File,
+  Box
 } from "lucide-react";
 import { 
   BarChart, 
@@ -280,16 +281,22 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   // Unique values or buckets for Z-Axis
   const zValues = useMemo(() => {
     if (!zAxisKey || !data.length) return [];
-    if (zIsNumeric && chartType !== 'scatter') {
-      return ["Low", "Medium", "High"];
-    }
+    
     const set = new Set();
     data.forEach(r => {
-      if (r[zAxisKey] !== undefined && r[zAxisKey] !== null) {
-        set.add(String(r[zAxisKey]));
+      const val = r[zAxisKey];
+      if (val !== undefined && val !== null && val !== '') {
+        set.add(String(val));
       }
     });
-    return Array.from(set).slice(0, 6);
+    const uniqueList = Array.from(set);
+
+    // Only bucket if there are > 15 unique continuous numeric values AND it is NOT an ID column
+    if (zIsNumeric && uniqueList.length > 15 && !isIdColumn(zAxisKey) && chartType !== 'scatter') {
+      return ["Low", "Medium", "High"];
+    }
+
+    return uniqueList.slice(0, 15);
   }, [zAxisKey, data, zIsNumeric, chartType]);
 
   // Pivot or clean data for chart visualization
@@ -314,7 +321,17 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     const primaryMetric = selectedDataKeys[0] || availableKeys[0] || 'revenue';
     const groupMap = new Map();
 
-    if (zIsNumeric && chartType !== 'scatter') {
+    const set = new Set();
+    data.forEach(r => {
+      const val = r[zAxisKey];
+      if (val !== undefined && val !== null && val !== '') {
+        set.add(String(val));
+      }
+    });
+    const uniqueList = Array.from(set);
+    const useBuckets = zIsNumeric && uniqueList.length > 15 && !isIdColumn(zAxisKey) && chartType !== 'scatter';
+
+    if (useBuckets) {
       // Calculate min, max for numeric bucketization
       const numVals = data.map(r => Number(r[zAxisKey]) || 0);
       const minV = Math.min(...numVals);
@@ -1038,6 +1055,23 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           </ScatterChart>
         );
       
+      case '3d':
+        return (
+          <div className="w-full h-full min-h-[360px] relative flex flex-col items-center justify-center">
+            <Plot
+              data={plotly3DData}
+              layout={{
+                ...plotly3DLayout,
+                autosize: true,
+                font: { color: 'var(--foreground)' },
+              }}
+              useResizeHandler={true}
+              className="w-full h-full min-h-[360px]"
+              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+            />
+          </div>
+        );
+      
       default: // bar
         return (
           <BarChart data={processedDataForChart}>
@@ -1413,9 +1447,13 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               )}
 
               <div className="p-3 sm:p-4 md:p-6 min-h-[260px] sm:min-h-[320px]">
-                <ResponsiveContainer width="100%" height={chartHeight}>
-                  {renderChart()}
-                </ResponsiveContainer>
+                {chartType === '3d' ? (
+                  renderChart()
+                ) : (
+                  <ResponsiveContainer width="100%" height={chartHeight}>
+                    {renderChart()}
+                  </ResponsiveContainer>
+                )}
               </div>
             </motion.div>
           )}
@@ -1591,6 +1629,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                       {ct.id === 'pie' && <PieChart className="w-5 h-5" />}
                       {ct.id === 'donut' && <Circle className="w-5 h-5" />}
                       {ct.id === 'scatter' && <Target className="w-5 h-5" />}
+                      {ct.id === '3d' && <Box className="w-5 h-5" />}
                       <span className="text-[10px] font-semibold capitalize truncate w-full text-center">
                         {ct.name.replace(' Chart', '').replace(' Plot', '')}
                       </span>

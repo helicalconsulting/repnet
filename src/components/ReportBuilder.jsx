@@ -508,6 +508,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       if (has(colMeta.z_axis)) setZAxisKey(colMeta.z_axis);
       else setZAxisKey('');
       if (hasNum(colMeta.secondary_y)) setSecondaryLineKey(colMeta.secondary_y);
+      else if (availableKeys.length > 1) setSecondaryLineKey(availableKeys.find(k => k !== colMeta.y_axis) || availableKeys[1] || '');
       else setSecondaryLineKey('');
       if (colMeta.chart_type) setChartType(colMeta.chart_type);
 

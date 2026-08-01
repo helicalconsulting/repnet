@@ -531,37 +531,42 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               const backendSugs = getCombinedSuggestions(event);
               setMessages((prev) => {
                 const exists = prev.some((m) => m.id === aiMsgId);
-                const updatedFields = {
-                  isStreaming: false,
-                  showReportBtn: true,
-                  rowsReturned: event.rows_returned,
-                  executionTime: event.exec_time_ms,
-                  historyId: event.history_id,
-                  suggestions: backendSugs,
-                  colMeta: event.col_meta || null,   // ← axis hints from backend
-                };
                 if (exists) {
                   return prev.map((m) => {
                     if (m.id === aiMsgId) {
-                      return { ...m, ...updatedFields, columns: event.columns || m.columns };
+                      const isExec = m.type === "executable" || !!m.sql;
+                      return {
+                        ...m,
+                        isStreaming: false,
+                        showReportBtn: isExec,
+                        content: m.content || event.summary || "",
+                        type: isExec ? "executable" : (m.type || "conversational"),
+                        rowsReturned: event.rows_returned,
+                        executionTime: event.exec_time_ms,
+                        historyId: event.history_id,
+                        suggestions: backendSugs,
+                        colMeta: event.col_meta || null,
+                        columns: event.columns || m.columns,
+                      };
                     }
                     return m;
                   });
                 } else {
+                  const isExec = false;
                   return [
                     ...prev,
                     {
                       id: aiMsgId,
                       role: "ai",
                       type: "conversational",
-                      content: "",
+                      content: event.summary || "",
                       sql: null,
                       rows: [],
                       columns: event.columns,
                       rowsReturned: event.rows_returned,
                       executionTime: event.exec_time_ms,
                       isStreaming: false,
-                      showReportBtn: true,
+                      showReportBtn: false,
                       historyId: event.history_id,
                       suggestions: backendSugs,
                       colMeta: event.col_meta || null,
@@ -1694,7 +1699,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               )}
 
               {/* Report Button */}
-              {(msg.showReportBtn || (msg.type === "executable" && !!msg.sql && msg.rowsReturned > 0)) && (
+              {((msg.showReportBtn && (msg.type === "executable" || !!msg.sql)) || (msg.type === "executable" && !!msg.sql && (msg.rowsReturned > 0 || (msg.rows && msg.rows.length > 0)))) && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}

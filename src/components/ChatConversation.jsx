@@ -538,6 +538,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   executionTime: event.exec_time_ms,
                   historyId: event.history_id,
                   suggestions: backendSugs,
+                  colMeta: event.col_meta || null,   // ← axis hints from backend
                 };
                 if (exists) {
                   return prev.map((m) => {
@@ -563,6 +564,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       showReportBtn: true,
                       historyId: event.history_id,
                       suggestions: backendSugs,
+                      colMeta: event.col_meta || null,
                       timestamp: new Date().toISOString(),
                     },
                   ];
@@ -722,6 +724,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 showReportBtn: true,
                 historyId: response.history_id,
                 suggestions: backendSugs,
+                colMeta: response.col_meta || null,   // ← axis hints from backend
                 timestamp: new Date().toISOString(),
               },
             ]);
@@ -1706,7 +1709,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         sql: msg.sql,
                         templateId: msg.templateId,
                         extractedParams: msg.extractedParams,
-                        summary: msg.summary || msg.content || ''
+                        summary: msg.summary || msg.content || '',
+                        col_meta: msg.colMeta || null,   // ← axis hints from backend
                       };
                       const reportQuery = msg.templateDescription || initialQuery;
                       if (isProcessing) {

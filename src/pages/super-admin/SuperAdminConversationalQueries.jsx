@@ -287,6 +287,7 @@ export default function SuperAdminConversationalQueries() {
   const [data, setData] = useState({ total: 0, items: [] });
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -297,18 +298,22 @@ export default function SuperAdminConversationalQueries() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const skip = (page - 1) * limit;
       const [res, statsRes] = await Promise.all([
         adminApi.getConversationalQueries({ ...filters, skip, limit }),
-        stats === null ? adminApi.getConversationalQueryStats(30) : Promise.resolve(null),
+        adminApi.getConversationalQueryStats(30),   // always fetch fresh stats
       ]);
       setData(res);
       if (statsRes) setStats(statsRes);
+    } catch (err) {
+      console.error('[ConversationalQueries] load failed:', err);
+      setLoadError(err?.message || 'Failed to load queries. Check network or auth.');
     } finally {
       setLoading(false);
     }
-  }, [filters, page, limit]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters, page, limit]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -343,6 +348,15 @@ export default function SuperAdminConversationalQueries() {
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
       </div>
+
+      {/* Error Banner */}
+      {loadError && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-500 font-medium">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>{loadError}</span>
+          <button onClick={load} className="ml-auto text-xs underline font-semibold">Retry</button>
+        </div>
+      )}
 
       {/* Stats Bar */}
       {stats && (
@@ -420,8 +434,8 @@ export default function SuperAdminConversationalQueries() {
           className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground font-medium outline-none shadow-xs"
         >
           <option value="">All Types</option>
-          <option value="conversational">Conversational</option>
-          <option value="out_of_schema">Out of Schema</option>
+          <option value="conversational">Conversational (Chat)</option>
+          <option value="out_of_schema">Out of Schema (Non-Executable)</option>
           <option value="access_denied">Access Denied</option>
         </select>
         <div className="flex gap-2">

@@ -155,6 +155,9 @@ export default function ReportPage() {
       reportApi.getReport(id)
         .then(async (config) => {
           setReportConfig(config);
+
+          // col_meta persisted when report was saved
+          const persistedColMeta = config.parameters?.col_meta || null;
           
           // Use saved data/rows directly if present
           const savedRows = config.data || config.parameters?.data;
@@ -164,6 +167,7 @@ export default function ReportPage() {
               rows: savedRows,
               sql: config.sql || config.parameters?.sql || '',
               summary: config.parameters?.summary || '',
+              col_meta: persistedColMeta,
             });
             setQuery(config.name || 'Report');
             return;
@@ -180,6 +184,7 @@ export default function ReportPage() {
                   rows: latestSnap.rows_data,
                   sql: config.parameters?.sql || latestSnap.sql || '',
                   summary: config.parameters?.summary || '',
+                  col_meta: persistedColMeta,
                 });
                 hasSnapshotData = true;
               }
@@ -198,6 +203,7 @@ export default function ReportPage() {
                   rows: runResult.rows,
                   sql: config.sql || runResult.sql || config.parameters?.sql,
                   summary: config.parameters?.summary || '',
+                  col_meta: persistedColMeta,
                 });
               } else {
                 setReportData({
@@ -205,6 +211,7 @@ export default function ReportPage() {
                   rows: config.rows || config.parameters?.data || [],
                   sql: config.sql || config.parameters?.sql || '',
                   summary: config.parameters?.summary || '',
+                  col_meta: persistedColMeta,
                 });
               }
             } catch (runErr) {
@@ -214,6 +221,7 @@ export default function ReportPage() {
                 rows: config.rows || config.parameters?.data || [],
                 sql: config.sql || config.parameters?.sql || '',
                 summary: config.parameters?.summary || '',
+                col_meta: persistedColMeta,
               });
             }
           }

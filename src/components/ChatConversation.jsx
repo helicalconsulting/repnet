@@ -188,7 +188,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   };
 
   const isSummaryCollapsed = (id) => {
-    return collapsedSummaries[id] !== false;
+    return collapsedSummaries[id] === true;
   };
 
   const toggleSqlCollapse = (id) => {
@@ -1555,7 +1555,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                 <span className="text-xs text-muted-foreground">Generating insights...</span>
                               </div>
                             ) : (
-                              formatContent(msg.content)
+                              formatContent(
+                                msg.content || 
+                                (msg.type === "executable" || msg.sql 
+                                  ? `Query executed successfully. ${msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0)} rows returned.` 
+                                  : "")
+                              )
                             )}
                           </motion.div>
                         )}

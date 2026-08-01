@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   BarChart3, Plus, Search, Loader2, Trash2, Play,
-  Calendar, Database, FileText, AlertCircle, RefreshCw, CheckSquare, Square, Download, X
+  Calendar, Database, FileText, AlertCircle, RefreshCw, CheckSquare, Square, Download, X, MoreHorizontal,
+  FileSpreadsheet, FileArchive
 } from 'lucide-react';
 import { reportApi, exportApi } from '../services/api';
 import { useApp } from '../context/AppContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import { EmptyState, PageFrame, PageLead, StatusPill } from '../components/ui/product-ui';
 
 function timeAgo(dateStr) {
   const date = new Date(dateStr);
@@ -115,61 +122,118 @@ export default function ReportsListPage() {
         subtitle: `${reports.length} saved report${reports.length !== 1 ? 's' : ''}`,
         icon: <BarChart3 className="w-4 h-4 text-foreground" />,
         actions: (
-          <div className="flex items-center gap-2">
-            {!isViewer && filtered.length > 0 && (
+          <>
+            <div className="hidden sm:flex items-center gap-2">
+              {!isViewer && filtered.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (selectedIds.length === filtered.length) {
+                      setSelectedIds([]);
+                    } else {
+                      setSelectedIds(filtered.map(r => r.id));
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  {selectedIds.length === filtered.length ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
               <button
-                onClick={() => {
-                  if (selectedIds.length === filtered.length) {
-                    setSelectedIds([]);
-                  } else {
-                    setSelectedIds(filtered.map(r => r.id));
-                  }
-                }}
-                className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                onClick={fetchReports}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                aria-label="Refresh reports"
+                title="Refresh reports"
               >
-                {selectedIds.length === filtered.length ? 'Deselect All' : 'Select All'}
+                <RefreshCw className="w-4 h-4" />
               </button>
-            )}
-            <button
-              onClick={fetchReports}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            {!isViewer && (
-              <button
-                onClick={() => navigate('/chat')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                New Report
-              </button>
-            )}
-          </div>
+              {!isViewer && (
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  New Report
+                </button>
+              )}
+            </div>
+
+            <div className="flex sm:hidden items-center gap-1">
+              {!isViewer && (
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-zinc-100 shadow-sm"
+                  aria-label="Create new report"
+                  title="Create new report"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-foreground"
+                    aria-label="More report actions"
+                    title="More report actions"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  {!isViewer && filtered.length > 0 && (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        if (selectedIds.length === filtered.length) {
+                          setSelectedIds([]);
+                        } else {
+                          setSelectedIds(filtered.map(r => r.id));
+                        }
+                      }}
+                    >
+                      {selectedIds.length === filtered.length ? <Square /> : <CheckSquare />}
+                      {selectedIds.length === filtered.length ? 'Deselect all' : 'Select all'}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onSelect={fetchReports}>
+                    <RefreshCw />
+                    Refresh reports
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </>
         )
       });
     }
   }, [setHeaderConfig, reports.length, filtered.length, selectedIds.length, isViewer]);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background overflow-auto relative">
-      <div className="flex-1 p-6 pb-24">
+    <div className="relative flex h-full flex-1 flex-col overflow-auto">
+      <PageFrame className="flex-1 pb-28">
+        <PageLead
+          title="Saved reports"
+          description="Search, open and export the reports your team has already created."
+          actions={selectedIds.length > 0 ? (
+            <StatusPill tone="primary">{selectedIds.length} selected</StatusPill>
+          ) : (
+            <StatusPill>{filtered.length} visible</StatusPill>
+          )}
+        />
+
         {/* Search */}
-        <div className="relative mb-6 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="app-surface relative mb-6 max-w-xl rounded-2xl p-2">
+          <Search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search reports..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border/50 bg-black/[0.02] dark:bg-white/[0.03] text-sm outline-none focus:border-primary/50 transition-colors"
+            className="h-10 w-full rounded-xl border border-transparent bg-muted/50 pl-10 pr-4 text-sm outline-none transition-all placeholder:text-muted-foreground/75 focus:border-primary/25 focus:bg-card focus:ring-4 focus:ring-primary/8"
           />
         </div>
 
         {/* States */}
         {/* States */}
-        <SmartSkeleton loading={loading}>
+        <div aria-busy={loading}>
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -187,40 +251,34 @@ export default function ReportsListPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-rose-500/10 flex items-center justify-center">
-                <AlertCircle className="w-7 h-7 text-rose-500" />
-              </div>
-              <p className="text-sm text-muted-foreground">{error}</p>
-              <button
-                onClick={fetchReports}
-                className="text-xs text-primary hover:underline font-medium"
-              >
-                Try again
-              </button>
+            <div className="app-card rounded-2xl">
+              <EmptyState
+                icon={AlertCircle}
+                title="Reports could not be loaded"
+                description={error}
+                action={(
+                  <button onClick={fetchReports} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+                    Try again
+                  </button>
+                )}
+              />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center">
-                <FileText className="w-8 h-8 text-primary/40" />
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-foreground mb-1">
-                  {search ? 'No reports match your search' : 'No reports yet'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {search ? 'Try a different search term.' : 'Run an AI chat query and save the results as a report.'}
-                </p>
-              </div>
-              {!search && !isViewer && (
-                <button
-                  onClick={() => navigate('/chat')}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-semibold hover:bg-primary/15 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Start a new chat
-                </button>
-              )}
+            <div className="app-card rounded-2xl">
+              <EmptyState
+                icon={FileText}
+                title={search ? 'No reports match your search' : 'No reports yet'}
+                description={search ? 'Try a different search term.' : 'Ask Repnex a question and save the result as a report.'}
+                action={!search && !isViewer ? (
+                  <button
+                    onClick={() => navigate('/chat')}
+                    className="brand-gradient flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Start an analysis
+                  </button>
+                ) : null}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -235,35 +293,38 @@ export default function ReportsListPage() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ delay: i * 0.04 }}
                       onClick={() => navigate(`/report/${report.id}`)}
-                      className={`group relative cursor-pointer rounded-2xl border bg-card transition-all p-5 flex flex-col gap-3 ${
+                      className={`interactive-card group relative flex cursor-pointer flex-col gap-4 rounded-2xl border bg-card/95 p-5 ${
                         isSelected 
-                          ? 'border-primary shadow-md shadow-primary/5 bg-primary/[0.02]' 
-                          : 'border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5'
+                          ? 'border-primary/60 bg-primary/[0.035] shadow-md shadow-primary/5' 
+                          : 'border-border/80 shadow-sm'
                       }`}
                     >
                       {/* Header: Icon + Checkbox + Name */}
                       <div className="flex items-start gap-3">
                         {!isViewer && (
-                          <div
+                          <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedIds(prev =>
                                 isSelected ? prev.filter(id => id !== report.id) : [...prev, report.id]
                               );
                             }}
-                            className="p-1.5 -ml-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all cursor-pointer shrink-0 z-20 relative"
+                            aria-label={`${isSelected ? 'Deselect' : 'Select'} ${report.name}`}
+                            aria-pressed={isSelected}
+                            className="relative z-20 -ml-1.5 shrink-0 rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-primary/5 hover:text-primary"
                           >
                             {isSelected ? (
                               <CheckSquare className="w-5 h-5 text-primary" />
                             ) : (
                               <Square className="w-5 h-5 text-muted-foreground/40 hover:text-primary transition-colors" />
                             )}
-                          </div>
+                          </button>
                         )}
                         
                         <div className="flex-1 min-w-0 flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <BarChart3 className="w-5 h-5 text-primary" />
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/10 bg-primary/8">
+                            <BarChart3 className="h-5 w-5 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-foreground text-sm truncate leading-tight">
@@ -279,7 +340,7 @@ export default function ReportsListPage() {
                       </div>
 
                       {/* Meta */}
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground pl-[36px]">
+                      <div className="flex flex-wrap items-center gap-3 border-t border-border/55 pt-3 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {timeAgo(report.created_at)}
@@ -296,7 +357,7 @@ export default function ReportsListPage() {
                       <div className="flex items-center gap-2 mt-1">
                         <button
                           onClick={() => navigate(`/report/${report.id}`)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+                          className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/15 transition-colors hover:bg-primary-hover"
                         >
                           <Play className="w-3.5 h-3.5" />
                           Open Report
@@ -305,7 +366,8 @@ export default function ReportsListPage() {
                           <button
                             onClick={(e) => handleDelete(e, report.id)}
                             disabled={deletingId === report.id}
-                            className="p-2 rounded-xl text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 transition-colors"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 text-muted-foreground transition-colors hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-500"
+                            aria-label={`Delete ${report.name}`}
                           >
                             {deletingId === report.id
                               ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -320,17 +382,34 @@ export default function ReportsListPage() {
               </AnimatePresence>
             </div>
           )}
-        </SmartSkeleton>
-      </div>
+        </div>
+      </PageFrame>
 
       {/* Floating Action Bar */}
+      <AnimatePresence>
       {!isViewer && selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card/95 dark:bg-zinc-900/95 backdrop-blur border border-border/80 shadow-2xl rounded-2xl px-6 py-4 flex items-center justify-between gap-6 max-w-lg w-[calc(100%-2rem)]">
-          <div className="flex flex-col gap-0.5">
-            <p className="text-sm font-semibold text-foreground">{selectedIds.length} report{selectedIds.length !== 1 ? 's' : ''} selected</p>
-            <p className="text-[11px] text-muted-foreground">Export latest snapshot results</p>
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.97 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          role="region"
+          aria-label="Selected report actions"
+          aria-live="polite"
+          className="fixed bottom-4 left-1/2 z-50 flex w-[calc(100%-1.5rem)] max-w-3xl -translate-x-1/2 flex-col gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-2xl shadow-primary/20 ring-1 ring-primary/10 backdrop-blur-2xl sm:bottom-5 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-3.5"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+              <CheckSquare className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Export selected reports</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {selectedIds.length} report{selectedIds.length !== 1 ? 's' : ''} selected · Choose a format
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-4 gap-2 sm:flex sm:items-center">
             <button
               onClick={() => {
                 setBulkExportFormat('excel');
@@ -338,8 +417,9 @@ export default function ReportsListPage() {
                 setShowBulkExportModal(true);
               }}
               disabled={isExporting}
-              className="px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-700 transition-all hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-300"
             >
+              <FileSpreadsheet className="h-4 w-4" />
               Excel
             </button>
             <button
@@ -349,8 +429,9 @@ export default function ReportsListPage() {
                 setShowBulkExportModal(true);
               }}
               disabled={isExporting}
-              className="px-3.5 py-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 text-xs font-semibold text-rose-700 transition-all hover:bg-rose-500/20 disabled:opacity-50 dark:text-rose-300"
             >
+              <FileText className="h-4 w-4" />
               PDF
             </button>
             <button
@@ -360,20 +441,24 @@ export default function ReportsListPage() {
                 setShowBulkExportModal(true);
               }}
               disabled={isExporting}
-              className="px-3.5 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3 text-xs font-semibold text-primary transition-all hover:bg-primary/20 disabled:opacity-50"
             >
+              <FileArchive className="h-4 w-4" />
               ZIP
             </button>
             <button
               onClick={() => setSelectedIds([])}
               disabled={isExporting}
-              className="px-3.5 py-2 rounded-xl bg-muted/40 hover:bg-muted text-xs font-bold transition-all disabled:opacity-50"
+              aria-label="Clear report selection"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-50"
             >
-              Cancel
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline">Clear</span>
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showBulkExportModal && (

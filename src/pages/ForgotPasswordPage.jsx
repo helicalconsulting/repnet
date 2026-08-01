@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Loader2, Mail } from 'lucide-react';
 import { authApi } from '../services/api';
+import { ProductMark } from '../components/ui/product-ui';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,9 +34,13 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-3xl border border-border/60 bg-card p-8 shadow-2xl">
+    <div className="workspace-canvas surface-grid flex min-h-screen items-center justify-center p-4 text-foreground">
+      <div className="auth-panel app-card w-full max-w-md rounded-3xl p-7 shadow-2xl sm:p-8">
         <div className="mb-7">
+          <div className="mb-5 flex items-center gap-2.5">
+            <ProductMark className="h-8 w-8" />
+            <span className="text-sm font-semibold">Repnex</span>
+          </div>
           <button
             type="button"
             onClick={() => navigate('/login')}
@@ -47,7 +52,7 @@ export default function ForgotPasswordPage() {
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             {sent ? <CheckCircle2 className="h-6 w-6" /> : <Mail className="h-6 w-6" />}
           </div>
-          <h1 className="text-2xl font-semibold">{sent ? 'Check your email' : 'Reset your password'}</h1>
+          <h1 className="page-heading text-2xl font-semibold">{sent ? 'Check your email' : 'Reset your password'}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {sent
               ? 'If an active account exists for that email, a reset link has been sent. The link expires in 30 minutes.'
@@ -81,7 +86,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+              className="brand-gradient flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send reset link'}
             </button>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import { 
   ArrowLeft, 
   Search, 
@@ -97,7 +96,7 @@ export default function SchemaExplorerPage() {
 
   if (!connection) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-foreground bg-background">
+      <div className="workspace-canvas flex flex-1 flex-col items-center justify-center p-6 text-foreground">
         <AlertCircle className="w-12 h-12 text-rose-500 mb-4 animate-bounce" />
         <h2 className="text-xl font-bold mb-2">Connection not found</h2>
         <button 
@@ -113,20 +112,21 @@ export default function SchemaExplorerPage() {
   const filteredTables = tables.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background text-foreground overflow-hidden">
+    <div className="workspace-canvas flex h-full flex-1 flex-col overflow-hidden text-foreground">
       {/* Top Header */}
-      <div className="border-b border-border/50 dark:border-white/5 p-4 md:px-8 md:py-5 flex flex-wrap items-center justify-between gap-4 bg-card/30 backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 bg-background/82 p-4 backdrop-blur-xl md:px-8 md:py-5">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/connections')}
-            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors text-muted-foreground hover:text-foreground"
+            className="app-card flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all hover:-translate-y-0.5 hover:text-foreground"
             title="Back to Connections"
+            aria-label="Back to connections"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <h1 className="page-heading flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
                 <Database className="w-5 h-5 text-primary" />
                 Schema Explorer
               </h1>
@@ -135,7 +135,7 @@ export default function SchemaExplorerPage() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {connection.database} • {connection.type.toUpperCase()} • {tables.length} Tables synced
+                {connection.database} · {connection.type.toUpperCase()} · {tables.length} tables
             </p>
           </div>
         </div>
@@ -144,19 +144,20 @@ export default function SchemaExplorerPage() {
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/8 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/12 disabled:opacity-50 sm:px-4"
           >
             {isSyncing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            {isSyncing ? 'Syncing...' : 'Sync Schema'}
+            <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Sync schema'}</span>
           </button>
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors text-muted-foreground hover:text-foreground"
+            className="app-card flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
+            aria-label={isFullscreen ? "Exit fullscreen view" : "Open fullscreen view"}
           >
             {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
@@ -173,7 +174,7 @@ export default function SchemaExplorerPage() {
               animate={{ width: 340, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="border-r border-border/50 dark:border-white/5 bg-card/10 flex flex-col h-full shrink-0 overflow-hidden"
+              className="hidden h-full shrink-0 flex-col overflow-hidden border-r border-border/60 bg-card/45 md:flex"
             >
               {/* Search */}
               <div className="p-4 border-b border-border/30 dark:border-white/5">
@@ -191,8 +192,7 @@ export default function SchemaExplorerPage() {
 
               {/* Table List */}
               <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
-                <SmartSkeleton loading={loadingTables}>
-                  {loadingTables ? (
+                {loadingTables ? (
                     Array.from({ length: 10 }).map((_, i) => (
                       <div key={i} className="flex items-center justify-between p-3 rounded-xl">
                         <div className="flex items-center gap-2.5 w-full">
@@ -231,44 +231,56 @@ export default function SchemaExplorerPage() {
                       );
                     })
                   )}
-                </SmartSkeleton>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Right Columns Grid Panel */}
-        <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative">
+        <div className="relative flex h-full flex-1 flex-col overflow-hidden bg-background/35">
           {selectedTable ? (
             <div className="flex-1 flex flex-col h-full overflow-hidden">
               {/* Table Header Info */}
-              <div className="p-4 md:p-6 border-b border-border/30 dark:border-white/5 flex flex-wrap justify-between items-center gap-4 bg-card/10">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/50 bg-card/45 p-4 md:p-6">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2.5">
+                  <div className="mb-3 md:hidden">
+                    <label htmlFor="mobile-table-select" className="meta-label mb-1.5 block">Table</label>
+                    <select
+                      id="mobile-table-select"
+                      value={selectedTable}
+                      onChange={(event) => handleTableSelect(event.target.value)}
+                      className="h-10 max-w-[75vw] rounded-xl border border-border/70 bg-background px-3 text-sm font-medium text-foreground outline-none focus:border-primary/50"
+                    >
+                      {filteredTables.map((table) => (
+                        <option key={table.name} value={table.name}>{table.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
                     <span>📋</span>
                     {selectedTable}
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Detailed schema structure mapping and column details
+                    Column names, data types, and field details
                   </p>
                 </div>
                 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleAskAI(selectedTable)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/95 hover:to-blue-600/95 text-white rounded-xl text-xs font-semibold shadow-md shadow-primary/20 transition-all"
+                    className="brand-gradient flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 sm:px-4"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    Ask AI to Describe Table
+                    <span className="hidden sm:inline">Ask AI about table</span>
+                    <span className="sm:hidden">Ask AI</span>
                   </button>
                 </div>
               </div>
 
               {/* Columns Table */}
               <div className="flex-1 overflow-auto p-4 md:p-6 custom-scrollbar">
-                <SmartSkeleton loading={loadingColumns}>
-                  {loadingColumns ? (
-                    <div className="w-full border border-border/50 dark:border-white/5 rounded-2xl overflow-hidden bg-card/20 backdrop-blur-md">
+                {loadingColumns ? (
+                    <div className="data-table-shell w-full">
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="border-b border-border/50 dark:border-white/5 bg-black/5 dark:bg-white/[0.02] text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -342,7 +354,6 @@ export default function SchemaExplorerPage() {
                       </table>
                     </div>
                   )}
-                </SmartSkeleton>
               </div>
             </div>
           ) : (

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
-import { PanelLeftOpen, PanelLeftClose, Sun, Moon, Bell, LogOut, MessageSquarePlus, Menu, Layers } from 'lucide-react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { PanelLeftOpen, PanelLeftClose, Bell, Layers } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import Sidebar from '../components/Sidebar';
+import { StatusPill } from '../components/ui/product-ui';
 
 const THEME_STORAGE_KEY = 'repnex-theme';
 
@@ -35,7 +36,6 @@ export default function MainLayout({ user, onSignOut }) {
     hidden: false,
   });
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Reset header config when changing route
   useEffect(() => {
@@ -44,17 +44,10 @@ export default function MainLayout({ user, onSignOut }) {
       subtitle: '',
       icon: null,
       actions: null,
-      hidden: false,
+      hidden: location.pathname.startsWith('/chat'),
     });
   }, [location.pathname]);
   
-  const isViewer = user?.role === 'viewer';
-
-  const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
-  
-  // Decide if right-side TopNav controls should be hidden (only when full screen report is active)
-  const isReportView = location.pathname.startsWith('/report/') && location.pathname !== '/report';
-
   // Collapse sidebar on small screens or when viewing a report
   useEffect(() => {
     if ((location.pathname.startsWith('/report/') && location.pathname !== '/report') || window.innerWidth < 768) {
@@ -109,7 +102,7 @@ export default function MainLayout({ user, onSignOut }) {
   };
 
   return (
-    <div className={`flex h-screen w-full transition-colors duration-700 bg-[var(--background)] overflow-hidden relative`}>
+    <div className="workspace-canvas relative flex h-screen w-full overflow-hidden bg-background transition-colors duration-500">
       
       {/* Notifications Toast */}
       <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2">
@@ -120,10 +113,10 @@ export default function MainLayout({ user, onSignOut }) {
               initial={{ opacity: 0, x: 50, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 50, scale: 0.9 }}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg backdrop-blur-md border ${
-                notif.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
-                notif.type === 'error' ? 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400' :
-                'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
+              className={`app-surface flex max-w-sm items-center gap-3 rounded-2xl px-4 py-3 backdrop-blur-xl ${
+                notif.type === 'success' ? 'text-emerald-700 dark:text-emerald-300' :
+                notif.type === 'error' ? 'text-rose-700 dark:text-rose-300' :
+                'text-primary'
               }`}
             >
               <Bell className="w-4 h-4" />
@@ -141,30 +134,31 @@ export default function MainLayout({ user, onSignOut }) {
         setDarkMode={setDarkMode}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 h-full">
+      <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         {/* Dynamic Top bar */}
         {!headerConfig.hidden && (
-          <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0 z-20">
-            <div className="flex items-center gap-3 min-w-0">
+          <header className="z-20 flex h-16 flex-shrink-0 items-center justify-between border-b border-border/70 bg-card/80 px-3 backdrop-blur-2xl sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-transparent text-muted-foreground transition-all hover:border-border/70 hover:bg-card hover:text-foreground hover:shadow-sm"
                 title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+                aria-label={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
               >
                 {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
               </button>
               {headerConfig.title ? (
                 typeof headerConfig.title === 'string' ? (
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     {headerConfig.icon && (
-                      <div className="w-6 h-6 rounded-lg bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/8 text-primary">
                         {headerConfig.icon}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <h1 className="text-sm font-bold text-foreground leading-none truncate tracking-tight">{headerConfig.title}</h1>
+                      <h1 className="truncate text-sm font-semibold leading-none tracking-tight text-foreground">{headerConfig.title}</h1>
                       {headerConfig.subtitle && (
-                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5 truncate">{headerConfig.subtitle}</p>
+                        <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{headerConfig.subtitle}</p>
                       )}
                     </div>
                   </div>
@@ -172,35 +166,53 @@ export default function MainLayout({ user, onSignOut }) {
                   headerConfig.title
                 )
               ) : (
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-5 h-5 rounded bg-zinc-900/10 dark:bg-zinc-100/10 flex items-center justify-center shrink-0">
-                    <Layers className="w-3 h-3 text-foreground" />
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/8">
+                    <Layers className="h-3.5 w-3.5 text-primary" />
                   </div>
-                  <span className="text-sm font-semibold text-foreground truncate">Repnex Workspace</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium shrink-0">
+                  <span className="truncate text-sm font-semibold text-foreground">Repnex Workspace</span>
+                  <StatusPill tone="success" className="hidden shrink-0 sm:inline-flex">
+                    <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     AI Active
-                  </span>
+                  </StatusPill>
                 </div>
               )}
             </div>
 
             {headerConfig.actions && (
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
                 {headerConfig.actions}
               </div>
             )}
           </header>
         )}
 
+        {/* Keep navigation available when a page hides the standard header. */}
+        {headerConfig.hidden && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="app-card group absolute z-30 flex h-11 w-11 items-center justify-center rounded-xl border border-border/80 bg-card/95 text-foreground shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            style={{
+              left: 'max(0.75rem, env(safe-area-inset-left))',
+              top: 'max(0.75rem, env(safe-area-inset-top))',
+            }}
+            title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            aria-label={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            {isSidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </button>
+        )}
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+        <main className="surface-grid custom-scrollbar relative flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
              <Motion.div 
                 key={getLayoutTransitionKey(location.pathname)}
-                initial={{ opacity: 0, y: 8 }} 
+                initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }} 
-                exit={{ opacity: 0, y: -8 }} 
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
                 className="h-full"
              >
                 <Outlet context={{ isSidebarOpen, setIsSidebarOpen, setHeaderConfig }} />

@@ -1,8 +1,11 @@
-import { Mic, MicOff, ArrowUp, RefreshCw, Sparkles, ChevronDown, Database, Zap, TrendingUp, Package, DollarSign, Users, BookOpen, ChevronRight, X } from "lucide-react";
+import { Mic, MicOff, ArrowUp, RefreshCw, Sparkles, Database, TrendingUp, DollarSign, Users, BookOpen, ChevronRight, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi } from "../services/api";
+import { ProductMark, StatusPill } from "./ui/product-ui";
+import ModelProviderMenu from "./ModelProviderMenu";
 
 const DEFAULT_SUGGESTIONS = [
   {
@@ -59,8 +62,6 @@ export default function AIChatArea({ onSearch }) {
   const { connections, activeConnection, user } = useApp();
   const { getGreeting, getDisplayName } = usePersonalization();
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState(0);
-  const [showConnectionBadge, setShowConnectionBadge] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [showQueriesDrawer, setShowQueriesDrawer] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -91,6 +92,23 @@ export default function AIChatArea({ onSearch }) {
     setHasFetchedDynamic(false);
     setSuggestions([]);
   }, [activeConnection]);
+
+  useEffect(() => {
+    if (!showQueriesDrawer) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setShowQueriesDrawer(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showQueriesDrawer]);
 
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
@@ -145,6 +163,10 @@ export default function AIChatArea({ onSearch }) {
 
   const activeConn = connections.find(c => c.id === activeConnection);
   const isViewer = user?.role === 'viewer';
+  const quickPrompts = (suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS)
+    .flatMap((module) => module.submodules || [])
+    .flatMap((submodule) => submodule.prompts || [])
+    .slice(0, 4);
 
   const categoryIcons = {
     "AP & Suppliers": <DollarSign className="w-4 h-4" />,
@@ -163,105 +185,56 @@ export default function AIChatArea({ onSearch }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-start pt-16 pb-4 px-6 w-full max-w-4xl mx-auto min-h-full relative z-10">
-      
-      {/* Background glow */}
-      <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/5 dark:bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="relative z-10 mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col items-center px-4 pb-8 pt-16 sm:px-6 sm:pt-12">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[720px] max-w-[100vw] -translate-x-1/2 rounded-full bg-primary/8 blur-[110px]" />
 
-      {/* Center Content */}
-      <div className="w-full flex flex-col items-center relative z-20">
-        
-        {/* Glowy Assistant Orb (Reverted to Normal Rounded) */}
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className={`w-16 h-16 rounded-full mb-4 relative cursor-pointer select-none transition-all duration-300 ${
-            isListening 
-              ? "shadow-[0_0_80px_rgba(239,68,68,0.7)] bg-gradient-to-b from-white via-rose-300 to-rose-600" 
-              : "shadow-[0_0_60px_rgba(37,99,235,0.4)] bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb]"
-          }`}
-          onClick={toggleListening}
-        >
-          {/* Inner Breathing Glow */}
-          <motion.div 
-            animate={{ scale: isListening ? [1, 1.3, 1] : [1, 1.2, 1] }}
-            transition={{ repeat: Infinity, duration: isListening ? 1.5 : 3, ease: "easeInOut" }}
-            className={`absolute inset-0 rounded-full blur-xl opacity-50 transition-all duration-300 ${
-              isListening 
-                ? "bg-gradient-to-b from-white via-rose-300 to-rose-600" 
-                : "bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb]"
-            }`}
-          />
-        </motion.div>
-
-        {/* Headings */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
+      <div className="relative z-20 flex w-full flex-col items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-center mb-6"
+          transition={{ duration: 0.25 }}
+          className="mb-6 text-center"
         >
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground mb-3">
+          <h2 className="page-heading brand-text-gradient text-3xl font-semibold sm:text-4xl">
             {getGreeting()}, {getDisplayName()}
           </h2>
-          <p className="text-xs text-muted-foreground/70 w-72 mx-auto leading-relaxed">
-            {isViewer ? "You have view-only access to reports" : "What report would you like to create today?"}
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+            {isViewer
+              ? "Explore saved reports and shared analysis from your workspace."
+              : "Ask a business question. Repnex will find the right ERP data and build the report with you."}
           </p>
         </motion.div>
 
-        {/* Connected DB Badge & Explore Suggestions Toggle */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-          <AnimatePresence>
-            {showConnectionBadge && activeConn && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full shadow-sm"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                  Connected to {activeConn.name}
-                </span>
-                <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
-                  ({activeConn.tables} tables)
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <motion.button
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={() => setShowQueriesDrawer(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/30 rounded-full text-blue-600 dark:text-blue-400 text-sm font-medium transition-all cursor-pointer shadow-sm select-none"
-          >
-            <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />
-            <span>Explore Schema Queries</span>
-          </motion.button>
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+          {activeConn ? (
+            <StatusPill tone="success">
+              <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <Database className="h-3.5 w-3.5" />
+              {activeConn.name}
+              {activeConn.tables ? <span className="opacity-70">· {activeConn.tables} tables</span> : null}
+            </StatusPill>
+          ) : (
+            <StatusPill tone="warning">
+              <Database className="h-3.5 w-3.5" />
+              Choose a connection to use live data
+            </StatusPill>
+          )}
         </div>
 
-
-
-        {/* Input Area */}
-        <motion.form 
-          initial={{ opacity: 0, y: 20 }}
+        <motion.form
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.12 }}
           onSubmit={handleSearch}
-          className="w-full max-w-3xl relative"
+          className="w-full max-w-3xl"
         >
-          <div className="relative bg-card rounded-[24px] shadow-sm border border-border flex flex-col p-2 min-h-[120px] focus-within:border-primary/30 focus-within:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all">
-            
-            {/* Input */}
+          <div className="prompt-shell flex min-h-[132px] flex-col rounded-[24px] p-2">
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={isViewer ? "Viewer role: Chat input is disabled" : "Describe the report you need..."}
+              placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask about revenue, orders, inventory, suppliers..."}
               disabled={isViewer}
-              className="w-full bg-transparent border-none outline-none text-foreground text-base p-4 resize-none placeholder:text-muted-foreground/60 min-h-[60px]"
+              className="chat-composer-input min-h-[72px] w-full resize-none border-none bg-transparent p-4 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/70"
               onKeyDown={(e) => {
                 if (isViewer) return;
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -271,135 +244,162 @@ export default function AIChatArea({ onSearch }) {
               }}
             />
 
-            {/* Bottom Row */}
-            <div className="flex items-center justify-between mt-auto px-3 py-2">
-              
-              {/* Model Selector */}
-              <button type="button" className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/70 hover:text-foreground transition-colors px-3 py-1.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10">
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                Repnex AI Pro
-                <ChevronDown className="w-3 h-3 ml-1 text-muted-foreground" />
-              </button>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2">
-                <button 
-                  type="button" 
-                  onClick={toggleListening}
-                  disabled={isViewer} 
-                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-all relative ${
-                    isListening 
-                      ? "bg-rose-500 text-white shadow-lg shadow-rose-500/50 animate-pulse scale-110" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
-                  } disabled:opacity-30`}
-                  title={isListening ? "Listening... Click to stop" : "Voice input (Speech to text)"}
-                >
-                  {isListening ? (
-                    <MicOff className="w-4 h-4 text-white" />
-                  ) : (
-                    <Mic className="w-4 h-4" />
-                  )}
-                  {isListening && (
-                    <span className="absolute inset-0 rounded-full border border-rose-500 animate-ping opacity-75" />
-                  )}
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isViewer || !query.trim()}
-                  className="w-9 h-9 flex items-center justify-center bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-30 disabled:bg-muted-foreground rounded-full transition-all shadow-lg shadow-primary/30 disabled:shadow-none group"
-                >
-                  <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />
-                </button>
+            <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <ModelProviderMenu />
+                <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
               </div>
 
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  disabled={isViewer}
+                  className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-all ${
+                    isListening
+                      ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } disabled:opacity-30`}
+                  title={isListening ? "Stop listening" : "Voice input"}
+                  aria-label={isListening ? "Stop listening" : "Voice input"}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isViewer || !query.trim()}
+                  className="brand-gradient group flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-md shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-30 disabled:shadow-none"
+                  aria-label="Send question"
+                >
+                  <ArrowUp className="h-4 w-4 stroke-[2.5px]" />
+                </button>
+              </div>
             </div>
-          </div>
-          
-          {/* Footer */}
-          <div className="flex justify-between items-center text-[11px] text-muted-foreground mt-4 px-2">
-            <p>Repnex AI generates SQL queries from natural language</p>
-            <p>
-              <span className="bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded text-[10px]">shift</span>
-              {" + "}
-              <span className="bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded text-[10px]">return</span>
-              {" for new line"}
-            </p>
           </div>
         </motion.form>
 
+        {!isViewer ? (
+          <div className="mt-6 w-full max-w-3xl">
+            <div className="mb-2.5 flex items-center justify-between px-1">
+              <p className="text-xs font-semibold text-foreground">Try a question</p>
+              <button
+                type="button"
+                onClick={() => setShowQueriesDrawer(true)}
+                aria-haspopup="dialog"
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/8"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                View all ideas
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {quickPrompts.map((prompt, index) => (
+                <motion.button
+                  key={`${prompt.text}-${index}`}
+                  type="button"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.17 + (index * 0.035) }}
+                  onClick={() => {
+                    setQuery(prompt.text);
+                    onSearch?.(prompt.text);
+                  }}
+                  className="interactive-card app-card flex min-h-12 items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-left text-xs font-medium text-foreground/85"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-sm">
+                      {prompt.icon || "✦"}
+                    </span>
+                    <span className="line-clamp-2">{prompt.text}</span>
+                  </span>
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <p className="mt-6 text-center text-[11px] text-muted-foreground/75">
+          Repnex may make mistakes. Review important results before sharing them.
+        </p>
       </div>
 
       {/* Dynamic Suggestions Drawer */}
-      <AnimatePresence>
-        {showQueriesDrawer && (
-          <>
-            {/* Backdrop overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowQueriesDrawer(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 cursor-pointer"
-            />
-            {/* Drawer container */}
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-card dark:bg-[#151515] border-l border-border dark:border-white/5 shadow-2xl z-50 flex flex-col p-6 overflow-hidden text-left"
-            >
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showQueriesDrawer && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowQueriesDrawer(false)}
+                className="fixed inset-0 z-[80] cursor-pointer bg-slate-950/35 backdrop-blur-[2px]"
+              />
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="workspace-canvas fixed inset-y-0 right-0 z-[90] flex h-dvh w-full max-w-md flex-col overflow-hidden border-l border-border/70 text-left shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="query-ideas-title"
+              >
               {/* Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-border/50 dark:border-white/5 mb-6">
+              <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border/60 bg-background/95 px-5 py-5 backdrop-blur-xl sm:px-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
-                    Schema Suggestions
+                  <h3 id="query-ideas-title" className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                    <ProductMark className="h-8 w-8" />
+                    Query ideas
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Recommended queries based on connected database
+                  <p className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">
+                    Useful questions based on the tables in your selected connection.
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setShowQueriesDrawer(false)}
-                  className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                  autoFocus
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label="Close query ideas"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Suggestions Loading/Content */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-6 pr-1">
+              <div className="custom-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto px-5 pb-5 pt-5 sm:px-6 sm:pb-6">
                 {isLoadingSuggestions ? (
-                  <div className="flex flex-col gap-4 py-8 items-center justify-center text-muted-foreground">
-                    <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
-                    <span className="text-sm">Analyzing schema and generating queries...</span>
+                  <div className="app-card flex flex-col items-center justify-center gap-3 rounded-2xl py-10 text-muted-foreground">
+                    <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm">Finding useful questions...</span>
                   </div>
                 ) : suggestions.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
-                    <Database className="w-8 h-8 text-muted-foreground/40 mb-1" />
+                  <div className="app-card flex flex-col items-center gap-2 rounded-2xl px-5 py-10 text-center text-sm text-muted-foreground">
+                    <Database className="mb-1 h-8 w-8 text-muted-foreground/40" />
                     <span>
-                      {!activeConnection 
-                        ? "Please select a database connection first to explore suggested queries."
-                        : "No dynamic suggestions generated for this database schema."
+                      {!activeConnection
+                        ? "Choose a database connection to see relevant query ideas."
+                        : "No query ideas are available for this connection yet."
                       }
                     </span>
                   </div>
                 ) : (
                   suggestions.map((mod, modIdx) => (
-                    <div key={modIdx} className="flex flex-col gap-4 border-b border-border/30 dark:border-white/5 pb-4 last:border-0 last:pb-0">
+                    <div key={modIdx} className="flex flex-col gap-3 border-b border-border/50 pb-5 last:border-0 last:pb-0">
                       {/* Module Title */}
-                      <h4 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
-                        <span className="w-1.5 h-3.5 bg-blue-500 rounded-full" />
+                      <h4 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+                        <span className="h-3.5 w-1 rounded-full bg-primary" />
                         {mod.module || "General Modules"}
                       </h4>
                       
                       {/* Submodules & Prompts */}
-                      <div className="flex flex-col gap-4 pl-3">
+                      <div className="flex flex-col gap-4">
                         {mod.submodules?.map((sub, subIdx) => (
                           <div key={subIdx} className="flex flex-col gap-2">
-                            <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                              {categoryIcons[sub.name] || <Sparkles className="w-3.5 h-3.5 text-blue-400" />}
+                            <h5 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                              {categoryIcons[sub.name] || <Sparkles className="h-3.5 w-3.5 text-primary" />}
                               {sub.name}
                             </h5>
                             <div className="flex flex-col gap-2">
@@ -414,13 +414,13 @@ export default function AIChatArea({ onSearch }) {
                                     }
                                   }}
                                   disabled={isViewer}
-                                  className="w-full p-3 text-left rounded-xl bg-muted/20 hover:bg-muted dark:bg-white/[0.01] dark:hover:bg-white/[0.05] border border-border/50 dark:border-white/5 hover:border-blue-500/30 transition-all text-[12px] font-medium text-foreground/90 flex items-start justify-between gap-3 group"
+                                  className="interactive-card app-card group flex w-full items-start justify-between gap-3 rounded-xl p-3 text-left text-xs font-medium text-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   <span className="flex items-start gap-2">
                                     <span className="text-sm select-none shrink-0">{sug.icon || "📊"}</span>
                                     <span className="leading-normal">{sug.text}</span>
                                   </span>
-                                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5" />
+                                  <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
                                 </button>
                               ))}
                             </div>
@@ -431,10 +431,12 @@ export default function AIChatArea({ onSearch }) {
                   ))
                 )}
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

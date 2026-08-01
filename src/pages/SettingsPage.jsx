@@ -3,17 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   Building2, Users, KeyRound, Mail, Shield, Check,
-  Loader2, AlertCircle, Plus, Trash2, ChevronDown, Eye, EyeOff, RefreshCw, Crown, UserCog, Sparkles, X
+  Loader2, AlertCircle, Plus, Trash2, ChevronDown, Eye, EyeOff, RefreshCw, Crown, Sparkles, X
 } from 'lucide-react';
 import { organizationApi, authApi } from '../services/api';
 import { usePersonalization } from '../context/PersonalizationContext';
+import { PageFrame, PageLead, ProductMark, SegmentedControl, StatusPill } from '../components/ui/product-ui';
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'profile',      label: 'Profile',       icon: Sparkles },
+  { id: 'profile', label: 'Profile', icon: Sparkles },
   { id: 'organization', label: 'Organization', icon: Building2 },
-  { id: 'members',      label: 'Members',      icon: Users },
-  { id: 'security',     label: 'Security',     icon: KeyRound },
+  { id: 'members', label: 'Members', icon: Users },
+  { id: 'security', label: 'Security', icon: KeyRound },
 ];
 
 // ERP module definitions for per-user access control
@@ -80,11 +81,10 @@ function Toast({ toast }) {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl px-5 py-3.5 shadow-xl text-sm font-medium ${
-          toast.type === 'success'
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl px-5 py-3.5 shadow-xl text-sm font-medium ${toast.type === 'success'
             ? 'bg-emerald-600 text-white'
             : 'bg-rose-600 text-white'
-        }`}
+          }`}
       >
         {toast.type === 'success' ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
         {toast.message}
@@ -137,109 +137,109 @@ function ProfileTab({ showToast }) {
   };
 
   const previewName = preferredName.trim() || displayName.trim() || getDisplayName();
-  const previewGreeting = (() => {
-    const hour = new Date().getHours();
-    if (greetingStyle === 'casual') return 'Hey';
-    if (greetingStyle === 'formal') return 'Hello';
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  })();
+  const previewGreeting = getGreeting(greetingStyle);
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-lg">
+    <form onSubmit={handleSave} className="space-y-5">
       <div>
         <h3 className="text-base font-semibold mb-1">Profile Personalization</h3>
         <p className="text-xs text-muted-foreground">Customize how the AI greets and addresses you.</p>
       </div>
 
-      {/* Live Preview */}
-      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center shrink-0 shadow shadow-blue-500/20 mt-0.5">
-          <Sparkles className="w-3.5 h-3.5 text-blue-700" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-0.5 font-medium uppercase tracking-wide">AI Preview</p>
-          <p className="text-sm text-foreground font-medium">
-            {previewGreeting}, {previewName || 'there'}! How can I help you analyze your data today?
-          </p>
-        </div>
-      </div>
+      <div className="app-surface grid overflow-hidden rounded-2xl xl:grid-cols-2">
+        <div className="space-y-5 p-5 sm:p-6">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground/85">Display Name</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your full name"
+              className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground/85">What should the AI call you?</label>
+            <input
+              type="text"
+              value={preferredName}
+              onChange={(e) => setPreferredName(e.target.value)}
+              placeholder={profile.preferredName || profile.displayName || 'e.g. Keshav'}
+              className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+            />
+            {profile.preferredName && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Currently: <span className="font-medium text-foreground">{profile.preferredName}</span>
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground/85">Greeting Style</label>
+            <div className="flex gap-2">
+              {['time-based', 'casual', 'formal'].map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setGreetingStyle(s)}
+                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium capitalize transition-all ${greetingStyle === s
+                      ? 'bg-primary text-primary-foreground shadow'
+                      : 'bg-black/5 dark:bg-white/5 text-foreground/70 hover:bg-black/10 dark:hover:bg-white/10'
+                    }`}
+                >
+                  {s === 'time-based' ? 'Time-based' : s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground/85">AI Response Tone</label>
+            <div className="flex gap-2">
+              {[{ id: 'friendly', label: 'Friendly 😊' }, { id: 'professional', label: 'Professional' }, { id: 'concise', label: 'Concise' }].map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setAiTone(t.id)}
+                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all ${aiTone === t.id
+                      ? 'bg-primary text-primary-foreground shadow'
+                      : 'bg-black/5 dark:bg-white/5 text-foreground/70 hover:bg-black/10 dark:hover:bg-white/10'
+                    }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="rounded-2xl border border-border/60 bg-card/60 p-5 space-y-4">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground/85">Display Name</label>
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Your full name"
-            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-          />
+          <button
+            type="submit"
+            disabled={saving || !hasChanges}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:opacity-50 sm:w-auto"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Save Preferences
+          </button>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground/85">What should the AI call you?</label>
-          <input
-            type="text"
-            value={preferredName}
-            onChange={(e) => setPreferredName(e.target.value)}
-            placeholder={profile.preferredName || profile.displayName || 'e.g. Keshav'}
-            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-          />
-          {profile.preferredName && (
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Currently: <span className="font-medium text-foreground">{profile.preferredName}</span>
+
+        <div className="flex min-h-[260px] flex-col justify-center border-t border-border/70 bg-primary/[0.025] p-5 sm:p-6 xl:border-l xl:border-t-0">
+          <div className="mx-auto w-full max-w-md">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">AI Preview</p>
+            <div className="rounded-2xl border border-primary/20 bg-card px-5 py-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <ProductMark className="mt-0.5 h-9 w-9 shrink-0" />
+                <div>
+                  <p className="mb-1 text-xs font-semibold text-muted-foreground">Expected greeting</p>
+                  <p className="text-sm font-medium leading-6 text-foreground">
+                    {previewGreeting}, {previewName || 'there'}! How can I help you analyze your data today?
+                  </p>
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              The preview updates as you change your name and greeting style.
             </p>
-          )}
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground/85">Greeting Style</label>
-          <div className="flex gap-2">
-            {['time-based', 'casual', 'formal'].map(s => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setGreetingStyle(s)}
-                className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium capitalize transition-all ${
-                  greetingStyle === s
-                    ? 'bg-primary text-primary-foreground shadow'
-                    : 'bg-black/5 dark:bg-white/5 text-foreground/70 hover:bg-black/10 dark:hover:bg-white/10'
-                }`}
-              >
-                {s === 'time-based' ? 'Time-based' : s}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground/85">AI Response Tone</label>
-          <div className="flex gap-2">
-            {[{ id: 'friendly', label: 'Friendly 😊' }, { id: 'professional', label: 'Professional' }, { id: 'concise', label: 'Concise' }].map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setAiTone(t.id)}
-                className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                  aiTone === t.id
-                    ? 'bg-primary text-primary-foreground shadow'
-                    : 'bg-black/5 dark:bg-white/5 text-foreground/70 hover:bg-black/10 dark:hover:bg-white/10'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>
-
-      <button
-        type="submit"
-        disabled={saving || !hasChanges}
-        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:opacity-90 disabled:opacity-50"
-      >
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-        Save Preferences
-      </button>
     </form>
   );
 }
@@ -260,7 +260,7 @@ function OrganizationTab({ user, showToast }) {
       setOrg(o);
       setName(o?.name || '');
       setHideSqlQueries(!!o?.hide_sql_queries);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { }).finally(() => setLoading(false));
   }, []);
 
   const hasChanges = name.trim() !== (org?.name || '') || hideSqlQueries !== !!org?.hide_sql_queries;
@@ -484,7 +484,7 @@ function MembersTab({ user, showToast }) {
     const { mod, isSub, parentId, parentMod } = info;
 
     const perms = member.module_permissions || {};
-    const defaultAllowed = isSub 
+    const defaultAllowed = isSub
       ? (perms[parentId] !== undefined ? perms[parentId] : parentMod.defaultRoles.includes(member.role))
       : parentMod.defaultRoles.includes(member.role);
     const currentVal = perms[moduleId] !== undefined ? perms[moduleId] : defaultAllowed;
@@ -598,8 +598,8 @@ function MembersTab({ user, showToast }) {
 
           <div className="space-y-2">
             {requests.map((req) => (
-              <div 
-                key={req.id} 
+              <div
+                key={req.id}
                 className="flex items-center justify-between p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-200"
               >
                 <div className="space-y-1">
@@ -662,26 +662,26 @@ function MembersTab({ user, showToast }) {
           ) : members.length === 0 ? (
             <EmptyState icon={Users} title="No members yet" subtitle="Invite colleagues to collaborate in this workspace." />
           ) : (
-            <div className="rounded-2xl border border-border/60 bg-card/60 divide-y divide-border/40 overflow-hidden">
+            <div className="rounded-2xl border border-border/60 bg-card/60 divide-y divide-border/40 overflow-visible sm:overflow-hidden">
               {members.map((member) => (
                 <div key={member.id}>
-                  <div className="flex items-center justify-between px-5 py-3.5 group">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                  <div className="flex flex-col gap-3 px-4 py-4 group sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3.5">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
                         {(member.email || '?').charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{member.email}</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{member.email}</p>
                         <p className="text-xs text-muted-foreground capitalize">{member.status || 'active'}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
                       {member.role === 'admin' && <Crown className="h-3.5 w-3.5 text-amber-500" />}
                       <div className="relative">
                         <button
                           onClick={() => isAdmin && member.id !== user?.id && setShowRoleFor(showRoleFor === member.id ? null : member.id)}
-                          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium capitalize ${roleColor(member.role)} ${isAdmin && member.id !== user?.id ? 'cursor-pointer' : 'cursor-default'}`}
+                          className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium capitalize sm:min-h-0 sm:px-2.5 sm:py-1 ${roleColor(member.role)} ${isAdmin && member.id !== user?.id ? 'cursor-pointer' : 'cursor-default'}`}
                         >
                           {member.role}
                           {isAdmin && member.id !== user?.id && <ChevronDown className="h-3 w-3" />}
@@ -706,7 +706,7 @@ function MembersTab({ user, showToast }) {
                           type="button"
                           onClick={() => setActiveAccessMember(member)}
                           title="Module access"
-                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                          className="flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 sm:min-h-0 sm:px-2 sm:py-1"
                         >
                           <Shield className="h-3.5 w-3.5" />
                           Access
@@ -759,7 +759,7 @@ function MembersTab({ user, showToast }) {
                     const perms = activeAccessMember.module_permissions || {};
                     const isParentOverride = perms[parentMod.id] !== undefined;
                     const isParentAllowed = isParentOverride ? perms[parentMod.id] : parentMod.defaultRoles.includes(activeAccessMember.role);
-                    
+
                     return (
                       <div key={parentMod.id} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
                         {/* Parent Module Header */}
@@ -771,11 +771,10 @@ function MembersTab({ user, showToast }) {
                           <button
                             type="button"
                             onClick={() => handlePermToggle(activeAccessMember, parentMod.id)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${
-                              isParentAllowed
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-bold transition-all ${isParentAllowed
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 shadow-sm'
                                 : 'bg-muted text-muted-foreground border-border hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/20'
-                            }`}
+                              }`}
                           >
                             {isParentAllowed ? <Check className="h-3 w-3" /> : <Shield className="h-3 w-3 opacity-60" />}
                             {isParentAllowed ? 'Enabled' : 'Restricted'}
@@ -788,20 +787,19 @@ function MembersTab({ user, showToast }) {
                           <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 pt-3 border-t border-border/40">
                             {parentMod.subModules.map(sub => {
                               const isSubOverride = perms[sub.id] !== undefined;
-                              const isSubAllowed = isSubOverride 
-                                ? perms[sub.id] 
+                              const isSubAllowed = isSubOverride
+                                ? perms[sub.id]
                                 : isParentAllowed; // inherit from parent allowed state
-                              
+
                               return (
                                 <button
                                   type="button"
                                   key={sub.id}
                                   onClick={() => handlePermToggle(activeAccessMember, sub.id)}
-                                  className={`flex items-center justify-between px-3 py-2 rounded-xl border text-[11px] font-medium transition-all ${
-                                    isSubAllowed
+                                  className={`flex items-center justify-between px-3 py-2 rounded-xl border text-[11px] font-medium transition-all ${isSubAllowed
                                       ? 'bg-card text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/5'
                                       : 'bg-muted/40 text-muted-foreground/65 border-border hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/20'
-                                  }`}
+                                    }`}
                                 >
                                   <span className="flex items-center gap-1.5">
                                     {isSubAllowed ? (
@@ -979,9 +977,8 @@ function SecurityTab({ showToast }) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Re-enter new password"
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors dark:bg-white/5 bg-black/5 ${
-              confirmPassword && newPassword !== confirmPassword ? 'border-rose-500/50' : 'border-transparent focus:border-primary/50'
-            }`}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors dark:bg-white/5 bg-black/5 ${confirmPassword && newPassword !== confirmPassword ? 'border-rose-500/50' : 'border-transparent focus:border-primary/50'
+              }`}
           />
           {confirmPassword && newPassword !== confirmPassword && (
             <p className="mt-1 text-xs text-rose-500">Passwords do not match</p>
@@ -1021,74 +1018,54 @@ export default function SettingsPage({ user }) {
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background p-6 md:p-8">
+    <div className="flex-1 overflow-y-auto">
       <Toast toast={toast} />
 
-      {/* Header */}
-      <div className="mb-8">
-        <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-border/50 bg-card/80 px-3 py-2">
-          <UserCog className="h-4 w-4 text-primary" />
-          <span className="text-xs font-semibold text-foreground">Settings</span>
-        </div>
-        <h1 className="text-2xl font-semibold">Workspace Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your organization, team members, and security preferences.
-        </p>
-      </div>
+      <PageFrame>
+        <PageLead
+          title="Make Repnex work your way"
+          description="Manage your profile, organization, members and account security."
+        />
 
-      {/* User info banner */}
-      <div className="mb-6 flex items-center gap-4 rounded-2xl border border-border/50 bg-card/70 px-5 py-4 shadow-sm">
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-          {(user?.email || 'U').charAt(0).toUpperCase()}
+        {/* User info banner */}
+        <div className="app-surface mb-6 flex items-center gap-3 rounded-2xl px-4 py-4 sm:gap-4 sm:px-5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-bold text-primary">
+            {(user?.email || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{user?.name || user?.email}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          </div>
+          <StatusPill tone={user?.role === 'admin' ? 'warning' : user?.role === 'editor' ? 'primary' : 'neutral'} className="capitalize">
+            {user?.role || 'viewer'}
+          </StatusPill>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{user?.name || user?.email}</p>
-          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-        </div>
-        <span className={`rounded-lg px-2.5 py-1 text-xs font-medium capitalize ${
-          user?.role === 'admin' ? 'bg-amber-500/10 text-amber-600' :
-          user?.role === 'editor' ? 'bg-blue-500/10 text-blue-600' :
-          'bg-slate-500/10 text-slate-600'
-        }`}>
-          {user?.role || 'viewer'}
-        </span>
-      </div>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-xl bg-black/5 dark:bg-white/5 p-1 w-fit">
-        {filteredTabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isActive ? 'bg-card shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+        {/* Tabs */}
+        <SegmentedControl
+          value={activeTab}
+          onValueChange={setActiveTab}
+          items={filteredTabs.map((tab) => ({ value: tab.id, label: tab.label, icon: tab.icon }))}
+          ariaLabel="Settings sections"
+          className="mb-6 w-full justify-start sm:w-auto"
+        />
 
-      {/* Tab content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-        >
-          {activeTab === 'profile' && <ProfileTab showToast={showToast} />}
-          {activeTab === 'organization' && isAdmin && <OrganizationTab user={user} showToast={showToast} />}
-          {activeTab === 'members' && isAdmin && <MembersTab user={user} showToast={showToast} />}
-          {activeTab === 'security' && <SecurityTab showToast={showToast} />}
-        </motion.div>
-      </AnimatePresence>
+        {/* Tab content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+          >
+            {activeTab === 'profile' && <ProfileTab showToast={showToast} />}
+            {activeTab === 'organization' && isAdmin && <OrganizationTab user={user} showToast={showToast} />}
+            {activeTab === 'members' && isAdmin && <MembersTab user={user} showToast={showToast} />}
+            {activeTab === 'security' && <SecurityTab showToast={showToast} />}
+          </motion.div>
+        </AnimatePresence>
+      </PageFrame>
     </div>
   );
 }

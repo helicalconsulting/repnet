@@ -1359,13 +1359,13 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
 
               {displayedTab !== "table" && (
                 <>
-                  {/* X Axis Selector */}
-                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5">
-                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">X:</span>
+                  {/* X Axis — Category / Dimension */}
+                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1.5 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5 min-w-0">
+                    <span className="font-bold text-muted-foreground text-[10px] uppercase shrink-0">X</span>
                     <select
                       value={xAxisKey}
                       onChange={(e) => setXAxisKey(e.target.value)}
-                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs"
+                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs truncate max-w-[100px]"
                     >
                       {columns.map(col => (
                         <option key={col} value={col} className="bg-card text-foreground">{col}</option>
@@ -1373,13 +1373,15 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </select>
                   </div>
 
-                  {/* Y Axis Selector (primary metric for bar/line/area; X for scatter) */}
-                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5">
-                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">{chartType === 'scatter' ? 'X (metric):' : 'Y:'}</span>
+                  {/* Y Axis — Primary Metric */}
+                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1.5 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5 min-w-0">
+                    <span className="font-bold text-muted-foreground text-[10px] uppercase shrink-0">
+                      {chartType === 'scatter' ? 'X₂' : 'Y'}
+                    </span>
                     <select
                       value={selectedDataKeys[0] || ''}
                       onChange={(e) => setSelectedDataKeys([e.target.value])}
-                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs"
+                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs truncate max-w-[100px]"
                     >
                       {availableKeys.map(col => (
                         <option key={col} value={col} className="bg-card text-foreground">{col}</option>
@@ -1387,49 +1389,14 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </select>
                   </div>
 
-                  {/* Scatter Y-Axis Selector (margin / profit / price) */}
-                  {chartType === 'scatter' && availableKeys.length > 1 && (
-                    <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border border-violet-500/60 bg-violet-500/5 text-violet-500 transition-all text-xs gap-1.5">
-                      <span className="font-semibold text-[11px] uppercase">📈 Y (margin/price):</span>
-                      <select
-                        value={yAxisKey}
-                        onChange={(e) => setYAxisKey(e.target.value)}
-                        className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
-                      >
-                        {availableKeys.map(col => (
-                          <option key={col} value={col} className="bg-card text-foreground">{col}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Z Axis Selector */}
-                  <div className={`flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border transition-all text-xs gap-1.5 ${
-                    zAxisKey ? 'border-primary/60 bg-primary/5 text-primary' : 'border-border/50 dark:border-white/10'
-                  }`}>
-                    <span className="font-semibold text-[11px] uppercase">{chartType === 'scatter' ? 'Z (bubble size):' : 'Breakdown (3rd Col):'}</span>
-                    <select
-                      value={zAxisKey}
-                      onChange={(e) => setZAxisKey(e.target.value)}
-                      className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
-                    >
-                      <option value="" className="bg-card text-foreground">None</option>
-                      {columns.filter(c => c !== xAxisKey).map(col => (
-                        <option key={col} value={col} className="bg-card text-foreground">{col}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Yellow Line (Y2 Secondary Axis) Selector — only for non-scatter */}
-                  {chartType !== 'scatter' && availableKeys.length > 1 && (
-                    <div className={`flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1 rounded-xl border transition-all text-xs gap-1.5 ${
-                      secondaryLineKey ? 'border-amber-500/60 bg-amber-500/10 text-amber-500 font-bold' : 'border-border/50 dark:border-white/10'
-                    }`}>
-                      <span className="font-semibold text-[11px] uppercase">📈 Yellow Line (Y2):</span>
+                  {/* Active badges (only show when non-default values are set) */}
+                  {secondaryLineKey && chartType !== 'scatter' && (
+                    <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-500 text-[11px] font-semibold whitespace-nowrap">
+                      <span>⟂ Line:</span>
                       <select
                         value={secondaryLineKey}
                         onChange={(e) => setSecondaryLineKey(e.target.value)}
-                        className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
+                        className="bg-transparent font-semibold outline-none cursor-pointer text-amber-400 text-[11px] truncate max-w-[80px]"
                       >
                         <option value="" className="bg-card text-foreground">None</option>
                         {availableKeys.map(col => (
@@ -1439,7 +1406,23 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </div>
                   )}
 
-                  {/* Stacked vs Grouped Toggle (when chart is Bar & Z is active) */}
+                  {zAxisKey && (
+                    <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-primary/50 bg-primary/10 text-primary text-[11px] font-semibold whitespace-nowrap">
+                      <span>{chartType === 'scatter' ? '⊚ Bubble:' : '⊞ Split:'}</span>
+                      <select
+                        value={zAxisKey}
+                        onChange={(e) => setZAxisKey(e.target.value)}
+                        className="bg-transparent font-semibold outline-none cursor-pointer text-primary text-[11px] truncate max-w-[80px]"
+                      >
+                        <option value="" className="bg-card text-foreground">None</option>
+                        {columns.filter(c => c !== xAxisKey).map(col => (
+                          <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Stacked / Side-by-Side only when breakdown is active */}
                   {chartType === 'bar' && zAxisKey && (
                     <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-0.5 rounded-xl border border-border/50 dark:border-white/10 text-xs">
                       <button
@@ -1460,22 +1443,10 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        Side-by-Side
+                        Grouped
                       </button>
                     </div>
                   )}
-
-                  {/* Glassmorphic Gradient Aesthetic Toggle */}
-                  <button
-                    onClick={() => setIsGlassMode(!isGlassMode)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                      isGlassMode 
-                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30' 
-                        : 'bg-card border-border/50 text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {isGlassMode ? 'Glass Mode ✨' : 'Classic View'}
-                  </button>
                 </>
               )}
             </div>
@@ -1489,7 +1460,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={() => setShowSettingsDrawer(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-xs font-semibold hover:border-primary/50 transition-colors shadow-sm cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-xs font-semibold hover:border-primary/50 transition-colors shadow-sm cursor-pointer shrink-0"
                 >
                   <Settings className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>Customize</span>

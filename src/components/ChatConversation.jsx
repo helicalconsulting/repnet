@@ -1432,8 +1432,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 ? "w-full max-w-full" 
                 : "max-w-[85%]"
             }`}>
-              {/* Only render message content container box if there is actual content, an error, or it's a user message */}
-              {(msg.content || msg.type === "error" || msg.role === "user") && (
+              {/* Render content box for: user messages, errors, ai messages with content, or executable ai messages (so insight shows when it arrives) */}
+              {(msg.content || msg.type === "error" || msg.role === "user" || (msg.role === "ai" && (msg.type === "executable" || !!msg.sql))) && (
                 <div
                   className={`relative group ${
                     msg.role === "user"
@@ -1544,7 +1544,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                 <span className="text-xs font-semibold uppercase">Could not process</span>
                               </div>
                             )}
-                            {formatContent(msg.content)}
+                            {msg.isStreaming && !msg.content ? (
+                              /* Insight generating skeleton */
+                              <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
+                                <div className="flex gap-1">
+                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
+                                <span className="text-xs text-muted-foreground">Generating insights...</span>
+                              </div>
+                            ) : (
+                              formatContent(msg.content)
+                            )}
                           </motion.div>
                         )}
                       </AnimatePresence>

@@ -246,34 +246,29 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
            lower === 'job' || lower === 'orderno' || lower === 'invoiceno' || lower === 'seq' || lower === 'num';
   };
 
+  const isNumericValue = (val) => {
+    if (val === undefined || val === null || val === '' || typeof val === 'boolean') return false;
+    if (typeof val === 'number') return !isNaN(val);
+    const cleanStr = String(val).trim().replace(/,/g, '').replace(/[\$₹€]/g, '');
+    return cleanStr !== '' && !isNaN(Number(cleanStr));
+  };
+
   const availableKeys = useMemo(() => {
     if (!data.length) return [];
     
     // First priority: Numeric columns that are NOT ID/Key columns
     const metricCols = columns.filter(k => 
       !isIdColumn(k) &&
-      data.some(row => 
-        row[k] !== undefined && 
-        row[k] !== null && 
-        row[k] !== '' &&
-        !isNaN(Number(row[k])) &&
-        typeof row[k] !== 'boolean'
-      )
+      data.some(row => isNumericValue(row[k]))
     );
 
     if (metricCols.length > 0) return metricCols;
 
     // Fallback: All numeric columns
     return columns.filter(k => 
-      data.some(row => 
-        row[k] !== undefined && 
-        row[k] !== null && 
-        row[k] !== '' &&
-        !isNaN(Number(row[k])) &&
-        typeof row[k] !== 'boolean'
-      )
+      data.some(row => isNumericValue(row[k]))
     );
-  }, [columns, data]);
+  }, [data, columns]);
 
   // Check if Z-Axis column is numeric
   const zIsNumeric = useMemo(() => {
@@ -517,10 +512,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       // Numeric (non-boolean, non-blank) → metric candidates
       const numCols = columns.filter(k =>
         k !== '__rowId' && k !== 'id' && !isIdColumn(k) &&
-        data.some(row =>
-          row[k] !== undefined && row[k] !== null && row[k] !== '' &&
-          !isNaN(Number(row[k])) && typeof row[k] !== 'boolean'
-        )
+        data.some(row => isNumericValue(row[k]))
       );
       // Date-like strings → date dimension
       const ISO_DATE = /^\d{4}[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])/;
@@ -534,8 +526,9 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       );
       const nonNumCols = columns.filter(k => !numCols.includes(k));
 
-      // X: date dim > first non-num col > first col
-      const bestX = dateCols[0] || nonNumCols[0] || columns[0];
+      // X: date dim > string name col (CustomerName > Customer) > first non-num col > first col
+      const nameCol = nonNumCols.find(c => c.toLowerCase().includes('name') || c.toLowerCase().includes('desc') || c.toLowerCase().includes('label'));
+      const bestX = dateCols[0] || nameCol || nonNumCols[0] || columns[0];
       setXAxisKey(bestX);
 
       // Y: first numeric col

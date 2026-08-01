@@ -1558,7 +1558,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               formatContent(
                                 msg.content || 
                                 (msg.type === "executable" || msg.sql 
-                                  ? `Query executed successfully. ${msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0)} rows returned.` 
+                                  ? `Data query completed. Retrieved ${msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0)} records.` 
                                   : "")
                               )
                             )}

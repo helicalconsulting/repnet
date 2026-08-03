@@ -2,8 +2,15 @@ import { useState, useMemo, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import ScheduleModal from "./ScheduleModal";
+import {
+  EmptyState,
+  MetricCard,
+  PageFrame,
+  PageLead,
+  SegmentedControl,
+} from "./ui/product-ui";
+import { SlidingNumber } from "./animate-ui/primitives/texts/sliding-number";
 import {
   DndContext,
   closestCenter,
@@ -29,7 +36,6 @@ import {
   Grid3X3,
   List,
   PinOff,
-  TrendingUp,
   Clock,
   Sparkles,
   PieChart,
@@ -37,21 +43,16 @@ import {
   BarChart2,
   LineChart as LineChartIcon,
   X,
-  Plus,
   ExternalLink,
   Share2,
   CheckCheck,
   Tag,
   Columns3,
-  ChevronDown,
-  Star,
-  StarOff,
   Activity,
   FileText,
   Zap,
-  Calendar,
   CalendarClock,
-  RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -93,15 +94,17 @@ async function copyLink(reportId, setCopied) {
 
 // ── Report Card ──────────────────────────────────────────────────────────────
 
-function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
+function SortableReportCard({ report, onUnpin, onOpen, onSchedule, reorderable = true }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: report.id });
+    useSortable({ id: report.id, disabled: !reorderable });
   const [copied, setCopied] = useState(false);
+  const [renderTime] = useState(Date.now);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.45 : 1,
+    position: "relative",
+    zIndex: isDragging ? 30 : "auto",
   };
 
   const chartIcon = {
@@ -114,31 +117,43 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
 
   const columns = report.columns || [];
   const colCount = columns.length;
-  const colPreview = columns
-    .slice(0, 4)
-    .map((c) => c.display_name || c.column_name)
-    .join(", ");
 
   return (
-    <motion.div
+    <div
       ref={setNodeRef}
       style={style}
+      data-dragging={isDragging || undefined}
+    >
+      <motion.div
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card rounded-2xl shadow-sm border border-border flex flex-col group hover:border-primary/40 hover:shadow-md transition-all"
+      animate={{
+        opacity: isDragging ? 0.9 : 1,
+        y: isDragging ? -3 : 0,
+        scale: isDragging ? 1.018 : 1,
+        rotate: isDragging ? 0.35 : 0,
+      }}
+      transition={{ duration: 0.16, ease: "easeOut" }}
+      className={`app-card interactive-card group flex h-full flex-col overflow-hidden rounded-2xl ${
+        isDragging ? "ring-2 ring-primary/35 shadow-2xl shadow-primary/15" : ""
+      }`}
     >
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/20 rounded-t-2xl">
+      <div className="soft-divider flex items-center justify-between border-b bg-muted/25 px-4 py-3">
         <div className="flex items-center gap-2 overflow-hidden flex-1">
-          <div
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
-            className="p-1 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-foreground transition-colors rounded hover:bg-black/5 dark:hover:bg-white/10"
-          >
-            <GripVertical className="w-4 h-4" />
-          </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-zinc-100 dark:bg-zinc-800/80 text-foreground border border-border/50 rounded-lg text-xs font-semibold">
+          {reorderable && (
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              onClick={(event) => event.stopPropagation()}
+              className="touch-none cursor-grab rounded-lg p-1 text-muted-foreground/45 transition-all hover:bg-card hover:text-foreground active:cursor-grabbing active:scale-95"
+              aria-label={`Reorder ${report.title}`}
+              aria-pressed={isDragging}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
+          <div className="flex items-center gap-1.5 rounded-lg border border-primary/10 bg-primary/8 px-2 py-1 text-xs font-semibold text-primary">
             {chartIcon[report.chartType] || <BarChart2 className="w-3.5 h-3.5" />}
             <span className="capitalize">{report.chartType || "bar"}</span>
           </div>
@@ -149,13 +164,13 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
 
         {/* Action buttons — visible on hover */}
         <div
-          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => copyLink(report.id, setCopied)}
             title={copied ? "Copied!" : "Copy shareable link"}
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
               copied
                 ? "text-emerald-500 bg-emerald-500/10"
                 : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
@@ -166,14 +181,14 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
           <button
             onClick={() => onOpen?.(report)}
             title="Open report"
-            className="p-1.5 text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/10"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => onSchedule?.(report)}
             title="Schedule auto-refresh"
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
               (report.refresh_interval_days > 0 || report.refresh_interval_minutes > 0)
                 ? "text-primary bg-primary/10"
                 : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
@@ -184,7 +199,7 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
           <button
             onClick={() => onUnpin?.(report.id)}
             title="Unpin from dashboard"
-            className="p-1.5 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 rounded-lg transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"
           >
             <PinOff className="w-3.5 h-3.5" />
           </button>
@@ -193,20 +208,20 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
 
       {/* Body — clickable to open report */}
       <div
-        className="p-4 flex-1 cursor-pointer"
+        className="flex-1 cursor-pointer p-4"
         onClick={() => onOpen?.(report)}
       >
         {/* Template ID badge */}
         <div className="flex items-center gap-1.5 mb-3">
           <Tag className="w-3 h-3 text-muted-foreground/50 shrink-0" />
-          <span className="text-xs text-muted-foreground/70 truncate font-mono">
+          <span className="truncate text-xs text-muted-foreground/75">
             {report.query_template_id || report.query || "—"}
           </span>
         </div>
 
         {/* Column preview */}
         {colCount > 0 ? (
-          <div className="bg-muted/40 rounded-xl p-3 space-y-2">
+          <div className="space-y-2 rounded-xl border border-border/55 bg-muted/35 p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Columns3 className="w-3.5 h-3.5" />
@@ -220,7 +235,7 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
               {columns.slice(0, 5).map((col) => (
                 <span
                   key={col.id || col.column_name}
-                  className="px-2 py-0.5 bg-background border border-border rounded-md text-[11px] text-foreground/80 font-mono truncate max-w-[120px]"
+                  className="max-w-[120px] truncate rounded-md border border-border/70 bg-card px-2 py-0.5 text-[11px] font-medium text-foreground/80"
                   title={col.column_name}
                 >
                   {col.display_name || col.column_name}
@@ -242,7 +257,7 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
 
       {/* Footer */}
       <div
-        className="px-4 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground cursor-pointer"
+        className="soft-divider flex cursor-pointer items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground"
         onClick={() => onOpen?.(report)}
       >
         <div className="flex flex-col gap-0.5">
@@ -263,8 +278,8 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
                   <span className="text-muted-foreground/50 ml-1">
                     · next {new Date(report.next_refresh_at) > new Date()
                       ? (report.refresh_interval_days > 0 
-                          ? `in ${Math.ceil((new Date(report.next_refresh_at) - Date.now()) / 86400000)}d`
-                          : `in ${Math.ceil((new Date(report.next_refresh_at) - Date.now()) / 60000)}m`
+                          ? `in ${Math.ceil((new Date(report.next_refresh_at) - renderTime) / 86400000)}d`
+                          : `in ${Math.ceil((new Date(report.next_refresh_at) - renderTime) / 60000)}m`
                         )
                       : "soon"
                     }
@@ -279,7 +294,8 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
           <span>Open Report</span>
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -287,7 +303,7 @@ function SortableReportCard({ report, onUnpin, onOpen, onSchedule }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { reports: contextReports, togglePinReport, isLoadingReports } = useApp();
+  const { reports: contextReports, togglePinReport, isLoadingReports, user } = useApp();
 
   const [reports, setReports] = useState([]);      // pinned
   const [allReports, setAllReports] = useState([]); // all
@@ -315,11 +331,11 @@ export default function Dashboard() {
     const minSaved = window.length * 45;
     const hrsSaved = Math.floor(minSaved / 60);
     const minLeft = minSaved % 60;
-    const timeSaved = hrsSaved > 0 ? `${hrsSaved}h ${minLeft}m` : `${minLeft}m`;
     return {
       total: window.length,
       pinned: pinned.length,
-      timeSaved,
+      hoursSaved: hrsSaved,
+      minutesSaved: minLeft,
       templates: [...new Set(window.map((r) => r.query_template_id || r.query).filter(Boolean))].length,
     };
   }, [allReports, statDays]);
@@ -350,14 +366,6 @@ export default function Dashboard() {
       await togglePinReport(reportId);
     } catch (err) {
       console.error("Failed to unpin:", err);
-    }
-  };
-
-  const handlePin = async (report) => {
-    try {
-      await togglePinReport(report.id);
-    } catch (err) {
-      console.error("Failed to pin:", err);
     }
   };
 
@@ -403,24 +411,22 @@ export default function Dashboard() {
     if (setHeaderConfig) {
       setHeaderConfig({
         title: "Dashboard",
-        subtitle: `${reports.length} pinned report${reports.length !== 1 ? "s" : ""} • Drag to reorder`,
+        subtitle: showAllReports
+          ? `${allReports.length} report${allReports.length !== 1 ? "s" : ""} in your workspace`
+          : `${reports.length} pinned report${reports.length !== 1 ? "s" : ""}`,
         icon: <LayoutDashboard className="w-4 h-4 text-foreground" />,
         actions: (
           <button
             onClick={() => setShowAllReports((prev) => !prev)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              showAllReports
-                ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm"
-                : "bg-card border border-border hover:bg-muted/60 text-foreground"
-            }`}
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground transition-all hover:border-primary/20 hover:bg-accent/60"
           >
-            {showAllReports ? <Star className="w-3.5 h-3.5" /> : <StarOff className="w-3.5 h-3.5" />}
-            {showAllReports ? "Showing All" : "All Reports"}
+            {showAllReports ? <ArrowLeft className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+            {showAllReports ? "Back to pinned" : "Browse all reports"}
           </button>
         ),
       });
     }
-  }, [setHeaderConfig, reports.length, showAllReports]);
+  }, [allReports.length, setHeaderConfig, reports.length, showAllReports]);
 
   // ── Stat day options ──────────────────────────────────────────────────────
 
@@ -429,92 +435,84 @@ export default function Dashboard() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 md:p-8 w-full h-full bg-background custom-scrollbar">
-      <div className="w-full space-y-6">
+    <div className="custom-scrollbar h-full w-full flex-1 overflow-y-auto">
+      <PageFrame className="pb-24">
+        <PageLead
+          title={`Welcome back${user?.name ? `, ${user.name.split(" ")[0]}` : ""}`}
+          description="Track report activity and return to your pinned analysis."
+        />
 
         {/* ── Stats section ───────────────────────────────────────────── */}
         <div className="space-y-3">
           {/* Day filter pills */}
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Period:</span>
-            <div className="flex items-center gap-1 bg-card border border-border/80 rounded-xl p-1">
-              {DAY_OPTIONS.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setStatDays(d)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    statDays === d
-                      ? "bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 shadow-sm font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  {d}d
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Activity</p>
+              <p className="text-xs text-muted-foreground">A quick view of recent report usage.</p>
             </div>
+            <SegmentedControl
+              value={statDays}
+              onValueChange={setStatDays}
+              ariaLabel="Dashboard period"
+              items={DAY_OPTIONS.map((days) => ({ value: days, label: `${days} days`, shortLabel: `${days}d` }))}
+              compactOnMobile
+            />
           </div>
 
-          {/* Stat cards — Single Unified Container in Zinc Palette */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 md:p-3 shadow-sm"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
           >
-            <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-zinc-200 dark:divide-zinc-800/80">
-              {/* Stat 1 */}
-              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
-                  <FileText className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.total}</p>
-                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Reports Generated</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">Last {statDays} days</p>
-                </div>
-              </div>
-
-              {/* Stat 2 */}
-              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.timeSaved}</p>
-                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Time Saved</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">~45 min per report</p>
-                </div>
-              </div>
-
-              {/* Stat 3 */}
-              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.pinned}</p>
-                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Pinned Reports</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">On dashboard</p>
-                </div>
-              </div>
-
-              {/* Stat 4 */}
-              <div className="p-3 md:px-5 md:py-2.5 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700/60 shadow-sm">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl md:text-2xl font-extrabold text-foreground leading-none tracking-tight">{stats.templates}</p>
-                  <p className="text-xs font-semibold text-foreground/80 mt-1 truncate">Templates Used</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">Last {statDays} days</p>
-                </div>
-              </div>
-            </div>
+            <MetricCard
+              icon={FileText}
+              label="Reports generated"
+              value={<SlidingNumber number={stats.total} fromNumber={0} />}
+              detail={`Last ${statDays} days`}
+            />
+            <MetricCard
+              icon={Zap}
+              label="Estimated time saved"
+              value={(
+                <span className="inline-flex items-center gap-1.5 leading-none">
+                  {stats.hoursSaved > 0 && (
+                    <SlidingNumber
+                      number={stats.hoursSaved}
+                      fromNumber={0}
+                      delay={0.04}
+                      suffix="h"
+                    />
+                  )}
+                  <SlidingNumber
+                    number={stats.minutesSaved}
+                    fromNumber={0}
+                    delay={0.08}
+                    suffix="m"
+                  />
+                </span>
+              )}
+              detail="About 45 min per report"
+              tone="amber"
+            />
+            <MetricCard
+              icon={Activity}
+              label="Pinned reports"
+              value={<SlidingNumber number={stats.pinned} fromNumber={0} delay={0.08} />}
+              detail="Ready on your dashboard"
+              tone="emerald"
+            />
+            <MetricCard
+              icon={Sparkles}
+              label="Templates used"
+              value={<SlidingNumber number={stats.templates} fromNumber={0} delay={0.12} />}
+              detail={`Last ${statDays} days`}
+              tone="violet"
+            />
           </motion.div>
         </div>
 
         {/* ── Search + filters ────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="app-surface mt-6 flex flex-col gap-3 rounded-2xl p-3 md:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -522,7 +520,7 @@ export default function Dashboard() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search reports by name or template…"
-              className="w-full pl-11 pr-10 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:border-primary/50 transition-colors shadow-sm"
+              className="h-10 w-full rounded-xl border border-transparent bg-muted/55 pl-11 pr-10 text-sm outline-none transition-all placeholder:text-muted-foreground/80 focus:border-primary/25 focus:bg-card focus:ring-4 focus:ring-primary/8"
             />
             {searchQuery && (
               <button
@@ -536,35 +534,26 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-2">
             {/* Chart type filter */}
-            <div className="flex items-center bg-card border border-border rounded-xl p-1 shadow-sm">
-              {[
-                { id: "all", label: "All", icon: Filter },
-                { id: "bar", label: "Bar", icon: BarChart2 },
-                { id: "line", label: "Line", icon: LineChartIcon },
-                { id: "pie", label: "Pie", icon: PieChart },
-                { id: "table", label: "Table", icon: Table },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilterType(f.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    filterType === f.id
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                  }`}
-                >
-                  <f.icon className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{f.label}</span>
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              value={filterType}
+              onValueChange={setFilterType}
+              ariaLabel="Report type"
+              compactOnMobile
+              items={[
+                { value: "all", label: "All", icon: Filter },
+                { value: "bar", label: "Bar", icon: BarChart2 },
+                { value: "line", label: "Line", icon: LineChartIcon },
+                { value: "pie", label: "Pie", icon: PieChart },
+                { value: "table", label: "Table", icon: Table },
+              ]}
+            />
 
             {/* View mode */}
-            <div className="flex items-center bg-card border border-border rounded-xl p-1 shadow-sm">
+            <div className="flex items-center rounded-xl border border-border/65 bg-muted/60 p-1 shadow-sm">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-2 rounded-lg transition-colors ${
-                  viewMode === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                    viewMode === "grid" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Grid3X3 className="w-4 h-4" />
@@ -572,7 +561,7 @@ export default function Dashboard() {
               <button
                 onClick={() => setViewMode("list")}
                 className={`p-2 rounded-lg transition-colors ${
-                  viewMode === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                    viewMode === "list" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <List className="w-4 h-4" />
@@ -582,7 +571,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Reports Grid ────────────────────────────────────────────── */}
-        <SmartSkeleton loading={isLoadingReports}>
+        <div className="mt-5" aria-busy={isLoadingReports}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={isLoadingReports ? [1, 2, 3, 4, 5, 6] : filteredReports.map((r) => r.id)} strategy={rectSortingStrategy}>
               <div
@@ -607,6 +596,7 @@ export default function Dashboard() {
                       <SortableReportCard
                         key={report.id}
                         report={report}
+                        reorderable={!showAllReports}
                         onUnpin={handleUnpin}
                         onOpen={handleOpen}
                         onSchedule={(r) => setScheduleReport(r)}
@@ -620,42 +610,22 @@ export default function Dashboard() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="col-span-full flex flex-col items-center justify-center py-20 border-2 border-dashed border-border rounded-2xl"
+                    className="app-card col-span-full rounded-2xl"
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                      <Search className="w-8 h-8 text-primary/50" />
-                    </div>
-                    <h3 className="text-base font-semibold text-foreground mb-1">No reports found</h3>
-                    <p className="text-sm text-muted-foreground text-center max-w-xs">
-                      {searchQuery
-                        ? `No reports matching "${searchQuery}"`
-                        : "Generate reports via AI Chat and pin them here"}
-                    </p>
-                    {!searchQuery && (
-                      <button
-                        onClick={() => navigate("/chat")}
-                        className="mt-5 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                        Generate a Report
-                      </button>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Add placeholder card */}
-                {!isLoadingReports && filteredReports.length > 0 && !showAllReports && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    onClick={() => navigate("/chat")}
-                    className="border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center min-h-[200px] bg-transparent hover:bg-muted/30 cursor-pointer transition-colors group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <Plus className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <p className="font-medium text-sm text-foreground/70">Add another report</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Generate via AI Chat</p>
+                    <EmptyState
+                      icon={Search}
+                      title="No reports found"
+                      description={searchQuery ? `No reports match “${searchQuery}”.` : "Pin reports from the report library to see them here."}
+                      action={!searchQuery ? (
+                        <button
+                          onClick={() => navigate("/report")}
+                          className="flex h-9 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent/60"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Browse reports
+                        </button>
+                      ) : null}
+                    />
                   </motion.div>
                 )}
 
@@ -672,8 +642,8 @@ export default function Dashboard() {
               </div>
             </SortableContext>
           </DndContext>
-        </SmartSkeleton>
-      </div>
+        </div>
+      </PageFrame>
 
       {/* Schedule Modal */}
       {scheduleReport && (

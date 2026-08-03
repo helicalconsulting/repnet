@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AIChatArea from '../components/AIChatArea';
 import ChatConversation from '../components/ChatConversation';
@@ -25,32 +25,23 @@ export default function ChatPage() {
    */
   const [conversationKey, setConversationKey] = useState(null);
 
-  // ── Route-driven init (only for direct URL loads / sidebar clicks) ───
-  // We use a ref to skip the first effect run when the user just initiated
-  // a new chat — in that case ChatConversation updates the URL itself via
-  // window.history.replaceState (no React Router involvement).
-  const routeInitDoneRef = useRef(false);
-
+  // Keep the visible conversation in sync with recent-chat navigation.
+  // A different route ID must always replace the currently open session.
   useEffect(() => {
     if (id && isValidUuid(id)) {
-      // Only treat this as an external navigation if we don't already have
-      // a conversation running (i.e. the user clicked a sidebar history item
-      // or opened a bookmarked link directly).
-      if (chatState !== 'conversation' || !conversationKey) {
-        setSelectedSessionId(id);
-        setChatState('conversation');
-        setActiveQuery('');
-        setConversationKey(id);
-      }
-    } else if (!routeInitDoneRef.current) {
-      // /chat with no id → clean landing (only on first load)
-      setSelectedSessionId(null);
-      setChatState('landing');
+      setSelectedSessionId(id);
+      setChatState('conversation');
       setActiveQuery('');
-      setConversationKey(null);
+      setConversationKey(id);
+      return;
     }
-    routeInitDoneRef.current = true;
-  }, [id]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+    // /chat with no ID is always a clean new-chat landing page.
+    setSelectedSessionId(null);
+    setChatState('landing');
+    setActiveQuery('');
+    setConversationKey(null);
+  }, [id]);
 
   useEffect(() => {
     const handleNewChat = () => {

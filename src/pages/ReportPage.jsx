@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   Loader2,
   AlertCircle,
@@ -10,12 +9,20 @@ import {
   History,
   BarChart3,
   ChevronLeft,
+  MoreHorizontal,
 } from 'lucide-react';
 import ReportBuilder from '../components/ReportBuilder';
 import ScheduleModal from '../components/ScheduleModal';
 import SnapshotHistory from '../components/SnapshotHistory';
 import { reportApi, databaseApi } from '../services/api';
 import { useApp } from '../context/AppContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import { SegmentedControl } from '../components/ui/product-ui';
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const TABS = [
@@ -66,41 +73,31 @@ export default function ReportPage() {
       if (id && id !== 'new') {
         setHeaderConfig({
           title: (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-3 min-w-0">
               <button
                 onClick={handleBack}
-                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                className="flex h-9 w-9 sm:h-auto sm:w-auto items-center justify-center sm:justify-start sm:gap-1 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/60 sm:hover:bg-transparent transition-colors shrink-0"
+                aria-label={location.state?.fromChat ? 'Back to chat' : 'Back to reports'}
               >
                 <ChevronLeft className="w-4 h-4" />
-                {location.state?.fromChat ? 'Chat' : 'Reports'}
+                <span className="hidden sm:inline">{location.state?.fromChat ? 'Chat' : 'Reports'}</span>
               </button>
-              <div className="h-4 w-[1px] bg-border" />
-              <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 rounded-xl p-0.5 gap-0.5">
-                {TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                        isActive
-                          ? 'bg-background shadow-sm text-foreground font-bold'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <div className="hidden sm:block h-4 w-[1px] bg-border" />
+              <SegmentedControl
+                value={activeTab}
+                onValueChange={setActiveTab}
+                items={TABS.map((tab) => ({ value: tab.id, label: tab.label, icon: tab.icon }))}
+                ariaLabel="Report sections"
+                compactOnMobile
+                className="shrink-0"
+              />
             </div>
           ),
           subtitle: '',
           icon: null,
           actions: !isViewer ? (
-            <div className="flex items-center gap-2">
+            <>
+            <div className="hidden sm:flex items-center gap-2">
               {((reportConfig?.refresh_interval_days > 0) || (reportConfig?.refresh_interval_minutes > 0)) && (
                 <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-foreground font-semibold">
                   <CalendarClock className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
@@ -114,7 +111,7 @@ export default function ReportPage() {
                 onClick={() => setShowSchedule(true)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                   reportConfig?.refresh_interval_days > 0
-                    ? 'bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 border-zinc-900 shadow-sm'
+                    ? 'brand-gradient border-primary text-white shadow-sm shadow-primary/20'
                     : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               >
@@ -135,6 +132,33 @@ export default function ReportPage() {
                 {refreshError ? 'Failed' : refreshing ? 'Refreshing…' : 'Refresh Now'}
               </button>
             </div>
+            <div className="sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-foreground"
+                    aria-label="More report actions"
+                    title="More report actions"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onSelect={() => setShowSchedule(true)}>
+                    <CalendarClock />
+                    Schedule refresh
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={handleManualRefresh}
+                    disabled={refreshing || !connId}
+                  >
+                    <RefreshCw className={refreshing ? 'animate-spin' : ''} />
+                    {refreshError ? 'Refresh failed' : refreshing ? 'Refreshing...' : 'Refresh now'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            </>
           ) : null,
           hidden: false,
         });
@@ -296,7 +320,7 @@ export default function ReportPage() {
   }
 
   return (
-    <SmartSkeleton loading={loading}>
+    <>
       {loading ? (
         <div className="flex-1 flex flex-col w-full h-full bg-background overflow-hidden">
           {/* Top Bar Skeleton */}
@@ -415,6 +439,6 @@ export default function ReportPage() {
           )}
         </div>
       )}
-    </SmartSkeleton>
+    </>
   );
 }

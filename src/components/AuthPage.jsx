@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
   ArrowRight,
+  BarChart3,
   Database,
   Eye,
   EyeOff,
   KeyRound,
   Loader2,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
 } from 'lucide-react';
 import { authApi } from '../services/api';
+import { ProductMark } from './ui/product-ui';
 
 const defaultFormData = {
   name: '',
@@ -28,19 +29,19 @@ const ssoProviders = [];
 
 const designPillars = [
   {
-    icon: ShieldCheck,
-    title: 'Secure local session',
-    description: 'Authentication state is persisted in browser storage for this demo environment.',
+    icon: Sparkles,
+    title: 'Ask in plain language',
+    description: 'Turn a business question into a clear report without writing SQL.',
   },
   {
     icon: Database,
-    title: 'ERP-ready workspace',
-    description: 'Jump straight into connected data sources and AI-generated reports after sign in.',
+    title: 'Use connected ERP data',
+    description: 'Work from the data sources already connected to your workspace.',
   },
   {
-    icon: Sparkles,
-    title: 'Designed for analysts',
-    description: 'The same card, glow and rounded control system as the main product experience.',
+    icon: BarChart3,
+    title: 'Share useful reports',
+    description: 'Review, refine, and share interactive reports with your team.',
   },
 ];
 
@@ -309,55 +310,59 @@ export default function AuthPage({ onAuthSuccess }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+    <div className="workspace-canvas surface-grid relative min-h-screen overflow-hidden text-foreground">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-100px] left-[15%] h-[320px] w-[320px] rounded-full bg-primary/15 blur-[120px]" />
-        <div className="absolute bottom-[-120px] right-[8%] h-[360px] w-[360px] rounded-full bg-blue-500/10 blur-[140px]" />
+        <div className="absolute left-[15%] top-[-100px] h-[320px] w-[320px] rounded-full bg-primary/12 blur-[120px]" />
+        <div className="absolute bottom-[-120px] right-[8%] h-[360px] w-[360px] rounded-full bg-violet-500/8 blur-[140px]" />
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl items-center p-4 md:p-8">
-        <div className="grid w-full overflow-hidden rounded-3xl border border-border/50 bg-card/85 shadow-2xl backdrop-blur-xl md:grid-cols-2">
-          <div className="hidden md:flex flex-col justify-between bg-gradient-to-br from-primary to-blue-700 p-10 text-white">
+        <div className="auth-panel grid w-full overflow-hidden rounded-[28px] border border-border/60 bg-card/90 shadow-2xl shadow-slate-950/10 backdrop-blur-xl md:grid-cols-2">
+          <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-blue-600 p-10 text-white md:flex lg:p-12">
+            <div className="pointer-events-none absolute -left-20 top-16 h-72 w-72 rounded-full bg-white/5 blur-[110px]" />
+            <div className="pointer-events-none absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-blue-400/20 blur-[120px]" />
             <div>
-              <div className="mb-8 inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2 backdrop-blur">
-                <img src="/270970406.jpeg" alt="Repnex logo" className="h-8 w-8 rounded-lg object-contain bg-white/90 p-1" />
+              <div className="relative mb-10 inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2 backdrop-blur">
+                <ProductMark className="h-10 w-10" />
                 <div>
-                  <p className="text-sm font-semibold">Repnex</p>
+                  <p className="text-base font-semibold">Repnex</p>
                   <p className="text-xs text-white/75">AI-Powered ERP Reports</p>
                 </div>
               </div>
-              <h1 className="mb-3 text-3xl font-semibold leading-tight">Build reports from natural language in seconds.</h1>
-              <p className="text-sm text-white/80 leading-relaxed">
+              <h1 className="relative mb-4 max-w-md text-3xl font-semibold leading-tight lg:text-4xl">
+                Build reports from natural language in seconds.
+              </h1>
+              <p className="relative max-w-md text-sm leading-6 text-white/80">
                 Sign in to access your workspace, connected databases, and AI chat sessions.
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="relative space-y-3">
               {designPillars.map((pillar) => {
                 const Icon = pillar.icon;
                 return (
-                  <div key={pillar.title} className="rounded-xl border border-white/20 bg-white/10 p-4">
+                  <div key={pillar.title} className="rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur">
                     <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
                       <Icon className="h-4 w-4" />
                       {pillar.title}
                     </div>
-                    <p className="text-xs text-white/80">{pillar.description}</p>
+                    <p className="text-xs leading-5 text-white/80">{pillar.description}</p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="p-7 sm:p-9 md:p-10">
+          <div className="p-6 sm:p-9 md:p-10 lg:p-12">
             <div className="mb-6 md:hidden">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-border/50 bg-black/5 dark:bg-white/5 px-3 py-2">
-                <img src="/270970406.jpeg" alt="Repnex logo" className="h-7 w-7 rounded-md object-contain bg-white p-1" />
+              <div className="mb-4 inline-flex items-center gap-2">
+                <ProductMark className="h-8 w-8" />
                 <span className="text-sm font-semibold">Repnex</span>
               </div>
             </div>
 
             <div className="mb-6">
-              <div className="mb-4 inline-flex rounded-xl bg-black/5 p-1 dark:bg-white/5">
+              <div className="mb-5 inline-flex rounded-xl border border-border/60 bg-muted/60 p-1">
                 <button
                   type="button"
                   onClick={() => switchMode('signin')}
@@ -420,7 +425,7 @@ export default function AuthPage({ onAuthSuccess }) {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
+                      className="brand-gradient mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -548,7 +553,7 @@ export default function AuthPage({ onAuthSuccess }) {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
+                      className="brand-gradient mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
                     >
                       {isSubmitting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -635,9 +640,11 @@ export default function AuthPage({ onAuthSuccess }) {
                     We sent a 6-digit code via <span className="font-semibold text-foreground">{mfaChallenge.delivery}</span> for{' '}
                     <span className="font-semibold text-foreground">{mfaChallenge.authMethod}</span>.
                   </p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
-                    Demo code: <span className="font-semibold text-foreground">{mfaChallenge.demoCode}</span>
-                  </p>
+                  {import.meta.env.DEV && mfaChallenge.demoCode ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Local test code: <span className="font-semibold text-foreground">{mfaChallenge.demoCode}</span>
+                    </p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -662,7 +669,7 @@ export default function AuthPage({ onAuthSuccess }) {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
+                    className="brand-gradient flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
                   >
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify & Continue'}
                   </button>
@@ -700,14 +707,9 @@ export default function AuthPage({ onAuthSuccess }) {
               )}
             </AnimatePresence>
 
-            <div className="mt-6 rounded-xl border border-border/50 bg-black/[0.02] p-4 text-xs text-muted-foreground dark:bg-white/[0.02]">
-              <div className="flex items-center justify-between gap-4">
-                <p className="leading-relaxed">
-                  Create a workspace account first, then complete organization onboarding and database setup.
-                </p>
-              </div>
-              <p className="mt-2 text-[11px]">SSO and MFA are kept for the later enterprise step.</p>
-            </div>
+            <p className="mt-6 text-center text-[11px] leading-5 text-muted-foreground">
+              By continuing, you agree to use Repnex according to your organization’s policies.
+            </p>
           </div>
         </div>
       </div>

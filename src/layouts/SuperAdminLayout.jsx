@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, Users, Search, Cpu,
   Activity, List, LogOut, ChevronRight, Menu, X,
-  Shield, Wifi, BarChart3, Inbox, Sun, Moon, FileText, AlertOctagon, MessageSquare, Calculator, MessageCircle
+  Wifi, BarChart3, Inbox, Sun, Moon, FileText, AlertOctagon, MessageSquare, Calculator, MessageCircle
 } from 'lucide-react';
 import clsx from 'clsx';
+import { ProductMark, StatusPill } from '../components/ui/product-ui';
+import { toggleThemeWithTransition } from '../utils/themeTransition';
 
 const NAV_SECTIONS = [
   {
@@ -40,7 +42,7 @@ const NAV_SECTIONS = [
 ];
 
 export default function SuperAdminLayout({ user, onSignOut }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -56,21 +58,23 @@ export default function SuperAdminLayout({ user, onSignOut }) {
     document.documentElement.classList.toggle('dark', darkMode);
     try {
       localStorage.setItem('repnex-theme', darkMode ? 'dark' : 'light');
-    } catch {}
+    } catch {
+      // Theme still applies when browser storage is unavailable.
+    }
   }, [darkMode]);
 
   const userInitial = user?.name?.trim()?.charAt(0)?.toUpperCase()
     || user?.email?.charAt(0)?.toUpperCase() || 'A';
 
   return (
-    <div className="super-admin-root flex h-screen w-full bg-background text-foreground transition-colors duration-300 overflow-hidden font-sans">
+    <div className="super-admin-root workspace-canvas flex h-screen w-full overflow-hidden font-sans text-foreground transition-colors duration-300">
 
       {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="md:hidden fixed inset-0 bg-black/60 z-40"
+            className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -80,29 +84,28 @@ export default function SuperAdminLayout({ user, onSignOut }) {
       <motion.aside
         initial={false}
         animate={{
-          width: sidebarOpen ? 256 : 0,
-          x: sidebarOpen ? 0 : -256,
+          width: sidebarOpen ? 272 : 0,
+          x: sidebarOpen ? 0 : -272,
           opacity: sidebarOpen ? 1 : 0
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 32 }}
         className={clsx(
-          "h-full flex-shrink-0 overflow-hidden border-r border-border bg-card/80 backdrop-blur-xl z-50 fixed md:relative",
+          "fixed z-50 h-full flex-shrink-0 overflow-hidden border-r border-border/70 bg-sidebar/95 shadow-xl backdrop-blur-xl md:relative md:shadow-none",
           !sidebarOpen && "border-none pointer-events-none"
         )}
       >
-        <div className="flex flex-col h-full min-w-[256px] p-4">
+        <div className="flex h-full min-w-[272px] flex-col p-4">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-8 mt-1 px-2">
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white p-0.5 shadow-sm border border-border/40 shrink-0 flex items-center justify-center">
-              <img src="/270970406.jpeg" alt="Repnex Logo" className="w-full h-full object-contain" />
-            </div>
+          <div className="mb-7 mt-1 flex items-center gap-3 px-2">
+            <ProductMark className="h-9 w-9" />
             <div>
-              <p className="text-xs font-bold text-foreground tracking-tight">Repnex</p>
-              <p className="text-[10px] text-muted-foreground font-medium">Super Admin Platform</p>
+              <p className="text-sm font-semibold tracking-tight text-foreground">Repnex</p>
+              <p className="text-[10px] font-medium text-muted-foreground">Platform administration</p>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="ml-auto p-1 text-muted-foreground hover:text-foreground transition-colors md:hidden"
+              className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+              aria-label="Close navigation"
             >
               <X className="w-4 h-4" />
             </button>
@@ -128,22 +131,22 @@ export default function SuperAdminLayout({ user, onSignOut }) {
                         key={item.path}
                         onClick={() => navigate(item.path)}
                         className={clsx(
-                          'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-sm relative',
+                          'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200',
                           isActive
-                            ? 'bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5'
+                            ? 'bg-primary/10 font-semibold text-primary shadow-sm'
+                            : 'text-muted-foreground hover:bg-muted/75 hover:text-foreground'
                         )}
                       >
                         {isActive && (
                           <motion.div
                             layoutId="sa-active-pill"
-                            className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
+                            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
                             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                           />
                         )}
-                        <Icon className={clsx('w-4 h-4 flex-shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
+                        <Icon className={clsx('h-4 w-4 flex-shrink-0', isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')} />
                         <span>{item.label}</span>
-                        {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-foreground" />}
+                        {isActive && <ChevronRight className="ml-auto h-3.5 w-3.5 text-primary" />}
                       </button>
                     );
                   })}
@@ -156,14 +159,14 @@ export default function SuperAdminLayout({ user, onSignOut }) {
           <div className="mt-4 pt-4 border-t border-border space-y-2">
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors font-medium"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <BarChart3 className="w-4 h-4" />
               Back to App
             </button>
-            <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
+            <div className="app-card flex items-center justify-between rounded-xl px-3 py-2">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-800 dark:text-zinc-200 shadow-sm shrink-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary shadow-sm">
                   {userInitial}
                 </div>
                 <div className="min-w-0">
@@ -178,7 +181,11 @@ export default function SuperAdminLayout({ user, onSignOut }) {
               <div className="flex items-center gap-1">
                 {/* Theme Toggle */}
                 <button
-                  onClick={() => setDarkMode(!darkMode)}
+                  onClick={(event) => toggleThemeWithTransition({
+                    darkMode,
+                    setDarkMode,
+                    event,
+                  })}
                   className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
                   title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
                 >
@@ -201,28 +208,25 @@ export default function SuperAdminLayout({ user, onSignOut }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
-        <header className="h-14 border-b border-border bg-card/60 backdrop-blur-xl px-4 flex items-center gap-3 flex-shrink-0">
+        <header className="flex h-16 flex-shrink-0 items-center gap-3 border-b border-border/65 bg-background/82 px-4 backdrop-blur-xl">
           {/* Always-visible sidebar toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             title={sidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+            aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
           >
             <Menu className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded overflow-hidden bg-white p-0.5 border border-border/40 shrink-0 flex items-center justify-center">
-              <img src="/270970406.jpeg" alt="Repnex Logo" className="w-full h-full object-contain" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">Repnex Super Admin</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border font-medium">
-              Platform Control
-            </span>
+            <ProductMark className="h-7 w-7 rounded-lg" />
+            <span className="text-sm font-semibold text-foreground">Platform admin</span>
+            <StatusPill tone="primary" className="hidden sm:inline-flex">Repnex</StatusPill>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar">
+        <main className="surface-grid custom-scrollbar flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

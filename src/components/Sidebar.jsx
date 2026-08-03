@@ -1,19 +1,15 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
   LayoutDashboard,
   MessageSquare,
   BarChart3,
   Bookmark,
   Settings,
-  UserCircle,
-  Plus,
   Database,
   History,
   ChevronRight,
   Trash2,
   Loader2,
-  Layers,
   Sun,
   Moon,
   LogOut,
@@ -24,6 +20,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sessionsApi } from "../services/api";
 import { useApp } from "../context/AppContext";
+import { ProductMark, StatusPill } from "./ui/product-ui";
+import { toggleThemeWithTransition } from "../utils/themeTransition";
 
 const navSections = [
   {
@@ -72,6 +70,32 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
 
   const isAdmin = user?.role === 'admin';
   const isViewer = user?.role === 'viewer';
+  const platform = typeof navigator !== "undefined"
+    ? (navigator.userAgentData?.platform || navigator.platform || "")
+    : "";
+  const chatShortcutLabel = /Mac|iPhone|iPad|iPod/i.test(platform) ? "⌘ ⇧ K" : "Ctrl ⇧ K";
+
+  useEffect(() => {
+    if (isViewer) return undefined;
+
+    const handleChatShortcut = (event) => {
+      const usesPlatformModifier = event.metaKey || event.ctrlKey;
+      if (!usesPlatformModifier || !event.shiftKey || event.altKey || event.key.toLowerCase() !== "k") {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      navigate("/chat");
+      window.dispatchEvent(new CustomEvent("repnex-new-chat"));
+      if (window.innerWidth < 768) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleChatShortcut, true);
+    return () => window.removeEventListener("keydown", handleChatShortcut, true);
+  }, [isViewer, navigate, setIsOpen]);
 
   const fetchSessions = useCallback(async () => {
     setLoadingSessions(true);
@@ -126,56 +150,38 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsOpen(false)}
-            className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[55]"
+            className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
           />
         )}
       </AnimatePresence>
       <motion.aside
-        initial={{ width: 280, x: 0 }}
+        initial={{ width: 272, x: 0 }}
         animate={{
-          width: isOpen ? 256 : 0,
-          x: isOpen ? 0 : -256,
+          width: isOpen ? 272 : 0,
+          x: isOpen ? 0 : -272,
           opacity: isOpen ? 1 : 0
         }}
         transition={{ type: "spring", stiffness: 300, damping: 32 }}
-        className="h-full flex-shrink-0 overflow-hidden border-r border-border bg-card/80 backdrop-blur-xl z-50 fixed md:relative"
+        className="fixed z-50 h-full flex-shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar/95 backdrop-blur-2xl md:relative"
       >
-        <div className="flex flex-col h-full min-w-[256px] p-4">
+        <div className="flex h-full min-w-[272px] flex-col p-4">
           {/* Header */}
-          <div className="flex items-center gap-3 mb-6 mt-1 px-2">
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-white p-0.5 shadow-sm border border-border/40 shrink-0 flex items-center justify-center">
-              <img src="/270970406.jpeg" alt="Repnex Logo" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-foreground tracking-tight">Repnex</p>
-              <p className="text-[10px] text-muted-foreground font-medium">AI-Powered ERP Platform</p>
+          <div className="mb-6 mt-1 flex items-center gap-3 px-1">
+            <ProductMark className="h-10 w-10" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">Repnex</p>
+                <StatusPill tone="primary" className="min-h-5 px-2 py-0 text-[9px]">AI</StatusPill>
+              </div>
+              <p className="truncate text-[11px] font-medium text-muted-foreground">ERP intelligence workspace</p>
             </div>
           </div>
 
-          {/* New Chat Button */}
-          {!isViewer && (
-            <button
-              onClick={() => {
-                navigate('/chat');
-                window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-              }}
-              className="flex items-center justify-between gap-3 w-full p-3.5 mb-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl transition-all shadow-lg shadow-blue-500/30 active:scale-[0.98] font-semibold"
-            >
-              <span className="flex items-center gap-2.5 text-xs font-bold">
-                <div className="bg-white/20 p-1.5 rounded-lg">
-                  <Plus className="w-4 h-4 text-white" />
-                </div>
-                New Report Chat
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono font-bold text-white">⌘N</span>
-            </button>
-          )}
-
           {/* Navigation */}
-          <nav className="flex-1 space-y-5 overflow-y-auto custom-scrollbar">
+          <nav className="custom-scrollbar flex-1 space-y-5 overflow-y-auto">
             {navSections.map((section, si) => (
               <div key={si}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-2 font-mono">
+                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">
                   {section.label}
                 </p>
                 <div className="space-y-0.5">
@@ -193,30 +199,40 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                           key={item.id}
                           onClick={() => {
                             navigate(item.path);
+                            if (window.innerWidth < 768) {
+                              setIsOpen(false);
+                            }
                             if (item.id === 'chat') {
                               window.dispatchEvent(new CustomEvent('repnex-new-chat'));
                             }
                           }}
                           className={clsx(
-                            "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-sm relative tracking-tight",
+                            "group relative flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm tracking-tight transition-all duration-200",
                             isActive
-                              ? "bg-zinc-100 dark:bg-zinc-800/80 text-foreground font-semibold shadow-sm"
-                              : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+                              : "text-muted-foreground hover:bg-sidebar-accent/65 hover:text-sidebar-foreground"
                           )}
                         >
                           {isActive && (
                             <motion.div
                               layoutId="active-navLine"
-                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-zinc-900 dark:bg-zinc-100 rounded-r-full"
+                              className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary"
                               initial={false}
                               transition={{ type: "spring", stiffness: 300, damping: 30 }}
                             />
                           )}
-                          <Icon className={clsx("w-4 h-4 flex-shrink-0 relative z-10", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                          <span className={clsx("relative z-10", isActive ? "font-semibold text-foreground" : "font-medium")}>
+                          <Icon className={clsx("relative z-10 h-4 w-4 flex-shrink-0", isActive ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground")} />
+                          <span className={clsx("relative z-10", isActive ? "font-semibold text-sidebar-accent-foreground" : "font-medium")}>
                             {item.label}
                           </span>
-                          {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto text-foreground relative z-10" />}
+                          <span className="relative z-10 ml-auto flex items-center gap-2">
+                            {item.id === "chat" && (
+                              <kbd className="hidden rounded-md border border-sidebar-border/80 bg-card/60 px-1.5 py-0.5 font-sans text-[9px] font-semibold text-muted-foreground xl:inline">
+                                {chatShortcutLabel}
+                              </kbd>
+                            )}
+                            {isActive && <ChevronRight className="h-3.5 w-3.5 text-sidebar-accent-foreground" />}
+                          </span>
                         </button>
                       );
                     })}
@@ -227,16 +243,16 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
 
           {/* Recent Chats */}
           {!isViewer && (
-            <div className="mt-5 flex-1 overflow-hidden flex flex-col">
+            <div className="mt-4 flex max-h-64 flex-col overflow-hidden border-t border-sidebar-border/70 pt-3">
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
               >
                 <span className="flex items-center gap-2">
-                  <History className="w-3.5 h-3.5" />
+                  <History className="h-3.5 w-3.5" />
                   Recent Chats
                   {sessions.length > 0 && (
-                    <span className="bg-zinc-100 dark:bg-zinc-800 text-foreground border border-zinc-200 dark:border-zinc-700 text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold">
+                    <span className="rounded-full border border-primary/15 bg-primary/8 px-1.5 py-0.5 text-[9px] font-bold text-primary">
                       {sessions.length}
                     </span>
                   )}
@@ -250,69 +266,67 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-y-auto flex-1 space-y-0.5 pr-1 custom-scrollbar"
+                    className="custom-scrollbar relative flex-1 space-y-0.5 overflow-y-auto pr-1"
                   >
-                    <SmartSkeleton loading={loadingSessions}>
-                      {loadingSessions ? (
-                        <div className="space-y-1.5 py-1 px-1">
-                          {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-black/5 dark:bg-white/5 animate-pulse">
-                              <div className="w-3.5 h-3.5 bg-muted rounded shrink-0" />
-                              <div className="h-3 bg-muted rounded w-2/3" />
-                            </div>
-                          ))}
-                        </div>
-                      ) : sessionsError ? (
-                        <div className="px-3 py-4 text-center">
-                          <p className="text-xs text-rose-400 mb-2">{sessionsError}</p>
+                    {loadingSessions ? (
+                      <div className="space-y-1.5 px-1 py-1" aria-label="Loading recent chats">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="flex animate-pulse items-center gap-2 rounded-xl px-3 py-2.5">
+                            <div className="h-3.5 w-3.5 shrink-0 rounded bg-muted" />
+                            <div className="h-3 w-2/3 rounded bg-muted" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : sessionsError ? (
+                      <div className="px-3 py-4 text-center">
+                        <p className="mb-2 text-xs text-rose-500">{sessionsError}</p>
+                        <button onClick={fetchSessions} className="text-xs font-semibold text-primary hover:underline">
+                          Retry
+                        </button>
+                      </div>
+                    ) : sessions.length === 0 ? (
+                      <div className="px-3 py-4 text-center">
+                        <MessageSquare className="mx-auto mb-2 h-6 w-6 text-muted-foreground/35" />
+                        <p className="text-xs leading-5 text-muted-foreground">Your recent analyses will appear here.</p>
+                      </div>
+                    ) : (
+                      sessions.map((session, i) => (
+                        <motion.div
+                          key={session.id}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.025 }}
+                          className="group flex w-full items-center justify-between rounded-xl px-3 py-1 text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-within:bg-sidebar-accent"
+                        >
                           <button
-                            onClick={fetchSessions}
-                            className="text-xs text-foreground font-semibold underline"
-                          >
-                            Retry
-                          </button>
-                        </div>
-                      ) : sessions.length === 0 ? (
-                        <div className="px-3 py-4 text-center">
-                          <MessageSquare className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-                          <p className="text-xs text-muted-foreground">No chats yet. Start a new report chat above.</p>
-                        </div>
-                      ) : (
-                        sessions.map((session, i) => (
-                          <motion.button
-                            key={session.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.04 }}
+                            type="button"
                             onClick={() => navigate(`/chat/${session.id}`)}
-                            className="flex items-center justify-between w-full px-3 py-2 text-sm text-foreground/70 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group text-left"
+                            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left outline-none"
+                            aria-label={`Open ${session.title || 'Untitled Chat'}`}
                           >
-                            <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
-                              <MessageSquare className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                              <span className="truncate text-xs">{session.title || 'Untitled Chat'}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                              <span className="text-[10px] text-muted-foreground hidden group-hover:hidden">
-                                {timeAgo(session.created_at)}
-                              </span>
-                              {!isViewer && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteSession(e, session.id)}
-                                  disabled={deletingId === session.id}
-                                  className="p-1 opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-all"
-                                >
-                                  {deletingId === session.id
-                                    ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-                                    : <Trash2 className="w-3 h-3 text-muted-foreground hover:text-rose-500" />
-                                  }
-                                </button>
-                              )}
-                            </div>
-                          </motion.button>
-                        ))
-                      )}
-                    </SmartSkeleton>
+                            <MessageSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-xs font-medium">{session.title || 'Untitled Chat'}</span>
+                          </button>
+                          <div className="ml-2 flex shrink-0 items-center gap-1.5">
+                            <span className="text-[9px] text-muted-foreground group-hover:hidden">
+                              {timeAgo(session.created_at)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteSession(e, session.id)}
+                              disabled={deletingId === session.id}
+                              className="hidden h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500 group-hover:flex"
+                              aria-label={`Delete ${session.title || 'chat'}`}
+                            >
+                              {deletingId === session.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Trash2 className="h-3 w-3" />
+                              }
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -320,16 +334,16 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
           )}
 
           {/* Bottom Actions */}
-          <div className="mt-auto pt-4 border-t border-border/50">
+          <div className="mt-auto border-t border-sidebar-border/70 pt-4">
             {/* User profile row */}
-            <div className="flex items-center justify-between px-3 py-2 bg-black/[0.02] dark:bg-white/[0.02] rounded-xl border border-border/40">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-800 dark:text-zinc-200 shadow-sm shrink-0">
+            <div className="flex items-center justify-between rounded-2xl border border-sidebar-border/75 bg-card/55 px-3 py-2.5 shadow-sm">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
                   {userInitial}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{user?.name || user?.email || 'User'}</p>
-                  <p className="text-[10px] text-muted-foreground font-medium capitalize">{user?.role || 'member'}</p>
+                  <p className="truncate text-xs font-semibold text-sidebar-foreground">{user?.name || user?.email || 'User'}</p>
+                  <p className="text-[10px] font-medium capitalize text-muted-foreground">{user?.role || 'member'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -337,8 +351,9 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 {user?.role === 'super_admin' && (
                   <button
                     onClick={() => navigate('/super-admin')}
-                    className="p-1.5 text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
                     title="Go to Super Admin Panel"
+                    aria-label="Go to Super Admin Panel"
                   >
                     <Shield className="w-4 h-4" />
                   </button>
@@ -346,9 +361,14 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 {/* Theme Toggle */}
                 {setDarkMode && (
                   <button
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+                    onClick={(event) => toggleThemeWithTransition({
+                      darkMode,
+                      setDarkMode,
+                      event,
+                    })}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    aria-label={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
                   >
                     {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </button>
@@ -357,8 +377,9 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                 {onSignOut && (
                   <button
                     onClick={onSignOut}
-                    className="p-1.5 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"
                     title="Sign out"
+                    aria-label="Sign out"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Building2, Loader2 } from 'lucide-react';
 import { organizationApi } from '../services/api';
+import { ProductMark } from '../components/ui/product-ui';
 
 const initialForm = {
   organizationName: '',
@@ -46,25 +47,32 @@ export default function OnboardingPage({ user, onComplete }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground px-4 py-10">
+    <div className="workspace-canvas surface-grid min-h-screen px-4 py-10 text-foreground">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8">
-          <div className="mb-4 inline-flex items-center gap-3 rounded-xl border border-border/50 bg-card/80 px-4 py-3 shadow-sm">
-            <div className="rounded-xl bg-primary/10 p-2 text-primary">
-              <Building2 className="h-5 w-5" />
-            </div>
+          <div className="mb-6 inline-flex items-center gap-3">
+            <ProductMark className="h-10 w-10" />
             <div>
-              <p className="text-sm font-semibold">Organization onboarding</p>
-              <p className="text-xs text-muted-foreground">Set up the workspace before connecting databases.</p>
+              <p className="text-sm font-semibold">Repnex</p>
+              <p className="text-xs text-muted-foreground">Workspace setup</p>
             </div>
           </div>
-          <h1 className="text-3xl font-semibold">Finish your workspace setup</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            This keeps the basic auth and organization flow ready while the report generation engine stays separate.
+          <h1 className="page-heading text-3xl font-semibold">Tell us about your organization</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            These details help us set up the workspace for your team. You can update them later.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-3xl border border-border/50 bg-card/90 p-6 shadow-xl md:p-8">
+        <form onSubmit={handleSubmit} className="auth-panel app-card rounded-3xl p-6 shadow-xl md:p-8">
+          <div className="mb-6 flex items-center gap-3 border-b border-border/55 pb-5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Organization details</h2>
+              <p className="text-xs text-muted-foreground">Only the organization name is required.</p>
+            </div>
+          </div>
           <div className="grid gap-5 md:grid-cols-2">
             <div className="md:col-span-2">
               <label htmlFor="organizationName" className="mb-1.5 block text-sm font-medium text-foreground/85">
@@ -134,14 +142,14 @@ export default function OnboardingPage({ user, onComplete }) {
             </div>
           ) : null}
 
-          <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl bg-primary/5 px-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              After this step, you land on database connections and can start basic onboarding of your organization data sources.
+          <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-4 sm:flex-row sm:items-center">
+            <p className="text-sm leading-6 text-muted-foreground">
+              Next, you’ll connect the data source you want to use for reports.
             </p>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-blue-600 px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:from-primary/95 hover:to-blue-600/95 disabled:opacity-60"
+              className="brand-gradient flex w-full shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:w-auto"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Continue'}
               {!isSubmitting ? <ArrowRight className="h-4 w-4" /> : null}

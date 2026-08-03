@@ -1,29 +1,27 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
-  ArrowUp, Sparkles, Bot, User, Copy, Check, Loader2,
-  Database, Code, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
-  Edit2, Pause, Play, Square, Paperclip, ThumbsUp, ThumbsDown, Mic, MicOff,
-  PanelLeftOpen, PanelLeftClose, X
+  ArrowDown, ArrowUp, Sparkles, Copy, Check,
+  Database, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
+  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Table2
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi, sessionsApi, organizationApi, getToken } from "../services/api";
-import { useTheme } from "../hooks/useTheme";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
 import { QuickVisuals } from "./chat/QuickVisuals";
 import ReportBuilder from "./ReportBuilder";
+import ModelProviderMenu from "./ModelProviderMenu";
 import { format } from "date-fns";
+import { ProductMark, StatusPill } from "./ui/product-ui";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./ui/sheet";
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, selectActiveConnection, addNotification, user } = useApp();
   const { getCasualResponse, profile } = usePersonalization();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { isSidebarOpen, setIsSidebarOpen, setHeaderConfig } = useOutletContext() || {};
+  const { setHeaderConfig } = useOutletContext() || {};
 
   const activeConn = connections.find((c) => c.id === activeConnection);
 
@@ -51,12 +49,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const bottomRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const composerRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   const loadedSessionIdRef = useRef(null);
   const hasProcessedInitialRef = useRef(false);
-  const [requestedModules, setRequestedModules] = useState([]);
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState("");
-  const [isPaused, setIsPaused] = useState(false);
   const socketRef = useRef(null);
   const socketSessionIdRef = useRef(null);
   const [feedbacks, setFeedbacks] = useState({});
@@ -180,15 +180,21 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }
   }, [isListening, addNotification]);
 
-  const toggleSummaryCollapse = (id) => {
-    setCollapsedSummaries(prev => ({
-      ...prev,
-      [id]: !isSummaryCollapsed(id)
-    }));
+  const isMessageCollapsible = (message) => {
+    if (!message?.content || message.type === "error") return false;
+    return message.content.length > 520 || message.content.split("\n").length > 7;
   };
 
-  const isSummaryCollapsed = (id) => {
-    return collapsedSummaries[id] === true;
+  const isSummaryCollapsed = (message) => {
+    if (!isMessageCollapsible(message)) return false;
+    return collapsedSummaries[message.id] !== false;
+  };
+
+  const toggleSummaryCollapse = (message) => {
+    setCollapsedSummaries(prev => ({
+      ...prev,
+      [message.id]: !isSummaryCollapsed(message)
+    }));
   };
 
   const toggleSqlCollapse = (id) => {
@@ -227,7 +233,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const handleFeedbackNegativeClick = (msgId) => {
     setFeedbacks((prev) => ({
       ...prev,
-      [msgId]: { ...prev[msgId], [msgId]: true, submitted: false, isPositive: false, category: "Wrong Output", comment: "" },
+      [msgId]: { submitted: false, isPositive: false, category: "Wrong Output", comment: "" },
     }));
   };
 
@@ -272,7 +278,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     }
   };
 
-  const { isDark } = useTheme();
   const isViewer = user?.role === 'viewer';
 
   const getWsServerUrl = () => {
@@ -281,20 +286,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     wsBase = wsBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
     return wsBase;
   };
-
-  const handlePause = useCallback(() => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: "pause" }));
-      setIsPaused(true);
-    }
-  }, []);
-
-  const handleResume = useCallback(() => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: "resume" }));
-      setIsPaused(false);
-    }
-  }, []);
 
   const handleCancel = useCallback(() => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -316,6 +307,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const processQuery = useCallback(
     async (query) => {
       if (isViewer) return;
+      isNearBottomRef.current = true;
+      setShowScrollToLatest(false);
       setIsProcessing(true);
       setShowSuggestions(false);
 
@@ -361,8 +354,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       try {
         const isValidUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
-        let activeSessionId = (sessionId && isValidUuid(sessionId)) 
-          ? sessionId 
+        let activeSessionId = (sessionId && isValidUuid(sessionId))
+          ? sessionId
           : (currentSessionId && isValidUuid(currentSessionId) ? currentSessionId : null);
 
         if (!activeSessionId) {
@@ -389,8 +382,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         }
 
         if (activeConnection) {
-          // WebSocket execution path (for live streaming, pausing, resuming, cancelling)
-          setIsPaused(false);
+          // WebSocket execution path for live progress and cancellation.
           const wsUrl = `${getWsServerUrl()}/ws/query/${activeSessionId}?token=${getToken()}`;
           const ws = new WebSocket(wsUrl);
           socketRef.current = ws;
@@ -405,17 +397,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               console.warn("[WS] No message received for 45 seconds, timing out.");
               try {
                 ws.close();
-              } catch (e) {}
-              
+              } catch {
+                // The socket may already be closed.
+              }
+
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === aiMsgId && m.isStreaming
                     ? {
-                        ...m,
-                        type: "error",
-                        content: "Query execution timed out. No response from server.",
-                        isStreaming: false,
-                      }
+                      ...m,
+                      type: "error",
+                      content: "Query execution timed out. No response from server.",
+                      isStreaming: false,
+                    }
                     : m
                 )
               );
@@ -578,7 +572,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setCurrentSuggestions(backendSugs);
               ws.close();
               window.dispatchEvent(new Event("repnex-sessions-updated"));
-              
+
               // Defer final pipeline hiding until queue drains
               hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
               isWaitingForComplete.current = true;
@@ -640,7 +634,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             setIsProcessing(false);
             setPipelineStep(null);
             setCurrentStatusText("");
-            
+
             // Safety cleanup: stop streaming indicator & display report button if executable SQL exists
             setMessages((prev) =>
               prev.map((m) =>
@@ -816,7 +810,17 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         }
       }
     },
-    [activeConnection, sessionId, addNotification, profile]
+    [
+      activeConnection,
+      sessionId,
+      currentSessionId,
+      profile,
+      getCasualResponse,
+      isViewer,
+      onSessionCreated,
+      enqueueStep,
+      processNextStep,
+    ]
   );
 
   const handleEditStart = useCallback((msg) => {
@@ -846,7 +850,30 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       addNotification("error", "Failed to edit query: " + err.message);
       setIsProcessing(false);
     }
-  }, [messages, currentSessionId, processQuery, addNotification, editingText]);
+  }, [messages, sessionId, currentSessionId, processQuery, addNotification, editingText]);
+
+  const findPreviousQuestion = useCallback((messageId) => {
+    const messageIndex = messages.findIndex((message) => message.id === messageId);
+    if (messageIndex < 0) return null;
+    return messages.slice(0, messageIndex).reverse().find((message) => message.role === "user") || null;
+  }, [messages]);
+
+  const handleRetryResponse = useCallback((messageId) => {
+    const previousQuestion = findPreviousQuestion(messageId);
+    if (previousQuestion?.content) processQuery(previousQuestion.content);
+  }, [findPreviousQuestion, processQuery]);
+
+  const handleEditPreviousQuestion = useCallback((messageId) => {
+    const previousQuestion = findPreviousQuestion(messageId);
+    if (!previousQuestion) return;
+    handleEditStart(previousQuestion);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`message-${previousQuestion.id}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [findPreviousQuestion, handleEditStart]);
 
   // ── Load session history ───────────────────────────────────────────
   useEffect(() => {
@@ -927,10 +954,47 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-scroll
+  const scrollToLatest = useCallback((behavior = "smooth") => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior });
+    isNearBottomRef.current = true;
+    setShowScrollToLatest(false);
+  }, []);
+
+  const handleConversationScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceFromBottom < 120;
+    isNearBottomRef.current = isNearBottom;
+    if (isNearBottom) setShowScrollToLatest(false);
+  }, []);
+
+  // Follow new content only while the user is already reading the latest message.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pipelineStep, isProcessing]);
+    const frame = window.requestAnimationFrame(() => {
+      if (isNearBottomRef.current) {
+        scrollToLatest("smooth");
+      } else {
+        setShowScrollToLatest(true);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages, pipelineStep, isProcessing, showSuggestions, scrollToLatest]);
+
+  useEffect(() => {
+    isNearBottomRef.current = true;
+    setShowScrollToLatest(false);
+  }, [sessionId]);
+
+  // Grow the composer with the question, up to a comfortable maximum height.
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "0px";
+    composer.style.height = `${Math.min(composer.scrollHeight, 200)}px`;
+  }, [inputValue]);
 
   // Fix Recharts ResponsiveContainer rendering zero width/height inside flex/animated components
   useEffect(() => {
@@ -1041,7 +1105,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         setIsProcessing(false);
       }
     },
-    [activeConnection, sessionId, addNotification]
+    [activeConnection, sessionId, addNotification, isViewer]
   );
 
   // ── Handlers ────────────────────────────────────────────────────────
@@ -1054,36 +1118,41 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     processQuery(query);
   };
 
-  const handleCopy = (content, id) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-    addNotification("success", "Copied to clipboard");
+  const handleCopy = async (content, id) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+      addNotification("success", "Copied to clipboard");
+    } catch (error) {
+      console.error("Failed to copy content:", error);
+      addNotification("error", "Could not copy to clipboard.");
+    }
   };
 
   const highlightSQL = (sql) => {
     if (!sql) return "";
-    
+
     // List of SQL keywords (uppercase)
     const keywords = new Set([
-      "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "LIMIT", "HAVING", 
-      "LEFT", "RIGHT", "INNER", "JOIN", "ON", "AS", "AND", "OR", "UNION", 
+      "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "LIMIT", "HAVING",
+      "LEFT", "RIGHT", "INNER", "JOIN", "ON", "AS", "AND", "OR", "UNION",
       "ALL", "INSERT", "UPDATE", "DELETE", "CREATE", "TABLE", "IN", "IS", "NULL"
     ]);
-    
+
     // List of SQL functions
     const functions = new Set([
-      "COALESCE", "CAST", "SUM", "AVG", "COUNT", "MAX", "MIN", "DECIMAL", 
+      "COALESCE", "CAST", "SUM", "AVG", "COUNT", "MAX", "MIN", "DECIMAL",
       "CONCAT", "NOW", "DATE", "IFNULL", "NULLIF"
     ]);
 
     // Regex to tokenize: captures strings, comments, numbers, words, and symbols
     const tokenRegex = /(".*?"|'.*?'|--.*|\b[a-zA-Z_][a-zA-Z0-9_]*\b|\b\d+(?:\.\d+)?\b|\S)/g;
     const parts = sql.split(tokenRegex);
-    
+
     return parts.map(token => {
       if (!token) return "";
-      
+
       // Escape HTML entities in the token
       const escapedToken = token
         .replace(/&/g, "&amp;")
@@ -1094,17 +1163,17 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       if (token.startsWith("'") || token.startsWith('"')) {
         return `<span class="text-rose-500 dark:text-rose-400">${escapedToken}</span>`;
       }
-      
+
       // 2. Comments
       if (token.startsWith("--")) {
         return `<span class="text-slate-500 dark:text-slate-500 italic">${escapedToken}</span>`;
       }
-      
+
       // 3. Numbers
       if (/^\d+(?:\.\d+)?$/.test(token)) {
         return `<span class="text-emerald-500 dark:text-emerald-400">${escapedToken}</span>`;
       }
-      
+
       // 4. Words (Keywords or Functions or Columns)
       const upperToken = token.toUpperCase();
       if (keywords.has(upperToken)) {
@@ -1113,22 +1182,36 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       if (functions.has(upperToken)) {
         return `<span class="text-amber-500 dark:text-amber-400 font-medium">${escapedToken}</span>`;
       }
-      
+
       // 5. Default/Symbols
       return escapedToken;
     }).join("");
   };
 
+  const escapeHtml = (value) => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
   const formatLine = (text) => {
     if (!text) return "";
-    let processed = text;
+    // AI and database content is treated as text before adding our small,
+    // controlled set of formatting tags.
+    let processed = escapeHtml(text);
     // 1. Parse bold text (**text** -> <strong>text</strong>)
     processed = processed.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
     // 2. Parse italic/emphasized text (*text* -> <em>text</em>)
     processed = processed.replace(/\*(.*?)\*/g, "<em>$1</em>");
     // 3. Parse inline code (`code` -> <code>code</code>)
     processed = processed.replace(/`(.*?)`/g, "<code class='px-1.5 py-0.5 bg-black/5 dark:bg-white/10 rounded font-mono text-xs text-blue-600 dark:text-blue-400'>$1</code>");
-    // 4. Strip unbalanced single asterisks
+    // 4. Parse safe web links.
+    processed = processed.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noreferrer" class="font-medium text-primary underline underline-offset-2">$1</a>'
+    );
+    // 5. Strip unbalanced single asterisks
     processed = processed.replace(/\*/g, "");
     return processed;
   };
@@ -1136,13 +1219,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Format message content ──────────────────────────────────────────
   const parseTable = (tableLines) => {
     if (tableLines.length < 2) return null;
-    
+
     const headerLine = tableLines[0];
     const separatorLine = tableLines[1];
-    
+
     // Check if second line is a valid separator line (contains hyphens, pipes, colons)
     if (!/^[|\s:-]+$/.test(separatorLine)) return null;
-    
+
     const parseRow = (line) => {
       // Split by '|', trim, and remove empty first/last elements
       const parts = line.split('|').map(p => p.trim());
@@ -1150,10 +1233,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       if (line.endsWith('|')) parts.pop();
       return parts;
     };
-    
+
     const headers = parseRow(headerLine);
     const rows = tableLines.slice(2).map(parseRow).filter(row => row.length > 0 && row.some(cell => cell !== ""));
-    
+
     return { headers, rows };
   };
 
@@ -1205,27 +1288,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       );
     }
 
-    // Check Text Card Match on raw line (Title: Description)
-    const textCardMatch = line.match(/^(?:\s*[-*•+]\s*)?(?:\s*\d+\.\s*)?([^:]+):\s*(.+)$/);
-    if (textCardMatch) {
-      const rawTitle = textCardMatch[1].trim();
-      const rawDesc = textCardMatch[2].trim();
-      const cleanTitleLen = rawTitle.replace(/\*/g, "").length;
-      if (cleanTitleLen > 0 && cleanTitleLen < 45 && rawDesc.length > 5) {
-        const title = formatLine(rawTitle);
-        const desc = formatLine(rawDesc);
-        return (
-          <div key={key} className="my-3 p-3.5 bg-black/[0.01] dark:bg-white/[0.01] border border-border/40 dark:border-white/5 border-l-2 border-l-blue-500 rounded-lg rounded-l-none flex items-start gap-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 animate-pulse" />
-            <div className="flex-1 space-y-1">
-              <h4 className="font-semibold text-foreground text-sm" dangerouslySetInnerHTML={{ __html: title }} />
-              <p className="text-sm text-foreground/85 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
-            </div>
-          </div>
-        );
-      }
-    }
-
     // Check for bullet points on raw line
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ") || trimmed.startsWith("+ ")) {
       const itemContent = formatLine(trimmed.slice(2));
@@ -1265,11 +1327,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     const lines = content.split("\n");
     const blocks = [];
     let currentTable = [];
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
-      
+
       // If the line starts with '|' and ends with '|' (or at least starts with '|' and contains '|'), it's a table line
       if (trimmed.startsWith("|") && trimmed.includes("|", 1)) {
         currentTable.push(line);
@@ -1281,11 +1343,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         blocks.push({ type: "line", content: line, index: i });
       }
     }
-    
+
     if (currentTable.length > 0) {
       blocks.push({ type: "table", lines: currentTable });
     }
-    
+
     return blocks.map((block, idx) => {
       if (block.type === "table") {
         const parsed = parseTable(block.lines);
@@ -1297,8 +1359,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/40">
                     {headers.map((h, hIdx) => (
-                      <th 
-                        key={hIdx} 
+                      <th
+                        key={hIdx}
                         className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider text-[11px]"
                         dangerouslySetInnerHTML={{ __html: formatLine(h) }}
                       />
@@ -1307,13 +1369,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {rows.map((row, rIdx) => (
-                    <tr 
-                      key={rIdx} 
+                    <tr
+                      key={rIdx}
                       className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
                     >
                       {row.map((cell, cIdx) => (
-                        <td 
-                          key={cIdx} 
+                        <td
+                          key={cIdx}
                           className="px-4 py-3 text-foreground/90 font-medium text-[13px]"
                           dangerouslySetInnerHTML={{ __html: formatLine(cell) }}
                         />
@@ -1338,7 +1400,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     try {
       const d = new Date(isoStr);
       return format(d, "PP, p");
-    } catch (e) {
+    } catch {
       return "";
     }
   };
@@ -1346,730 +1408,741 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <>
-    <div className="flex-1 flex flex-col items-center w-full h-full relative bg-background overflow-hidden">
-      {/* Floating Sidebar Toggle Button (Drawer Icon) */}
-      {setIsSidebarOpen && (
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute top-3 left-4 z-30 p-2 text-muted-foreground hover:text-foreground bg-card/80 dark:bg-[#1C1C1C]/80 hover:bg-black/10 dark:hover:bg-white/10 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-xl transition-all shadow-sm group"
-          title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+      <div className="workspace-canvas relative flex h-full w-full flex-1 flex-col items-center overflow-hidden">
+        {/* Active data source */}
+        {activeConn && (
+          <div className="absolute left-1/2 top-3 z-20 max-w-[60vw] -translate-x-1/2">
+            <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl">
+              <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <Database className="h-3.5 w-3.5" />
+              <span className="truncate">{activeConn.name}</span>
+              {activeConn.tables > 0 ? <span className="hidden opacity-65 sm:inline">· {activeConn.tables} tables</span> : null}
+            </StatusPill>
+          </div>
+        )}
+
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleConversationScroll}
+          className="custom-scrollbar flex w-full flex-1 flex-col overflow-y-auto pb-44 pt-16"
         >
-          {isSidebarOpen ? (
-            <PanelLeftClose className="w-4 h-4 text-foreground/80 group-hover:text-foreground" />
-          ) : (
-            <PanelLeftOpen className="w-4 h-4 text-foreground/80 group-hover:text-foreground" />
-          )}
-        </button>
-      )}
-
-      {/* Floating Hover Connection Status Bar */}
-      {activeConn && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 group">
-          {/* Collapsed Indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-card/80 dark:bg-[#1C1C1C]/80 backdrop-blur-md border border-border/60 dark:border-white/10 rounded-full text-xs shadow-sm cursor-pointer group-hover:opacity-0 transition-opacity duration-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-semibold text-foreground text-[11px] sm:text-xs truncate max-w-[130px] sm:max-w-xs">{activeConn.name}</span>
-          </div>
-
-          {/* Expanded Full Connection Details Badge on Hover */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-200 ease-out flex items-center gap-2 px-3.5 py-1.5 bg-card/95 dark:bg-[#1C1C1C]/95 backdrop-blur-xl border border-border/80 dark:border-white/15 rounded-full text-xs shadow-xl max-w-[92vw] sm:max-w-max whitespace-nowrap overflow-hidden">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="text-muted-foreground font-medium shrink-0">Connected to</span>
-            <span className="font-bold text-foreground truncate max-w-[150px] sm:max-w-none">{activeConn.name}</span>
-            {activeConn.database && (
-              <span className="text-muted-foreground font-mono text-[11px] truncate max-w-[100px] sm:max-w-none">
-                ({activeConn.database})
-              </span>
-            )}
-            {activeConn.tables > 0 && (
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-500/20 shrink-0">
-                {activeConn.tables} tables
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="w-full flex-1 flex flex-col pt-10 pb-40 overflow-y-auto custom-scrollbar">
-        <div className="w-full max-w-6xl mx-auto px-6 flex-1 flex flex-col">
-        <SmartSkeleton loading={loadingHistory}>
-          {loadingHistory ? (
-            <div className="flex-1 flex flex-col gap-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className={`flex w-full ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
-                  {i % 2 === 0 && (
-                    <div className="w-9 h-9 rounded-full bg-muted shrink-0 mr-3" />
-                  )}
-                  <div className={`flex flex-col ${i % 2 === 0 ? "items-start" : "items-end"} max-w-[70%] w-full gap-2`}>
-                    <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
-                    <div className="h-12 bg-muted rounded-2xl w-full animate-pulse" />
+          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
+            {loadingHistory ? (
+              <div className="flex-1 flex flex-col gap-6">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={`flex w-full ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
+                    {i % 2 === 0 && (
+                      <div className="w-9 h-9 rounded-full bg-muted shrink-0 mr-3" />
+                    )}
+                    <div className={`flex flex-col ${i % 2 === 0 ? "items-start" : "items-end"} max-w-[70%] w-full gap-2`}>
+                      <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
+                      <div className="h-12 bg-muted rounded-2xl w-full animate-pulse" />
+                    </div>
+                    {i % 2 !== 0 && (
+                      <div className="w-9 h-9 rounded-full bg-muted shrink-0 ml-3" />
+                    )}
                   </div>
-                  {i % 2 !== 0 && (
-                    <div className="w-9 h-9 rounded-full bg-muted shrink-0 ml-3" />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            messages.map((msg) => (
-            <motion.div
-              layout
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex w-full mb-6 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "ai" && (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
-                <Bot className="w-4 h-4 text-blue-700" />
+                ))}
               </div>
-            )}
-
-            <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} ${
-              msg.role === "ai" && (msg.type === "executable" || msg.sql || msg.type === "template_preview") 
-                ? "w-full max-w-full" 
-                : "max-w-[85%]"
-            }`}>
-              {/* Render content box for: user messages, errors, ai messages with content, or executable ai messages (so insight shows when it arrives) */}
-              {(msg.content || msg.type === "error" || msg.role === "user" || (msg.role === "ai" && (msg.type === "executable" || !!msg.sql))) && (
-                <div
-                  className={`relative group ${
-                    msg.role === "user"
-                      ? "px-5 py-3 bg-blue-600 dark:bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm"
-                      : msg.type === "error"
-                      ? "bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-800/30 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
-                      : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
-                      ? "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full"
-                      : "bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl rounded-tl-sm p-5 shadow-sm"
-                  }`}
+            ) : (
+              messages.map((msg) => (
+                <motion.div
+                  layout
+                  id={`message-${msg.id}`}
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {/* Collapsible Header for AI messages */}
                   {msg.role === "ai" && (
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/30 dark:border-white/5 select-none">
-                      <div className="flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {msg.type === "error" ? "Execution Error" : "AI Insights & Report Summary"}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => toggleSummaryCollapse(msg.id)}
-                        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-[10px] font-semibold text-blue-500 hover:text-blue-600 transition-colors"
+                    <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
+                  )}
+
+                  <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} ${msg.role === "ai" && (msg.type === "executable" || msg.sql || msg.type === "template_preview")
+                      ? "w-full max-w-full"
+                      : "max-w-[88%] sm:max-w-[82%]"
+                    }`}>
+                    {/* Render content box for: user messages, errors, ai messages with content, or executable ai messages (so insight shows when it arrives) */}
+                    {(msg.content || msg.type === "error" || msg.role === "user" || (msg.role === "ai" && (msg.type === "executable" || !!msg.sql))) && (
+                      <div
+                        className={`relative group ${msg.role === "user"
+                            ? "brand-gradient rounded-2xl rounded-tr-md px-4 py-3 pr-11 text-white shadow-md shadow-primary/15 sm:px-5 sm:pr-11"
+                            : msg.type === "error"
+                              ? "w-full rounded-2xl rounded-tl-md border border-red-200/70 bg-red-50/85 p-4 shadow-sm dark:border-red-900/50 dark:bg-red-950/25 sm:p-5"
+                              : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
+                                ? "app-card w-full rounded-2xl rounded-tl-md p-4 sm:p-5"
+                                : "app-card rounded-2xl rounded-tl-md p-4 sm:p-5"
+                          }`}
                       >
-                        {isSummaryCollapsed(msg.id) ? (
-                          <>
-                            <span>Expand Summary</span>
-                            <ChevronDown className="w-3 h-3" />
-                          </>
-                        ) : (
-                          <>
-                            <span>Collapse Summary</span>
-                            <ChevronUp className="w-3 h-3" />
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-
-                  {msg.role === "user" ? (
-                    editingMessageId === msg.id ? (
-                      <div className="flex flex-col gap-2 w-full min-w-[300px]">
-                        <textarea
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
-                          rows={2}
-                        />
-                        <div className="flex justify-end gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => setEditingMessageId(null)}
-                            className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEditSave(msg.id)}
-                            className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
-                          >
-                            Save & Submit
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-[15px] leading-relaxed">{msg.content}</span>
-                    )
-                  ) : (
-                    /* AI message block */
-                    <div className="overflow-hidden">
-                      <AnimatePresence initial={false} mode="wait">
-                        {isSummaryCollapsed(msg.id) ? (
-                          <motion.div
-                            key="collapsed"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
-                          >
-                            <span>
-                              {msg.type === "error" 
-                                ? "Error: Click expand to view details" 
-                                : msg.content 
-                                  ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...` 
-                                  : "Click expand to view details"
-                              }
+                        {/* Keep the disclosure only for responses that are genuinely long. */}
+                        {msg.role === "ai" && isMessageCollapsible(msg) && (
+                          <div className="mb-3 flex select-none items-center justify-between gap-3 border-b border-border/50 pb-3">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                              Response
                             </span>
-                            {msg.rowsReturned != null && (
-                              <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
-                                {msg.rowsReturned} rows
-                              </span>
-                            )}
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="expanded"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="text-[15px] leading-relaxed text-foreground"
-                          >
-                            {msg.type === "error" && (
-                              <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
-                                <AlertCircle className="w-4 h-4" />
-                                <span className="text-xs font-semibold uppercase">Could not process</span>
-                              </div>
-                            )}
-                            {msg.isStreaming && !msg.content ? (
-                              /* Insight generating skeleton */
-                              <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
-                                <div className="flex gap-1">
-                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                </div>
-                                <span className="text-xs text-muted-foreground">Generating insights...</span>
-                              </div>
-                            ) : (
-                              formatContent(
-                                msg.content || 
-                                (msg.type === "executable" || msg.sql 
-                                  ? `Data query completed. Retrieved ${msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0)} records.` 
-                                  : "")
-                              )
-                            )}
-                          </motion.div>
+                            <button
+                              type="button"
+                              onClick={() => toggleSummaryCollapse(msg)}
+                              aria-expanded={!isSummaryCollapsed(msg)}
+                              className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8"
+                            >
+                              {isSummaryCollapsed(msg) ? (
+                                <>
+                                  <span>Show response</span>
+                                  <ChevronDown className="h-3 w-3" />
+                                </>
+                              ) : (
+                                <>
+                                  <span>Hide response</span>
+                                  <ChevronUp className="h-3 w-3" />
+                                </>
+                              )}
+                            </button>
+                          </div>
                         )}
-                      </AnimatePresence>
-                    </div>
-                  )}
 
-                  {/* Copy button */}
-                  {msg.role === "ai" && msg.content && !isSummaryCollapsed(msg.id) && (
-                    <button
-                      onClick={() => handleCopy(msg.content, msg.id)}
-                      className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-all"
-                    >
-                      {copiedId === msg.id ? (
-                        <Check className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  )}
+                        {msg.role === "user" ? (
+                          editingMessageId === msg.id ? (
+                            <div className="flex w-[min(70vw,520px)] min-w-0 flex-col gap-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
+                                rows={2}
+                              />
+                              <p className="text-[11px] leading-4 text-blue-100/85">
+                                Editing this question will replace the replies below it.
+                              </p>
+                              <div className="flex justify-end gap-2 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingMessageId(null)}
+                                  className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditSave(msg.id)}
+                                  className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
+                                >
+                                  Save and resend
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                          )
+                        ) : (
+                          /* AI message block */
+                          <div className="overflow-hidden">
+                            <AnimatePresence initial={false} mode="wait">
+                              {isSummaryCollapsed(msg) ? (
+                                <motion.div
+                                  key="collapsed"
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                                  className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
+                                >
+                                  <span>
+                                    {msg.type === "error"
+                                      ? "Error: Click expand to view details"
+                                      : msg.content
+                                        ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...`
+                                        : "Click expand to view details"
+                                    }
+                                  </span>
+                                  {msg.rowsReturned != null && (
+                                    <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
+                                      {msg.rowsReturned} rows
+                                    </span>
+                                  )}
+                                </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="expanded"
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                                  className="text-[15px] leading-relaxed text-foreground"
+                                >
+                                  {msg.type === "error" && (
+                                    <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                                      <AlertCircle className="w-4 h-4" />
+                                      <span className="text-xs font-semibold uppercase">Could not process</span>
+                                    </div>
+                                  )}
+                                  {msg.isStreaming && !msg.content ? (
+                                    /* Insight generating skeleton */
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
+                                      <div className="flex gap-1">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">Generating insights...</span>
+                                    </div>
+                                  ) : (
+                                    formatContent(
+                                      msg.content ||
+                                      (msg.type === "executable" || msg.sql
+                                        ? `Data query completed. Retrieved ${msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0)} records.`
+                                        : "")
+                                    )
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
 
-                  {/* Edit button for user message */}
-                  {msg.role === "user" && editingMessageId !== msg.id && (
-                    <button
-                      onClick={() => handleEditStart(msg)}
-                      className="absolute top-3 right-3 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-blue-700 rounded-md transition-all text-blue-200"
-                      title="Edit Query"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* SQL display */}
-              <AnimatePresence>
-                {msg.sql && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className="mt-4 w-full border border-border/60 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm bg-slate-100/90 dark:bg-[#0E121E]"
-                  >
-                    {/* Code block header */}
-                    <div 
-                      className="flex items-center justify-between px-4 py-2.5 bg-slate-200/80 dark:bg-black/40 border-b border-border/60 dark:border-white/10 select-none cursor-pointer"
-                      onClick={() => toggleSqlCollapse(msg.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-sky-400 border border-blue-500/20">
-                          SQL
-                        </span>
-                        <span className="text-xs text-foreground font-semibold font-sans">
-                          Query Execution
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        {!isSqlCollapsed(msg.id) && (
+                        {/* Edit button for user message */}
+                        {msg.role === "user" && editingMessageId !== msg.id && (
                           <button
-                            onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 text-xs text-foreground dark:text-slate-300 transition-all font-sans font-medium"
+                            onClick={() => handleEditStart(msg)}
+                            className="absolute right-2 top-2 rounded-lg p-1.5 text-white/80 opacity-100 transition-all hover:bg-white/15 hover:text-white sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
+                            title="Edit question"
+                            aria-label="Edit question"
                           >
-                            {copiedId === `sql-${msg.id}` ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                <span className="text-emerald-500 font-medium">Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span>Copy</span>
-                              </>
-                            )}
+                            <Edit2 className="w-4 h-4" />
                           </button>
                         )}
-                        <button
-                          onClick={() => toggleSqlCollapse(msg.id)}
-                          className="flex items-center gap-1 px-2 py-1 rounded hover:bg-black/5 dark:hover:bg-white/5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 transition-colors"
-                        >
-                          {isSqlCollapsed(msg.id) ? (
-                            <>
-                              <span>Expand SQL</span>
-                              <ChevronDown className="w-3 h-3" />
-                            </>
-                          ) : (
-                            <>
-                              <span>Collapse SQL</span>
-                              <ChevronUp className="w-3 h-3" />
-                            </>
-                          )}
-                        </button>
                       </div>
-                    </div>
-                    {/* Highlighted SQL pre code */}
-                    <AnimatePresence initial={false}>
-                      {!isSqlCollapsed(msg.id) && (
-                        <motion.pre 
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2, ease: "easeInOut" }}
-                          className="p-4 text-foreground dark:text-slate-300 text-xs sm:text-[13px] overflow-x-auto font-mono leading-relaxed select-all custom-scrollbar outline-none font-semibold"
-                          dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
-                        />
+                    )}
+
+                    {/* SQL display */}
+                    <AnimatePresence>
+                      {msg.sql && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="mt-4 w-full overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm dark:bg-slate-950"
+                        >
+                          {/* Code block header */}
+                          <div className="flex select-none items-center justify-between border-b border-border/70 bg-muted/60 px-4 py-2.5 text-foreground dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-sky-400 border border-blue-500/20">
+                                SQL
+                              </span>
+                              <span className="font-sans text-xs font-semibold text-foreground dark:text-slate-100">
+                                Query Execution
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!isSqlCollapsed(msg.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
+                                  className="flex items-center gap-1.5 rounded-lg bg-primary/8 px-2 py-1 text-xs font-medium text-primary transition-all hover:bg-primary/12 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                                  aria-label="Copy SQL query"
+                                >
+                                  {copiedId === `sql-${msg.id}` ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                      <span className="text-emerald-500 font-medium">Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3.5 w-3.5" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => toggleSqlCollapse(msg.id)}
+                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8 dark:text-sky-300 dark:hover:bg-white/5"
+                                aria-expanded={!isSqlCollapsed(msg.id)}
+                                aria-controls={`sql-${msg.id}`}
+                              >
+                                {isSqlCollapsed(msg.id) ? (
+                                  <>
+                                    <span>Expand SQL</span>
+                                    <ChevronDown className="w-3 h-3" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Collapse SQL</span>
+                                    <ChevronUp className="w-3 h-3" />
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          {/* Highlighted SQL pre code */}
+                          <AnimatePresence initial={false}>
+                            {!isSqlCollapsed(msg.id) && (
+                              <motion.pre
+                                id={`sql-${msg.id}`}
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                className="custom-scrollbar select-all overflow-x-auto bg-card p-4 font-mono text-xs font-semibold leading-relaxed text-slate-800 outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-[13px]"
+                                dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
+                              />
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
                       )}
                     </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
-              {/* Execution stats */}
-              {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-                  {msg.rowsReturned != null && (
-                    <span className="flex items-center gap-1">
-                      <Rows3 className="w-3.5 h-3.5 text-slate-400" />
-                      {msg.rowsReturned.toLocaleString()} rows
-                    </span>
-                  )}
-                  {msg.executionTime != null && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {msg.executionTime}ms
-                    </span>
-                  )}
-                  {msg.timestamp && (
-                    <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      {formatMessageTimestamp(msg.timestamp)}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                msg.timestamp && (
-                  <div className="mt-1 text-[10px] text-muted-foreground/75 px-1 font-sans">
-                    {formatMessageTimestamp(msg.timestamp)}
-                  </div>
-                )
-              )}
-
-              {/* Parameter Card for params_needed */}
-              {msg.type === "params_needed" && (
-                <div className="mt-4">
-                  <ParameterCard
-                    templateId={msg.templateId}
-                    templateDescription={msg.templateDescription}
-                    extractedParams={msg.extractedParams}
-                    missingParams={msg.missingParams}
-                    onSubmit={(params) => handleParamSubmit(msg.templateId, params)}
-                    isLoading={isProcessing}
-                  />
-                </div>
-              )}
-
-              {/* Report Button */}
-              {((msg.showReportBtn && (msg.type === "executable" || !!msg.sql)) || (msg.type === "executable" && !!msg.sql && (msg.rowsReturned > 0 || (msg.rows && msg.rows.length > 0)))) && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="mt-4"
-                >
-                  <button
-                    onClick={() => {
-                      const reportData = {
-                        rows: msg.rows,
-                        columns: msg.columns,
-                        sql: msg.sql,
-                        templateId: msg.templateId,
-                        extractedParams: msg.extractedParams,
-                        summary: msg.summary || msg.content || '',
-                        col_meta: msg.colMeta || null,   // ← axis hints from backend
-                      };
-                      const reportQuery = msg.templateDescription || initialQuery;
-                      if (isProcessing) {
-                        // WS is active — open as popup to avoid killing the connection
-                        setPreviewReport({ query: reportQuery, data: reportData });
-                        setShowReportPreview(true);
-                      } else {
-                        onOpenReport(reportQuery, reportData);
-                      }
-                    }}
-                    className="flex items-center justify-center gap-3 w-full px-5 py-3.5 bg-muted/40 hover:bg-muted/70 dark:bg-white/5 dark:hover:bg-white/10 text-foreground border border-border/80 dark:border-white/10 rounded-xl transition-all shadow-sm group font-semibold text-sm select-none"
-                  >
-                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform text-foreground/70 group-hover:text-primary animate-pulse" />
-                    <span>View Interactive Report with Data</span>
-                    {isProcessing && (
-                      <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
+                    {/* Execution stats */}
+                    {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                        {msg.rowsReturned != null && (
+                          <span className="flex items-center gap-1">
+                            <Rows3 className="w-3.5 h-3.5 text-slate-400" />
+                            {msg.rowsReturned.toLocaleString()} rows
+                          </span>
+                        )}
+                        {msg.executionTime != null && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {msg.executionTime}ms
+                          </span>
+                        )}
+                        {msg.timestamp && (
+                          <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {formatMessageTimestamp(msg.timestamp)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      msg.timestamp && (
+                        <div className="mt-1 text-[10px] text-muted-foreground/75 px-1 font-sans">
+                          {formatMessageTimestamp(msg.timestamp)}
+                        </div>
+                      )
                     )}
-                  </button>
+
+                    {Array.isArray(msg.rows) && msg.rows.length > 0 && (
+                      <div className="mt-3 w-full">
+                        <button
+                          type="button"
+                          onClick={() => toggleVisuals(msg.id)}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          aria-expanded={Boolean(expandedVisuals[msg.id])}
+                        >
+                          <Table2 className="h-3.5 w-3.5" />
+                          <span>{expandedVisuals[msg.id] ? "Hide result preview" : "Preview results"}</span>
+                          {expandedVisuals[msg.id] ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {expandedVisuals[msg.id] && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <QuickVisuals msg={msg} initialTab="table" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* Parameter Card for params_needed */}
+                    {msg.type === "params_needed" && (
+                      <div className="mt-4">
+                        <ParameterCard
+                          templateId={msg.templateId}
+                          templateDescription={msg.templateDescription}
+                          extractedParams={msg.extractedParams}
+                          missingParams={msg.missingParams}
+                          onSubmit={(params) => handleParamSubmit(msg.templateId, params)}
+                          isLoading={isProcessing}
+                        />
+                      </div>
+                    )}
+
+                    {/* Report Button */}
+                    {((msg.showReportBtn && (msg.type === "executable" || !!msg.sql)) || (msg.type === "executable" && !!msg.sql && (msg.rowsReturned > 0 || (msg.rows && msg.rows.length > 0)))) && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-4"
+                      >
+                        <button
+                          onClick={() => {
+                            const reportData = {
+                              rows: msg.rows,
+                              columns: msg.columns,
+                              sql: msg.sql,
+                              templateId: msg.templateId,
+                              extractedParams: msg.extractedParams,
+                              summary: msg.summary || msg.content || '',
+                              col_meta: msg.colMeta || null,   // ← axis hints from backend
+                            };
+                            const reportQuery = msg.templateDescription || initialQuery;
+                            if (isProcessing) {
+                              // WS is active — open as popup to avoid killing the connection
+                              setPreviewReport({ query: reportQuery, data: reportData });
+                              setShowReportPreview(true);
+                            } else {
+                              onOpenReport(reportQuery, reportData);
+                            }
+                          }}
+                          className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-primary/15 bg-primary/8 px-5 py-3 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/12"
+                        >
+                          <Sparkles className="w-5 h-5 text-foreground/70 transition-transform group-hover:rotate-12 group-hover:text-primary" />
+                          <span>Open interactive report</span>
+                          {isProcessing && (
+                            <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
+                          )}
+                        </button>
+                      </motion.div>
+                    )}
+
+                    {/* A consistent action row works on desktop, touch and keyboard. */}
+                    {msg.role === "ai" && msg.content && (
+                      <div className="mt-3 flex w-full flex-col gap-2 border-t border-border/30 pt-2.5 dark:border-white/5">
+                        <div className="flex min-h-8 flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(msg.content, msg.id)}
+                            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                            aria-label="Copy response"
+                            title="Copy response"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                            <span>{copiedId === msg.id ? "Copied" : "Copy"}</span>
+                          </button>
+
+                          {msg.type === "error" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleRetryResponse(msg.id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                Try again
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditPreviousQuestion(msg.id)}
+                                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                Edit question
+                              </button>
+                            </>
+                          )}
+
+                          {msg.historyId && !feedbacks[msg.id] && (
+                            <>
+                              <span className="mx-1 h-4 w-px bg-border/70" aria-hidden="true" />
+                              <span className="sr-only">Was this response helpful?</span>
+                              <button
+                                type="button"
+                                onClick={() => handleFeedbackSubmit(msg.id, msg.historyId, true)}
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                title="Helpful"
+                                aria-label="Mark response as helpful"
+                              >
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFeedbackNegativeClick(msg.id)}
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                title="Not helpful"
+                                aria-label="Mark response as not helpful"
+                              >
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          {feedbacks[msg.id]?.submitted && (
+                            <motion.span
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="ml-1 flex items-center gap-1.5 font-medium text-emerald-500"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Feedback received
+                            </motion.span>
+                          )}
+                        </div>
+
+                        {msg.historyId && feedbacks[msg.id] && !feedbacks[msg.id].submitted && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="flex flex-col gap-3 p-3 bg-black/[0.02] dark:bg-black/20 border border-border/40 dark:border-white/5 rounded-xl w-full max-w-md mt-1"
+                          >
+                            <div className="text-xs font-semibold text-foreground">Why wasn't it helpful?</div>
+
+                            {/* Category selection */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {["Wrong Output", "Didn't understand", "Slow", "Other"].map((cat) => {
+                                const isSelected = feedbacks[msg.id].category === cat;
+                                return (
+                                  <button
+                                    key={cat}
+                                    onClick={() => handleFeedbackCategoryChange(msg.id, cat)}
+                                    className={`px-2.5 py-1 rounded-full text-xs transition-all border ${isSelected
+                                        ? "bg-blue-600 border-blue-600 text-white"
+                                        : "bg-white/5 hover:bg-white/10 dark:bg-black/20 dark:hover:bg-black/35 text-muted-foreground hover:text-foreground border-border/50 dark:border-white/5"
+                                      }`}
+                                  >
+                                    {cat}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Text feedback comment */}
+                            <textarea
+                              placeholder="Describe the issue or how we can improve..."
+                              value={feedbacks[msg.id].comment || ""}
+                              onChange={(e) => handleFeedbackCommentChange(msg.id, e.target.value)}
+                              className="w-full bg-white dark:bg-black/25 border border-border/60 dark:border-white/5 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground resize-none"
+                              rows={2}
+                            />
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-end gap-2 text-[11px]">
+                              <button
+                                onClick={() => handleFeedbackCancel(msg.id)}
+                                className="px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleFeedbackNegativeSubmit(msg.id, msg.historyId)}
+                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
+                              >
+                                Submit Feedback
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+
+                      </div>
+                    )}
+                  </div>
+
+                </motion.div>
+              )))}
+
+            {/* One stable status card avoids a jump between separate loaders. */}
+            {isProcessing && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex w-full mb-6 justify-start"
+                role="status"
+                aria-live="polite"
+              >
+                <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
+                <PipelineStatus
+                  currentStep={pipelineStep || "classify"}
+                  completedSteps={completedSteps}
+                  statusText={currentStatusText || "Understanding your question"}
+                />
+              </motion.div>
+            )}
+
+
+
+            {/* Follow-up suggestions */}
+            <AnimatePresence>
+              {showSuggestions && !isProcessing && currentSuggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="custom-scrollbar mb-7 flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-2 pl-12 sm:flex-wrap sm:overflow-visible sm:pb-0"
+                >
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+                    <Lightbulb className="w-3.5 h-3.5" />
+                    <span>Suggestions:</span>
+                  </div>
+                  {currentSuggestions.map((sug) => (
+                    <button
+                      key={typeof sug === "string" ? sug : sug.text || String(sug)}
+                      disabled={isViewer}
+                      onClick={async () => {
+                        if (isViewer) return;
+                        setShowSuggestions(false);
+                        const sugText = typeof sug === "string" ? sug : sug.text || sug;
+                        if (sugText === "Contact your admin to request module access") {
+                          const lastMsg = [...messages].reverse().find(m => m.templateModule);
+                          if (lastMsg && lastMsg.templateModule) {
+                            try {
+                              await organizationApi.requestPermission(lastMsg.templateModule);
+                              setMessages(prev => [
+                                ...prev,
+                                {
+                                  id: Date.now().toString(),
+                                  role: "ai",
+                                  type: "conversational",
+                                  content: `Request submitted! A permission request for the **${lastMsg.templateModule.toUpperCase()}** module has been sent to your administrators.`,
+                                }
+                              ]);
+                              addNotification("success", "Permission request sent to administrators.");
+                            } catch (err) {
+                              addNotification("error", err.message || "Failed to submit request.");
+                            }
+                          } else {
+                            addNotification("error", "No module information found for request.");
+                          }
+                        } else {
+                          processQuery(sugText);
+                        }
+                      }}
+                      className={`app-card max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
+                    >
+                      {typeof sug === "string" ? sug : sug.text || sug}
+                    </button>
+                  ))}
                 </motion.div>
               )}
+            </AnimatePresence>
 
-              {/* Feedback section */}
-              {msg.role === "ai" && msg.historyId && (
-                <div className="mt-4 pt-3 border-t border-border/30 dark:border-white/5 flex flex-col gap-2 w-full">
-                  {!feedbacks[msg.id] && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>Was this helpful?</span>
-                      <button
-                        onClick={() => handleFeedbackSubmit(msg.id, msg.historyId, true)}
-                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors text-muted-foreground hover:text-foreground"
-                        title="Helpful"
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleFeedbackNegativeClick(msg.id)}
-                        className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors text-muted-foreground hover:text-foreground"
-                        title="Not Helpful"
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+            <div ref={bottomRef} className="h-4 w-full shrink-0 block" />
+          </div>
+        </div>
 
-                  {feedbacks[msg.id] && !feedbacks[msg.id].submitted && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex flex-col gap-3 p-3 bg-black/[0.02] dark:bg-black/20 border border-border/40 dark:border-white/5 rounded-xl w-full max-w-md mt-1"
-                    >
-                      <div className="text-xs font-semibold text-foreground">Why wasn't it helpful?</div>
-                      
-                      {/* Category selection */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {["Wrong Output", "Didn't understand", "Slow", "Other"].map((cat) => {
-                          const isSelected = feedbacks[msg.id].category === cat;
-                          return (
-                            <button
-                              key={cat}
-                              onClick={() => handleFeedbackCategoryChange(msg.id, cat)}
-                              className={`px-2.5 py-1 rounded-full text-xs transition-all border ${
-                                isSelected
-                                  ? "bg-blue-600 border-blue-600 text-white"
-                                  : "bg-white/5 hover:bg-white/10 dark:bg-black/20 dark:hover:bg-black/35 text-muted-foreground hover:text-foreground border-border/50 dark:border-white/5"
-                              }`}
-                            >
-                              {cat}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Text feedback comment */}
-                      <textarea
-                        placeholder="Describe the issue or how we can improve..."
-                        value={feedbacks[msg.id].comment || ""}
-                        onChange={(e) => handleFeedbackCommentChange(msg.id, e.target.value)}
-                        className="w-full bg-white dark:bg-black/25 border border-border/60 dark:border-white/5 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground resize-none"
-                        rows={2}
-                      />
-
-                      {/* Action Buttons */}
-                      <div className="flex justify-end gap-2 text-[11px]">
-                        <button
-                          onClick={() => handleFeedbackCancel(msg.id)}
-                          className="px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleFeedbackNegativeSubmit(msg.id, msg.historyId)}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
-                        >
-                          Submit Feedback
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {feedbacks[msg.id] && feedbacks[msg.id].submitted && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex items-center gap-1.5 text-xs text-emerald-500 font-medium mt-1"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Thank you for your feedback!</span>
-                    </motion.div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {msg.role === "user" && (
-              <div className="w-9 h-9 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center ml-3 shrink-0">
-                <User className="w-5 h-5 text-muted-foreground" />
-              </div>
-            )}
-          </motion.div>
-        )))}
-        </SmartSkeleton>
-
-        {/* Pipeline Status during processing */}
-        {isProcessing && pipelineStep && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex w-full mb-6 justify-start"
-          >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
-              <Bot className="w-4 h-4 text-blue-700" />
-            </div>
-            <PipelineStatus currentStep={pipelineStep} completedSteps={completedSteps} statusText={currentStatusText} />
-          </motion.div>
-        )}
-
-        {/* Typing indicator (no pipeline yet) */}
-        {isProcessing && !pipelineStep && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex w-full mb-6 justify-start"
-          >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-b from-white via-[#93c5fd] to-[#2563eb] flex items-center justify-center mr-3 shrink-0 shadow shadow-blue-500/10">
-              <Bot className="w-4 h-4 text-blue-700" />
-            </div>
-            <SmartSkeleton loading={true}>
-              <div className="flex flex-col gap-2 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 p-5 rounded-2xl rounded-tl-sm w-72 animate-pulse">
-                <div className="h-4 bg-muted rounded w-2/3" />
-                <div className="h-3 bg-muted rounded w-5/6" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </div>
-            </SmartSkeleton>
-          </motion.div>
-        )}
-
-
-
-        {/* Follow-up suggestions */}
         <AnimatePresence>
-          {showSuggestions && !isProcessing && currentSuggestions.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="flex flex-wrap gap-2 mb-6 pl-12"
+          {showScrollToLatest && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              onClick={() => scrollToLatest("smooth")}
+              className="app-card absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-foreground shadow-lg"
+              aria-label="Jump to the latest message"
             >
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
-                <Lightbulb className="w-3.5 h-3.5" />
-                <span>Suggestions:</span>
-              </div>
-              {currentSuggestions.map((sug, i) => (
-                <button
-                  key={i}
-                  disabled={isViewer}
-                  onClick={async () => {
-                    if (isViewer) return;
-                    setShowSuggestions(false);
-                    const sugText = typeof sug === "string" ? sug : sug.text || sug;
-                    if (sugText === "Contact your admin to request module access") {
-                      const lastMsg = [...messages].reverse().find(m => m.templateModule);
-                      if (lastMsg && lastMsg.templateModule) {
-                        try {
-                          await organizationApi.requestPermission(lastMsg.templateModule);
-                          setMessages(prev => [
-                            ...prev,
-                            {
-                              id: Date.now().toString(),
-                              role: "ai",
-                              type: "conversational",
-                              content: `Request submitted! A permission request for the **${lastMsg.templateModule.toUpperCase()}** module has been sent to your administrators.`,
-                            }
-                          ]);
-                          addNotification("success", "Permission request sent to administrators.");
-                        } catch (err) {
-                          addNotification("error", err.message || "Failed to submit request.");
-                        }
-                      } else {
-                        addNotification("error", "No module information found for request.");
-                      }
-                    } else {
-                      processQuery(sugText);
-                    }
-                  }}
-                  className={`px-3 py-1.5 text-xs font-medium bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 hover:border-primary/50 rounded-lg transition-colors ${isViewer ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {typeof sug === "string" ? sug : sug.text || sug}
-                </button>
-              ))}
-            </motion.div>
+              <ArrowDown className="h-3.5 w-3.5 text-primary" />
+              Latest message
+            </motion.button>
           )}
         </AnimatePresence>
 
-        <div ref={bottomRef} className="h-4 w-full shrink-0 block" />
+        {/* Fixed Bottom Input */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 flex w-full justify-center bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-4 pt-10 sm:px-6">
+          <div className="pointer-events-auto w-full max-w-5xl">
+            <form
+              onSubmit={handleSubmit}
+              className="prompt-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
+              data-processing={isProcessing ? "true" : "false"}
+            >
+              <textarea
+                ref={composerRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask a follow-up question..."}
+                disabled={isViewer}
+                className="chat-composer-input min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
+                onKeyDown={(e) => {
+                  if (isViewer) return;
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+              />
+              <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <ModelProviderMenu />
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {isSpeechSupported ? (
+                    <button
+                      type="button"
+                      disabled={isViewer}
+                      onClick={toggleListening}
+                      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-all ${isListening
+                          ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        } disabled:opacity-30`}
+                      title={isListening ? "Stop listening" : "Start voice typing"}
+                      aria-label={isListening ? "Stop listening" : "Start voice typing"}
+                    >
+                      {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-xl text-muted-foreground/30"
+                      title="Speech recognition is not supported in this browser"
+                      aria-label="Voice input unavailable"
+                    >
+                      <MicOff className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    type={isProcessing ? "button" : "submit"}
+                    onClick={isProcessing ? handleCancel : undefined}
+                    disabled={isViewer || (!inputValue.trim() && !isProcessing)}
+                    className={`group flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-md transition-all ${isProcessing
+                        ? "bg-slate-700 shadow-slate-700/20 hover:bg-slate-800"
+                        : "brand-gradient shadow-primary/25 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-30 disabled:shadow-none"
+                      }`}
+                    aria-label={isProcessing ? "Stop response" : "Send question"}
+                  >
+                    {isProcessing ? (
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                    ) : (
+                      <ArrowUp className="h-4 w-4 stroke-[2.5px] transition-transform group-active:-translate-y-0.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
+              Review important results before sharing them.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Fixed Bottom Input */}
-      <div className="absolute bottom-0 w-full left-0 right-0 px-6 pb-6 bg-gradient-to-t from-[#fcfcf9] via-[#fcfcf9]/95 dark:from-[#141414] dark:via-[#141414]/95 to-transparent z-10 pt-10 flex justify-center pointer-events-none">
-        <form
-          onSubmit={handleSubmit}
-          className="relative w-full max-w-6xl pointer-events-auto bg-card dark:bg-[#1C1C1C] rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.4)] border border-border/50 dark:border-white/5 flex flex-col p-2 min-h-[90px] focus-within:border-primary/30 focus-within:shadow-[0_8px_30px_rgba(37,99,235,0.15)] transition-all"
-        >
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder={isViewer ? "Viewer role: Chat input is disabled" : "Ask a follow-up question..."}
-            disabled={isViewer}
-            className="w-full bg-transparent border-none outline-none text-foreground text-[15px] p-3 resize-none placeholder:text-muted-foreground/60 min-h-[44px] max-h-[200px] overflow-y-auto"
-            onKeyDown={(e) => {
-              if (isViewer) return;
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-          />
-          <div className="flex items-center justify-between mt-auto px-2 py-1">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground/80 hover:text-foreground transition-colors px-2 py-1 rounded bg-black/5 dark:bg-white/5 border border-border/40"
-            >
-              <Sparkles className="w-3 h-3 text-zinc-900 dark:text-zinc-100" />
-              Repnex AI Pro
-            </button>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={isViewer}
-                className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-30"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-              {isSpeechSupported ? (
-                <button
-                  type="button"
-                  disabled={isViewer}
-                  onClick={toggleListening}
-                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-all relative ${
-                    isListening
-                      ? "bg-red-500 hover:bg-red-600 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)] animate-pulse"
-                      : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
-                  } disabled:opacity-30`}
-                  title={isListening ? "Stop listening" : "Start voice typing"}
-                >
-                  {isListening ? (
-                    <>
-                      <span className="absolute inset-0 rounded-full bg-red-500/30 animate-ping" />
-                      <Mic className="w-4 h-4 z-10" />
-                    </>
-                  ) : (
-                    <Mic className="w-4 h-4" />
-                  )}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={true}
-                  className="w-8 h-8 flex items-center justify-center text-muted-foreground/30 rounded-full cursor-not-allowed"
-                  title="Speech recognition not supported in this browser"
-                >
-                  <MicOff className="w-4 h-4" />
-                </button>
-              )}
-              <button
-                type={isProcessing ? "button" : "submit"}
-                onClick={isProcessing ? handleCancel : undefined}
-                disabled={isViewer || (!inputValue.trim() && !isProcessing)}
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-md group ${
-                  isProcessing 
-                    ? "bg-zinc-800 dark:bg-zinc-200 text-zinc-100 dark:text-zinc-900 shadow-sm" 
-                    : "bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-zinc-100 dark:text-zinc-900 shadow-md disabled:opacity-30 disabled:bg-muted-foreground disabled:shadow-none"
-                }`}
-              >
-                {isProcessing ? (
-                  <Pause className="w-4 h-4 text-current fill-current" />
-                ) : (
-                  <ArrowUp className="w-4 h-4 stroke-[3px] group-active:translate-y-[-2px] transition-transform" />
-                )}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-
-      {/* ── Report Preview Modal (shown when WS is active to avoid breaking connection) ── */}
-      <AnimatePresence>
-        {showReportPreview && previewReport && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-stretch justify-end"
-            onClick={() => setShowReportPreview(false)}
+      {/* Accessible focus-trapped report preview. ReportBuilder provides the visible close button. */}
+      <Sheet open={showReportPreview} onOpenChange={setShowReportPreview}>
+        {previewReport && (
+          <SheetContent
+            side="right"
+            className="flex h-full w-full max-w-5xl flex-col border-l border-border/70 p-0 sm:max-w-5xl [&>button]:hidden"
           >
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="relative w-full max-w-5xl h-full bg-background shadow-2xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Report content */}
-              <div className="flex-1 overflow-hidden flex flex-col">
-                <ReportBuilder
-                  query={previewReport.query}
-                  reportData={previewReport.data}
-                  onClose={() => setShowReportPreview(false)}
-                  isPreview={true}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
+            <SheetTitle className="sr-only">Interactive report preview</SheetTitle>
+            <SheetDescription className="sr-only">
+              Preview the report without leaving the current chat.
+            </SheetDescription>
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <ReportBuilder
+                query={previewReport.query}
+                reportData={previewReport.data}
+                onClose={() => setShowReportPreview(false)}
+                isPreview={true}
+              />
+            </div>
+          </SheetContent>
         )}
-      </AnimatePresence>
+      </Sheet>
     </>
   );
 }

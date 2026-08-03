@@ -5,6 +5,13 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js-dist-min';
 const Plot = createPlotlyComponent(Plotly);
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "./ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { 
   Table as TableIcon, 
   BarChart2, 
@@ -164,11 +171,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const { togglePinReport, saveReport, addNotification, pinnedReports, user } = useApp();
   const isViewer = user?.role === 'viewer';
   
-  const [activeTab, setActiveTab] = useState("chart");
+  const [activeTab, setActiveTab] = useState("table");
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 768
   );
-  const [chartType, setChartType] = useState(reportData?.chartType || "bar");
+  const [chartType, setChartType] = useState(reportData?.chartType || "table");
   const [selectedColors, setSelectedColors] = useState(() => {
     const reportColors = reportData?.chartConfig?.colors;
     if (Array.isArray(reportColors) && reportColors.length > 0) {
@@ -269,6 +276,30 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       data.some(row => isNumericValue(row[k]))
     );
   }, [data, columns]);
+
+  const dimensionKeys = useMemo(
+    () => columns.filter((key) => key !== '__rowId' && !availableKeys.includes(key) && !isIdColumn(key)),
+    [columns, availableKeys]
+  );
+
+  const canUseBasicChart = availableKeys.length > 0 && dimensionKeys.length > 0;
+
+  const compatibleChartTypes = useMemo(
+    () => chartTypes.filter((type) => {
+      if (type.id === 'table') return false;
+      if (type.id === 'scatter') return availableKeys.length >= 2;
+      if (type.id === '3d') return canUseBasicChart && availableKeys.length >= 2;
+      return canUseBasicChart;
+    }),
+    [availableKeys.length, canUseBasicChart]
+  );
+
+  useEffect(() => {
+    if (chartType !== 'table' && !compatibleChartTypes.some((type) => type.id === chartType)) {
+      setChartType('table');
+      setActiveTab('table');
+    }
+  }, [chartType, compatibleChartTypes]);
 
   // Check if Z-Axis column is numeric
   const zIsNumeric = useMemo(() => {
@@ -554,7 +585,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     if (!reportData) return;
 
     // 1. Update charting config
-    setChartType(reportData.chartType || reportData?.col_meta?.chart_type || "bar");
+    setChartType(reportData.chartType || reportData?.col_meta?.chart_type || "table");
     const reportColors = reportData.chartConfig?.colors;
     if (Array.isArray(reportColors) && reportColors.length > 0) {
       const matchedPalette = chartColors.find(palette => (
@@ -766,7 +797,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       const serializer = new XMLSerializer();
       let svgString = serializer.serializeToString(clonedSvg);
       
-      if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+      if (!svgString.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
         svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
       }
 
@@ -1232,18 +1263,18 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
       <motion.div 
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`flex-1 flex flex-col h-full bg-background overflow-hidden relative z-10 ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}
+      className={`workspace-canvas relative z-10 flex h-full flex-1 flex-col overflow-hidden ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}
     >
       {/* Dynamic Header */}
-      <div className={`min-h-16 border-b border-border/50 flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 py-2 sm:py-3 bg-card/30 backdrop-blur-md sticky top-0 z-10 shrink-0 ${isSidebarOpen === false ? 'pl-14 md:pl-20' : ''}`}>
+      <div className={`sticky top-0 z-10 flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-background/84 px-3 py-2 backdrop-blur-xl sm:px-4 sm:py-3 md:px-6 ${isSidebarOpen === false ? 'pl-14 md:pl-20' : ''}`}>
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 pr-0 sm:pr-4">
-          <button onClick={onClose} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-muted-foreground shrink-0">
+          <button onClick={onClose} className="app-card flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground" aria-label="Close report">
             <X className="w-5 h-5" />
           </button>
           <div className="overflow-hidden min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <h2 className="font-semibold text-foreground flex items-center gap-2 truncate text-sm sm:text-base">
-                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                <span className="status-dot h-2 w-2 shrink-0 rounded-full bg-primary"></span>
                 <span className="truncate">{query}</span>
               </h2>
               {isPreview && (
@@ -1252,7 +1283,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-muted-foreground">Generated from live ERP data • Just now</p>
+            <p className="text-[10px] text-muted-foreground">Generated from the selected data connection</p>
           </div>
         </div>
 
@@ -1262,7 +1293,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           
           <button 
             onClick={() => setShowSQLModal(true)}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-lg text-sm text-foreground transition-all"
+            className="app-card hidden items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm text-foreground transition-all hover:-translate-y-0.5 sm:flex"
           >
             <Code className="w-4 h-4" />
             <span className="hidden md:inline">SQL</span>
@@ -1274,7 +1305,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-all ${
                 isPinned 
                   ? 'bg-primary/10 text-primary border border-primary/20' 
-                  : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 text-foreground'
+                  : 'app-card text-foreground hover:-translate-y-0.5'
               }`}
             >
               {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
@@ -1284,7 +1315,8 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           
           <button 
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="hidden sm:inline-flex p-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors"
+            className="app-card hidden h-9 w-9 items-center justify-center rounded-xl transition-all hover:-translate-y-0.5 sm:inline-flex"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Open fullscreen"}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -1292,10 +1324,10 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           {isNewReport && !isViewer && (
             <button 
               onClick={() => setShowSaveModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md shadow-emerald-600/25 shrink-0"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5 hover:bg-emerald-700"
             >
               <Check className="w-4 h-4" />
-              <span>Save Report</span>
+              <span>Save report</span>
             </button>
           )}
 
@@ -1311,7 +1343,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               setShowExportModal(true);
             }}
             disabled={isExporting}
-            className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/8 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/12 disabled:opacity-50"
           >
             {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             <span className="hidden md:inline">{isExporting ? "Exporting..." : "Export"}</span>
@@ -1320,14 +1352,14 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 flex flex-col gap-4 sm:gap-6 custom-scrollbar bg-background">
+      <div className="custom-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto p-3 sm:gap-6 sm:p-4 md:p-6">
 
         {/* Chart Customization Bar */}
         <div className="pb-1">
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-between">
             {/* View Toggles & Axis Selectors */}
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-1 rounded-xl border border-border/50 dark:border-white/10">
+              <div className="flex items-center rounded-xl border border-border/65 bg-muted/60 p-1 shadow-sm">
                 <button 
                   onClick={() => setActiveTab("table")} 
                   className={`p-1.5 rounded-lg transition-all ${displayedTab === "table" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
@@ -1337,8 +1369,9 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                 </button>
                 <button 
                   onClick={() => setActiveTab("chart")} 
-                  className={`p-1.5 rounded-lg transition-all ${displayedTab === "chart" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                  title="Chart View"
+                  disabled={!canUseBasicChart}
+                  className={`p-1.5 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-35 ${displayedTab === "chart" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  title={canUseBasicChart ? "Chart View" : "Add a text or date field and a numeric field to create a chart"}
                 >
                   <BarChart2 className="w-4 h-4" />
                 </button>
@@ -1351,11 +1384,17 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                 </button>
               </div>
 
+              {!canUseBasicChart && (
+                <span className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                  Table view - add a category or date and a number to create a chart.
+                </span>
+              )}
+
               {displayedTab !== "table" && (
                 <>
-                  {/* X Axis — Category / Dimension */}
-                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1.5 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5 min-w-0">
-                    <span className="font-bold text-muted-foreground text-[10px] uppercase shrink-0">X</span>
+                  {/* X Axis Selector */}
+                  <div className="app-card flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs">
+                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">X:</span>
                     <select
                       value={xAxisKey}
                       onChange={(e) => setXAxisKey(e.target.value)}
@@ -1367,9 +1406,9 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </select>
                   </div>
 
-                  {/* Y Axis — Primary Metric */}
-                  <div className="flex items-center bg-card dark:bg-[#1C1C1C] px-2.5 py-1.5 rounded-xl border border-border/50 dark:border-white/10 text-xs gap-1.5 min-w-0">
-                    <span className="font-bold text-muted-foreground text-[10px] uppercase shrink-0">
+                  {/* Y Axis Selector */}
+                  <div className="app-card flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs">
+                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">
                       {chartType === 'scatter' ? 'X₂' : 'Y'}
                     </span>
                     <select
@@ -1383,10 +1422,29 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </select>
                   </div>
 
-                  {/* Active badges (only show when non-default values are set) */}
-                  {secondaryLineKey && chartType !== 'scatter' && (
-                    <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-500 text-[11px] font-semibold whitespace-nowrap">
-                      <span>⟂ Line:</span>
+                  {/* Z Axis Selector */}
+                  <div className={`app-card flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs ${
+                    zAxisKey ? 'border-primary/60 bg-primary/5 text-primary' : 'border-border/50 dark:border-white/10'
+                  }`}>
+                    <span className="text-[11px] font-semibold uppercase">Group by:</span>
+                    <select
+                      value={zAxisKey}
+                      onChange={(e) => setZAxisKey(e.target.value)}
+                      className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
+                    >
+                      <option value="" className="bg-card text-foreground">None</option>
+                      {columns.filter(c => c !== xAxisKey).map(col => (
+                        <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Yellow Line (Y2 Secondary Axis) Selector */}
+                  {availableKeys.length > 1 && secondaryLineKey && chartType !== 'scatter' && (
+                    <div className={`app-card flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs ${
+                      secondaryLineKey ? 'border-amber-500/60 bg-amber-500/10 text-amber-500 font-bold' : 'border-border/50 dark:border-white/10'
+                    }`}>
+                      <span className="text-[11px] font-semibold uppercase">⟂ Line:</span>
                       <select
                         value={secondaryLineKey}
                         onChange={(e) => setSecondaryLineKey(e.target.value)}
@@ -1418,7 +1476,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
 
                   {/* Stacked / Side-by-Side only when breakdown is active */}
                   {chartType === 'bar' && zAxisKey && (
-                    <div className="flex items-center bg-card dark:bg-[#1C1C1C] p-0.5 rounded-xl border border-border/50 dark:border-white/10 text-xs">
+                    <div className="app-card flex items-center rounded-xl p-0.5 text-xs">
                       <button
                         onClick={() => setBarMode('stacked')}
                         className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
@@ -1441,6 +1499,18 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                       </button>
                     </div>
                   )}
+
+                  {/* Glassmorphic Gradient Aesthetic Toggle */}
+                  <button
+                    onClick={() => setIsGlassMode(!isGlassMode)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                      isGlassMode 
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/30' 
+                        : 'bg-card border-border/50 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {isGlassMode ? 'Gradient style' : 'Solid style'}
+                  </button>
                 </>
               )}
             </div>
@@ -1454,7 +1524,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={() => setShowSettingsDrawer(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/10 rounded-xl text-xs font-semibold hover:border-primary/50 transition-colors shadow-sm cursor-pointer shrink-0"
+                  className="app-card flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-primary/30"
                 >
                   <Settings className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>Customize</span>
@@ -1474,12 +1544,12 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
             <motion.div 
                initial={{ opacity: 0, scale: 0.98 }}
                animate={{ opacity: 1, scale: 1 }}
-               className="bg-card dark:bg-card/30 backdrop-blur-sm border border-border/50 dark:border-white/5 rounded-2xl flex flex-col shadow-sm overflow-hidden min-w-0"
+               className="app-card flex min-w-0 flex-col overflow-hidden rounded-2xl"
             >
               <div className="p-3 sm:p-4 border-b border-border/50 dark:border-white/5 flex justify-between items-center bg-black/[0.02] dark:bg-white/[0.02] gap-2">
                 <h3 className="font-medium text-sm flex items-center gap-2 min-w-0">
                   <TableIcon className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">Data View</span>
+                  <span className="truncate">Data</span>
                   <span className="text-xs text-muted-foreground shrink-0">({data.length} rows)</span>
                 </h3>
                   <button 
@@ -1544,7 +1614,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
             <motion.div 
                initial={{ opacity: 0, scale: 0.98 }}
                animate={{ opacity: 1, scale: 1 }}
-               className="bg-card dark:bg-card/30 backdrop-blur-sm border border-border/50 dark:border-white/5 rounded-2xl flex flex-col shadow-sm min-w-0"
+               className="app-card flex min-w-0 flex-col rounded-2xl"
             >
               <div className="p-3 sm:p-4 border-b border-border/50 dark:border-white/5 flex justify-between items-center bg-black/[0.02] dark:bg-white/[0.02] gap-2">
                 <h3 className="font-medium text-sm flex items-center gap-2">
@@ -1614,53 +1684,40 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
       </div>
 
       {/* SQL Modal */}
-      <AnimatePresence>
-        {showSQLModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowSQLModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card dark:bg-[#1C1C1C] rounded-2xl w-full max-w-2xl overflow-hidden border border-border/50 dark:border-white/10"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-border/50 dark:border-white/5">
-                <h3 className="font-semibold flex items-center gap-2">
+      <Dialog open={showSQLModal} onOpenChange={setShowSQLModal}>
+        <DialogContent className="w-[calc(100%-2rem)] min-w-0 max-w-2xl gap-0 overflow-hidden rounded-2xl border-border/60 bg-card p-0 sm:w-full">
+          <DialogHeader className="border-b border-border/50 p-4 pr-12 text-left">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <DialogTitle className="flex items-center gap-2">
                   <Code className="w-5 h-5 text-primary" />
                   Generated SQL Query
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleCopySQL}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Copy className="w-4 h-4" />
-                    Copy
-                  </button>
-                  <button onClick={() => setShowSQLModal(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  Review or copy the query used for this report.
+                </DialogDescription>
               </div>
-              <div className="p-4">
-                <pre className="bg-black/5 dark:bg-black/40 p-4 rounded-xl overflow-x-auto text-sm font-mono text-foreground/80">
-                  {actualSQL}
-                </pre>
-                <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                  <FileText className="w-4 h-4" />
-                  <span>Template: {reportData?.templateId || 'N/A'} • {data.length} rows loaded</span>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <button
+                onClick={handleCopySQL}
+                className="flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                aria-label="Copy generated SQL"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </button>
+            </div>
+          </DialogHeader>
+          <div className="min-w-0 p-4">
+            <pre className="max-h-[55vh] w-full min-w-0 max-w-full overflow-auto rounded-xl bg-black/5 p-4 font-mono text-sm text-foreground/80 dark:bg-black/40">
+              {actualSQL}
+            </pre>
+            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <FileText className="w-4 h-4" />
+              <span>Template: {reportData?.templateId || 'N/A'} • {data.length} rows loaded</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Save Report Modal */}
       <AnimatePresence>
@@ -1676,13 +1733,13 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card dark:bg-[#1C1C1C] rounded-2xl w-full max-w-md overflow-hidden border border-border/50 dark:border-white/10 shadow-2xl"
+              className="app-card w-full max-w-md overflow-hidden rounded-2xl shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-5 border-b border-border/50 dark:border-white/5">
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <FileText className="w-5 h-5 text-emerald-500" />
-                  Save Report
+                  Save report
                 </h3>
                 <button 
                   onClick={() => setShowSaveModal(false)} 
@@ -1694,12 +1751,12 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
 
               <div className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Report Name</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Report name</label>
                   <input
                     type="text"
                     value={saveName}
                     onChange={e => setSaveName(e.target.value)}
-                    placeholder="e.g. Sales Q3 Report"
+                    placeholder="For example, Q3 sales"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-border/50 bg-black/[0.02] dark:bg-white/[0.03] text-sm outline-none focus:border-primary/50 transition-colors"
                     maxLength={255}
                     required
@@ -1735,7 +1792,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>{isSaving ? "Saving..." : "Save Report"}</span>
+                  <span>{isSaving ? "Saving..." : "Save report"}</span>
                 </button>
               </div>
             </motion.div>
@@ -1763,7 +1820,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                 Chart Type
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {chartTypes.filter(ct => ct.id !== 'table').map(ct => {
+                {compatibleChartTypes.map(ct => {
                   const isActive = chartType === ct.id;
                   return (
                     <button
@@ -1948,7 +2005,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card dark:bg-[#1C1C1C] rounded-2xl w-full max-w-md overflow-hidden border border-border/50 dark:border-white/10 shadow-2xl"
+              className="app-card w-full max-w-md overflow-hidden rounded-2xl shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-5 border-b border-border/50 dark:border-white/5">
@@ -2006,7 +2063,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                         className="w-4 h-4 rounded accent-primary text-primary"
                       />
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-foreground">AI Report Summary</span>
+                        <span className="text-sm font-semibold text-foreground">Report summary</span>
                         <span className="text-[10px] text-muted-foreground">
                           {reportData?.summary 
                             ? "Executive summary and parsed insights" 

@@ -23,6 +23,7 @@ export function QuickVisuals({ msg, initialTab }) {
   const { isDark } = useTheme();
   const hasRows = Array.isArray(msg.rows) && msg.rows.length > 0;
   const [activeTab, setActiveTab] = useState(initialTab ?? (hasRows ? 'chart' : 'table'));
+  const { xAxisKey, yAxisKey, chartData } = useChartKeys(msg.rows ?? []);
 
   if (!hasRows && !(msg.columns && msg.columns.length > 0)) return null;
 
@@ -39,7 +40,6 @@ export function QuickVisuals({ msg, initialTab }) {
   const tableRowBorder = isDark ? 'border-white/5 hover:bg-white/5' : 'border-slate-100 hover:bg-slate-50';
   const tableCellColor = isDark ? 'text-slate-300' : 'text-slate-700';
 
-  const { xAxisKey, yAxisKey, chartData } = useChartKeys(msg.rows ?? []);
   const cols = msg.columns || Object.keys((msg.rows ?? [])[0] || {});
   const displayCols = cols.filter((k) => k !== 'id' && k !== '__rowId');
 

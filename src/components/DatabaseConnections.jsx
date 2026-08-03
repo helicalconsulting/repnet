@@ -441,7 +441,9 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
       try {
         const res = await getAdapterStatus(connection.id);
         if (res && res.progress) setImportProgress(res.progress);
-      } catch {}
+      } catch {
+        // Polling is best effort; the next interval retries automatically.
+      }
     }, 1500);
 
     try {
@@ -487,15 +489,15 @@ function ConnectionCard({ connection, onSync, onSyncSchema, onGenerateAdapters, 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={`relative bg-card dark:bg-[#1C1C1C] border rounded-2xl p-5 transition-all group overflow-hidden ${
+      className={`app-card interactive-card group relative overflow-hidden rounded-2xl p-5 ${
         isActive
-          ? 'border-blue-500/60 shadow-[0_0_0_1px_rgba(59,130,246,0.3),0_0_24px_rgba(59,130,246,0.12)]'
-          : 'border-border/50 dark:border-white/5 hover:border-border dark:hover:border-white/10'
+          ? 'border-primary/45 shadow-[0_0_0_1px_rgba(79,70,229,0.18),0_16px_40px_rgba(79,70,229,0.10)]'
+          : 'hover:border-primary/20'
       }`}
     >
       {/* Active glow strip */}
       {isActive && (
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600 rounded-t-2xl" />
+        <div className="brand-gradient absolute left-0 right-0 top-0 h-[2px] rounded-t-2xl" />
       )}
 
       {/* Schema reading overlay */}
@@ -2248,10 +2250,10 @@ export default function DatabaseConnections() {
         actions: !isViewer ? (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+            className="brand-gradient flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
           >
             <Plus className="w-3.5 h-3.5" />
-            Add Connection
+            Add connection
           </button>
         ) : null,
       });
@@ -2259,43 +2261,42 @@ export default function DatabaseConnections() {
   }, [setHeaderConfig, connections.length, isViewer]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-background custom-scrollbar">
-      <div className="max-w-5xl mx-auto">
+    <div className="custom-scrollbar flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-6xl p-4 sm:p-6 md:p-8">
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl p-5 flex items-start gap-4">
+        <div className="mb-7 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="app-card interactive-card flex items-start gap-4 rounded-2xl p-5">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Shield className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Secure Connection</h3>
-              <p className="text-xs text-muted-foreground">All credentials are encrypted and never stored in plain text</p>
+              <h3 className="mb-1 font-semibold text-foreground">Secure connection</h3>
+              <p className="text-xs leading-5 text-muted-foreground">Credentials are encrypted and never stored as plain text.</p>
             </div>
           </div>
-          <div className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl p-5 flex items-start gap-4">
+          <div className="app-card interactive-card flex items-start gap-4 rounded-2xl p-5">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
               <Server className="w-5 h-5 text-emerald-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Read-Only Access</h3>
-              <p className="text-xs text-muted-foreground">We only read data - no modifications to your database</p>
+              <h3 className="mb-1 font-semibold text-foreground">Read-only access</h3>
+              <p className="text-xs leading-5 text-muted-foreground">Repnex reads your data without changing the source database.</p>
             </div>
           </div>
-          <div className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl p-5 flex items-start gap-4">
+          <div className="app-card interactive-card flex items-start gap-4 rounded-2xl p-5">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
               <Zap className="w-5 h-5 text-amber-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Real-time Sync</h3>
-              <p className="text-xs text-muted-foreground">Data is fetched in real-time for up-to-date reports</p>
+              <h3 className="mb-1 font-semibold text-foreground">Current data</h3>
+              <p className="text-xs leading-5 text-muted-foreground">Reports read the latest available data from the selected source.</p>
             </div>
           </div>
         </div>
 
         {/* Connections Grid */}
-        <SmartSkeleton loading={isLoadingConnections}>
-          {isLoadingConnections ? (
+        {isLoadingConnections ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="bg-card dark:bg-[#1C1C1C] border border-border/50 dark:border-white/5 rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
@@ -2361,7 +2362,6 @@ export default function DatabaseConnections() {
               </AnimatePresence>
             </div>
           )}
-        </SmartSkeleton>
       </div>
 
       <AnimatePresence>

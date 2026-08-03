@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const STORAGE_KEY = 'repnex-personalization';
 const CASUAL_GREETINGS = ['hi', 'hello', 'hey', 'yo', 'sup', 'heya', 'howdy', 'good morning', 'good afternoon', 'good evening', 'morning', 'afternoon', 'evening'];
@@ -49,9 +49,41 @@ function inferNameFromUser(user) {
 
 const PersonalizationContext = createContext(null);
 
-function loadFromStorage() {
+function resolveUserTimeZone(user) {
+  const profileTimeZone = user?.timezone || user?.time_zone;
+  const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeZone = profileTimeZone || browserTimeZone || 'UTC';
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    new Intl.DateTimeFormat('en-US', { timeZone }).format();
+    return timeZone;
+  } catch {
+    return browserTimeZone || 'UTC';
+  }
+}
+
+function getHourInTimeZone(date, timeZone) {
+  try {
+    const hourPart = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date).find((part) => part.type === 'hour');
+    const hour = Number(hourPart?.value);
+    return Number.isFinite(hour) ? hour : date.getHours();
+  } catch {
+    return date.getHours();
+  }
+}
+
+function getStorageKey(user) {
+  const identity = user?.id || user?.email;
+  return identity ? `${STORAGE_KEY}:${String(identity).toLowerCase()}` : `${STORAGE_KEY}:guest`;
+}
+
+function loadFromStorage(user) {
+  try {
+    const raw = localStorage.getItem(getStorageKey(user));
     if (raw) {
       return { ...defaults, ...JSON.parse(raw) };
     }
@@ -61,55 +93,64 @@ function loadFromStorage() {
   return { ...defaults };
 }
 
-function saveToStorage(data) {
+function saveToStorage(data, user) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(getStorageKey(user), JSON.stringify(data));
   } catch {
     /* storage unavailable */
   }
 }
 
 export function PersonalizationProvider({ children, user }) {
-  const [profile, setProfile] = useState(() => loadFromStorage());
+  const [profile, setProfile] = useState(() => loadFromStorage(user));
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const timeZone = useMemo(() => resolveUserTimeZone(user), [user]);
 
   useEffect(() => {
-    if (user) {
-      setProfile(prev => {
-        // Only auto-fill if the user hasn't manually set a name yet
-        if (!prev.displayName && !prev.preferredName) {
-          const inferred = inferNameFromUser(user);
-          if (inferred) {
-            const updated = {
-              ...prev,
-              displayName: user.name || user.full_name || inferred,
-              preferredName: inferred,
-            };
-            saveToStorage(updated);
-            return updated;
-          }
-        }
-        return prev;
-      });
+    const intervalId = window.setInterval(() => setCurrentTime(new Date()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const storedProfile = loadFromStorage(user);
+    if (!user) {
+      setProfile(storedProfile);
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email, user?.name, user?.full_name]);
+
+    if (!storedProfile.displayName && !storedProfile.preferredName) {
+      const inferred = inferNameFromUser(user);
+      if (inferred) {
+        const updated = {
+          ...storedProfile,
+          displayName: user.name || user.full_name || inferred,
+          preferredName: inferred,
+        };
+        saveToStorage(updated, user);
+        setProfile(updated);
+        return;
+      }
+    }
+
+    setProfile(storedProfile);
+  }, [user]);
 
   const updateProfile = useCallback((updates) => {
     setProfile(prev => {
       const next = { ...prev, ...updates };
-      saveToStorage(next);
+      saveToStorage(next, user);
       return next;
     });
-  }, []);
+  }, [user]);
 
-  const getGreeting = useCallback(() => {
-    const hour = new Date().getHours();
-    if (profile.greetingStyle === 'casual') return 'Hey';
-    if (profile.greetingStyle === 'formal') return 'Hello';
+  const getGreeting = useCallback((style = profile.greetingStyle) => {
+    const hour = getHourInTimeZone(currentTime, timeZone);
+    if (style === 'casual') return 'Hey';
+    if (style === 'formal') return 'Hello';
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
-  }, [profile.greetingStyle]);
+  }, [currentTime, profile.greetingStyle, timeZone]);
 
   const getDisplayName = useCallback(() => {
     return profile.preferredName || profile.displayName || 'there';
@@ -121,7 +162,7 @@ export function PersonalizationProvider({ children, user }) {
     const lower = input.toLowerCase().trim();
     
     // Clean punctuation for matching
-    const cleanLower = lower.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
+    const cleanLower = lower.replace(/[-.,/#!$%^&*;:{}=_`~()?]/g, "").trim();
     const words = cleanLower.split(/\s+/);
     
     // If the message contains report/query keywords, do not treat it as a casual greeting
@@ -150,6 +191,7 @@ export function PersonalizationProvider({ children, user }) {
     getGreeting,
     getDisplayName,
     getCasualResponse,
+    timeZone,
   };
 
   return (

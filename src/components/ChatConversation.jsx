@@ -354,8 +354,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
       try {
         const isValidUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(str);
-        let activeSessionId = (sessionId && isValidUuid(sessionId)) 
-          ? sessionId 
+        let activeSessionId = (sessionId && isValidUuid(sessionId))
+          ? sessionId
           : (currentSessionId && isValidUuid(currentSessionId) ? currentSessionId : null);
 
         if (!activeSessionId) {
@@ -400,16 +400,16 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               } catch {
                 // The socket may already be closed.
               }
-              
+
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === aiMsgId && m.isStreaming
                     ? {
-                        ...m,
-                        type: "error",
-                        content: "Query execution timed out. No response from server.",
-                        isStreaming: false,
-                      }
+                      ...m,
+                      type: "error",
+                      content: "Query execution timed out. No response from server.",
+                      isStreaming: false,
+                    }
                     : m
                 )
               );
@@ -525,38 +525,45 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               const backendSugs = getCombinedSuggestions(event);
               setMessages((prev) => {
                 const exists = prev.some((m) => m.id === aiMsgId);
-                const updatedFields = {
-                  isStreaming: false,
-                  showReportBtn: true,
-                  rowsReturned: event.rows_returned,
-                  executionTime: event.exec_time_ms,
-                  historyId: event.history_id,
-                  suggestions: backendSugs,
-                };
                 if (exists) {
                   return prev.map((m) => {
                     if (m.id === aiMsgId) {
-                      return { ...m, ...updatedFields, columns: event.columns || m.columns };
+                      const isExec = m.type === "executable" || !!m.sql;
+                      return {
+                        ...m,
+                        isStreaming: false,
+                        showReportBtn: isExec,
+                        content: m.content || event.summary || "",
+                        type: isExec ? "executable" : (m.type || "conversational"),
+                        rowsReturned: event.rows_returned,
+                        executionTime: event.exec_time_ms,
+                        historyId: event.history_id,
+                        suggestions: backendSugs,
+                        colMeta: event.col_meta || null,
+                        columns: event.columns || m.columns,
+                      };
                     }
                     return m;
                   });
                 } else {
+                  const isExec = false;
                   return [
                     ...prev,
                     {
                       id: aiMsgId,
                       role: "ai",
                       type: "conversational",
-                      content: "",
+                      content: event.summary || "",
                       sql: null,
                       rows: [],
                       columns: event.columns,
                       rowsReturned: event.rows_returned,
                       executionTime: event.exec_time_ms,
                       isStreaming: false,
-                      showReportBtn: true,
+                      showReportBtn: false,
                       historyId: event.history_id,
                       suggestions: backendSugs,
+                      colMeta: event.col_meta || null,
                       timestamp: new Date().toISOString(),
                     },
                   ];
@@ -565,7 +572,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               setCurrentSuggestions(backendSugs);
               ws.close();
               window.dispatchEvent(new Event("repnex-sessions-updated"));
-              
+
               // Defer final pipeline hiding until queue drains
               hasSuggestionsRef.current = backendSugs && backendSugs.length > 0;
               isWaitingForComplete.current = true;
@@ -627,7 +634,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             setIsProcessing(false);
             setPipelineStep(null);
             setCurrentStatusText("");
-            
+
             // Safety cleanup: stop streaming indicator & display report button if executable SQL exists
             setMessages((prev) =>
               prev.map((m) =>
@@ -716,6 +723,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 showReportBtn: true,
                 historyId: response.history_id,
                 suggestions: backendSugs,
+                colMeta: response.col_meta || null,   // ← axis hints from backend
                 timestamp: new Date().toISOString(),
               },
             ]);
@@ -1124,27 +1132,27 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
   const highlightSQL = (sql) => {
     if (!sql) return "";
-    
+
     // List of SQL keywords (uppercase)
     const keywords = new Set([
-      "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "LIMIT", "HAVING", 
-      "LEFT", "RIGHT", "INNER", "JOIN", "ON", "AS", "AND", "OR", "UNION", 
+      "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "LIMIT", "HAVING",
+      "LEFT", "RIGHT", "INNER", "JOIN", "ON", "AS", "AND", "OR", "UNION",
       "ALL", "INSERT", "UPDATE", "DELETE", "CREATE", "TABLE", "IN", "IS", "NULL"
     ]);
-    
+
     // List of SQL functions
     const functions = new Set([
-      "COALESCE", "CAST", "SUM", "AVG", "COUNT", "MAX", "MIN", "DECIMAL", 
+      "COALESCE", "CAST", "SUM", "AVG", "COUNT", "MAX", "MIN", "DECIMAL",
       "CONCAT", "NOW", "DATE", "IFNULL", "NULLIF"
     ]);
 
     // Regex to tokenize: captures strings, comments, numbers, words, and symbols
     const tokenRegex = /(".*?"|'.*?'|--.*|\b[a-zA-Z_][a-zA-Z0-9_]*\b|\b\d+(?:\.\d+)?\b|\S)/g;
     const parts = sql.split(tokenRegex);
-    
+
     return parts.map(token => {
       if (!token) return "";
-      
+
       // Escape HTML entities in the token
       const escapedToken = token
         .replace(/&/g, "&amp;")
@@ -1155,17 +1163,17 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       if (token.startsWith("'") || token.startsWith('"')) {
         return `<span class="text-rose-500 dark:text-rose-400">${escapedToken}</span>`;
       }
-      
+
       // 2. Comments
       if (token.startsWith("--")) {
         return `<span class="text-slate-500 dark:text-slate-500 italic">${escapedToken}</span>`;
       }
-      
+
       // 3. Numbers
       if (/^\d+(?:\.\d+)?$/.test(token)) {
         return `<span class="text-emerald-500 dark:text-emerald-400">${escapedToken}</span>`;
       }
-      
+
       // 4. Words (Keywords or Functions or Columns)
       const upperToken = token.toUpperCase();
       if (keywords.has(upperToken)) {
@@ -1174,7 +1182,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       if (functions.has(upperToken)) {
         return `<span class="text-amber-500 dark:text-amber-400 font-medium">${escapedToken}</span>`;
       }
-      
+
       // 5. Default/Symbols
       return escapedToken;
     }).join("");
@@ -1211,13 +1219,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Format message content ──────────────────────────────────────────
   const parseTable = (tableLines) => {
     if (tableLines.length < 2) return null;
-    
+
     const headerLine = tableLines[0];
     const separatorLine = tableLines[1];
-    
+
     // Check if second line is a valid separator line (contains hyphens, pipes, colons)
     if (!/^[|\s:-]+$/.test(separatorLine)) return null;
-    
+
     const parseRow = (line) => {
       // Split by '|', trim, and remove empty first/last elements
       const parts = line.split('|').map(p => p.trim());
@@ -1225,10 +1233,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       if (line.endsWith('|')) parts.pop();
       return parts;
     };
-    
+
     const headers = parseRow(headerLine);
     const rows = tableLines.slice(2).map(parseRow).filter(row => row.length > 0 && row.some(cell => cell !== ""));
-    
+
     return { headers, rows };
   };
 
@@ -1319,11 +1327,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     const lines = content.split("\n");
     const blocks = [];
     let currentTable = [];
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
-      
+
       // If the line starts with '|' and ends with '|' (or at least starts with '|' and contains '|'), it's a table line
       if (trimmed.startsWith("|") && trimmed.includes("|", 1)) {
         currentTable.push(line);
@@ -1335,11 +1343,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
         blocks.push({ type: "line", content: line, index: i });
       }
     }
-    
+
     if (currentTable.length > 0) {
       blocks.push({ type: "table", lines: currentTable });
     }
-    
+
     return blocks.map((block, idx) => {
       if (block.type === "table") {
         const parsed = parseTable(block.lines);
@@ -1351,8 +1359,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/40">
                     {headers.map((h, hIdx) => (
-                      <th 
-                        key={hIdx} 
+                      <th
+                        key={hIdx}
                         className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider text-[11px]"
                         dangerouslySetInnerHTML={{ __html: formatLine(h) }}
                       />
@@ -1361,13 +1369,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {rows.map((row, rIdx) => (
-                    <tr 
-                      key={rIdx} 
+                    <tr
+                      key={rIdx}
                       className="hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
                     >
                       {row.map((cell, cIdx) => (
-                        <td 
-                          key={cIdx} 
+                        <td
+                          key={cIdx}
                           className="px-4 py-3 text-foreground/90 font-medium text-[13px]"
                           dangerouslySetInnerHTML={{ __html: formatLine(cell) }}
                         />
@@ -1400,705 +1408,718 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <>
-    <div className="workspace-canvas relative flex h-full w-full flex-1 flex-col items-center overflow-hidden">
-      {/* Active data source */}
-      {activeConn && (
-        <div className="absolute left-1/2 top-3 z-20 max-w-[60vw] -translate-x-1/2">
-          <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl">
-            <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <Database className="h-3.5 w-3.5" />
-            <span className="truncate">{activeConn.name}</span>
-            {activeConn.tables > 0 ? <span className="hidden opacity-65 sm:inline">· {activeConn.tables} tables</span> : null}
-          </StatusPill>
-        </div>
-      )}
-
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleConversationScroll}
-        className="custom-scrollbar flex w-full flex-1 flex-col overflow-y-auto pb-44 pt-16"
-      >
-        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
-        {loadingHistory ? (
-            <div className="flex-1 flex flex-col gap-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className={`flex w-full ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
-                  {i % 2 === 0 && (
-                    <div className="w-9 h-9 rounded-full bg-muted shrink-0 mr-3" />
-                  )}
-                  <div className={`flex flex-col ${i % 2 === 0 ? "items-start" : "items-end"} max-w-[70%] w-full gap-2`}>
-                    <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
-                    <div className="h-12 bg-muted rounded-2xl w-full animate-pulse" />
-                  </div>
-                  {i % 2 !== 0 && (
-                    <div className="w-9 h-9 rounded-full bg-muted shrink-0 ml-3" />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            messages.map((msg) => (
-            <motion.div
-              layout
-              id={`message-${msg.id}`}
-              key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "ai" && (
-              <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
-            )}
-
-            <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} ${
-              msg.role === "ai" && (msg.type === "executable" || msg.sql || msg.type === "template_preview") 
-                ? "w-full max-w-full" 
-                : "max-w-[88%] sm:max-w-[82%]"
-            }`}>
-              {/* Only render message content container box if there is actual content, an error, or it's a user message */}
-              {(msg.content || msg.type === "error" || msg.role === "user") && (
-                <div
-                  className={`relative group ${
-                    msg.role === "user"
-                      ? "brand-gradient rounded-2xl rounded-tr-md px-4 py-3 pr-11 text-white shadow-md shadow-primary/15 sm:px-5 sm:pr-11"
-                      : msg.type === "error"
-                      ? "w-full rounded-2xl rounded-tl-md border border-red-200/70 bg-red-50/85 p-4 shadow-sm dark:border-red-900/50 dark:bg-red-950/25 sm:p-5"
-                      : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
-                      ? "app-card w-full rounded-2xl rounded-tl-md p-4 sm:p-5"
-                      : "app-card rounded-2xl rounded-tl-md p-4 sm:p-5"
-                  }`}
-                >
-                  {/* Keep the disclosure only for responses that are genuinely long. */}
-                  {msg.role === "ai" && isMessageCollapsible(msg) && (
-                    <div className="mb-3 flex select-none items-center justify-between gap-3 border-b border-border/50 pb-3">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                        Response
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleSummaryCollapse(msg)}
-                        aria-expanded={!isSummaryCollapsed(msg)}
-                        className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8"
-                      >
-                        {isSummaryCollapsed(msg) ? (
-                          <>
-                            <span>Show response</span>
-                            <ChevronDown className="h-3 w-3" />
-                          </>
-                        ) : (
-                          <>
-                            <span>Hide response</span>
-                            <ChevronUp className="h-3 w-3" />
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-
-                  {msg.role === "user" ? (
-                    editingMessageId === msg.id ? (
-                      <div className="flex w-[min(70vw,520px)] min-w-0 flex-col gap-2">
-                        <textarea
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
-                          rows={2}
-                        />
-                        <p className="text-[11px] leading-4 text-blue-100/85">
-                          Editing this question will replace the replies below it.
-                        </p>
-                        <div className="flex justify-end gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => setEditingMessageId(null)}
-                            className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEditSave(msg.id)}
-                            className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
-                          >
-                            Save and resend
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-[15px] leading-relaxed">{msg.content}</span>
-                    )
-                  ) : (
-                    /* AI message block */
-                    <div className="overflow-hidden">
-                      <AnimatePresence initial={false} mode="wait">
-                        {isSummaryCollapsed(msg) ? (
-                          <motion.div
-                            key="collapsed"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
-                          >
-                            <span>
-                              {msg.type === "error" 
-                                ? "Error: Click expand to view details" 
-                                : msg.content 
-                                  ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...` 
-                                  : "Click expand to view details"
-                              }
-                            </span>
-                            {msg.rowsReturned != null && (
-                              <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
-                                {msg.rowsReturned} rows
-                              </span>
-                            )}
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="expanded"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="text-[15px] leading-relaxed text-foreground"
-                          >
-                            {msg.type === "error" && (
-                              <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
-                                <AlertCircle className="w-4 h-4" />
-                                <span className="text-xs font-semibold uppercase">Could not process</span>
-                              </div>
-                            )}
-                            {formatContent(msg.content)}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )}
-
-                  {/* Edit button for user message */}
-                  {msg.role === "user" && editingMessageId !== msg.id && (
-                    <button
-                      onClick={() => handleEditStart(msg)}
-                      className="absolute right-2 top-2 rounded-lg p-1.5 text-white/80 opacity-100 transition-all hover:bg-white/15 hover:text-white sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
-                      title="Edit question"
-                      aria-label="Edit question"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* SQL display */}
-              <AnimatePresence>
-                {msg.sql && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className="mt-4 w-full overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm dark:bg-slate-950"
-                  >
-                    {/* Code block header */}
-                    <div className="flex select-none items-center justify-between border-b border-border/70 bg-muted/60 px-4 py-2.5 text-foreground dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-sky-400 border border-blue-500/20">
-                          SQL
-                        </span>
-                        <span className="font-sans text-xs font-semibold text-foreground dark:text-slate-100">
-                          Query Execution
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!isSqlCollapsed(msg.id) && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
-                            className="flex items-center gap-1.5 rounded-lg bg-primary/8 px-2 py-1 text-xs font-medium text-primary transition-all hover:bg-primary/12 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
-                            aria-label="Copy SQL query"
-                          >
-                            {copiedId === `sql-${msg.id}` ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                <span className="text-emerald-500 font-medium">Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3.5 w-3.5" />
-                                <span>Copy</span>
-                              </>
-                            )}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => toggleSqlCollapse(msg.id)}
-                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8 dark:text-sky-300 dark:hover:bg-white/5"
-                          aria-expanded={!isSqlCollapsed(msg.id)}
-                          aria-controls={`sql-${msg.id}`}
-                        >
-                          {isSqlCollapsed(msg.id) ? (
-                            <>
-                              <span>Expand SQL</span>
-                              <ChevronDown className="w-3 h-3" />
-                            </>
-                          ) : (
-                            <>
-                              <span>Collapse SQL</span>
-                              <ChevronUp className="w-3 h-3" />
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    {/* Highlighted SQL pre code */}
-                    <AnimatePresence initial={false}>
-                      {!isSqlCollapsed(msg.id) && (
-                        <motion.pre 
-                          id={`sql-${msg.id}`}
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2, ease: "easeInOut" }}
-                          className="custom-scrollbar select-all overflow-x-auto bg-card p-4 font-mono text-xs font-semibold leading-relaxed text-slate-800 outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-[13px]"
-                          dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
-                        />
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Execution stats */}
-              {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
-                  {msg.rowsReturned != null && (
-                    <span className="flex items-center gap-1">
-                      <Rows3 className="w-3.5 h-3.5 text-slate-400" />
-                      {msg.rowsReturned.toLocaleString()} rows
-                    </span>
-                  )}
-                  {msg.executionTime != null && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {msg.executionTime}ms
-                    </span>
-                  )}
-                  {msg.timestamp && (
-                    <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      {formatMessageTimestamp(msg.timestamp)}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                msg.timestamp && (
-                  <div className="mt-1 text-[10px] text-muted-foreground/75 px-1 font-sans">
-                    {formatMessageTimestamp(msg.timestamp)}
-                  </div>
-                )
-              )}
-
-              {Array.isArray(msg.rows) && msg.rows.length > 0 && (
-                <div className="mt-3 w-full">
-                  <button
-                    type="button"
-                    onClick={() => toggleVisuals(msg.id)}
-                    className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-expanded={Boolean(expandedVisuals[msg.id])}
-                  >
-                    <Table2 className="h-3.5 w-3.5" />
-                    <span>{expandedVisuals[msg.id] ? "Hide result preview" : "Preview results"}</span>
-                    {expandedVisuals[msg.id] ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {expandedVisuals[msg.id] && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <QuickVisuals msg={msg} initialTab="table" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
-              {/* Parameter Card for params_needed */}
-              {msg.type === "params_needed" && (
-                <div className="mt-4">
-                  <ParameterCard
-                    templateId={msg.templateId}
-                    templateDescription={msg.templateDescription}
-                    extractedParams={msg.extractedParams}
-                    missingParams={msg.missingParams}
-                    onSubmit={(params) => handleParamSubmit(msg.templateId, params)}
-                    isLoading={isProcessing}
-                  />
-                </div>
-              )}
-
-              {/* Report Button */}
-              {(msg.showReportBtn || (msg.type === "executable" && !!msg.sql && msg.rowsReturned > 0)) && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="mt-4"
-                >
-                  <button
-                    onClick={() => {
-                      const reportData = {
-                        rows: msg.rows,
-                        columns: msg.columns,
-                        sql: msg.sql,
-                        templateId: msg.templateId,
-                        extractedParams: msg.extractedParams,
-                        summary: msg.summary || msg.content || ''
-                      };
-                      const reportQuery = msg.templateDescription || initialQuery;
-                      if (isProcessing) {
-                        // WS is active — open as popup to avoid killing the connection
-                        setPreviewReport({ query: reportQuery, data: reportData });
-                        setShowReportPreview(true);
-                      } else {
-                        onOpenReport(reportQuery, reportData);
-                      }
-                    }}
-                    className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-primary/15 bg-primary/8 px-5 py-3 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/12"
-                  >
-                    <Sparkles className="w-5 h-5 text-foreground/70 transition-transform group-hover:rotate-12 group-hover:text-primary" />
-                    <span>Open interactive report</span>
-                    {isProcessing && (
-                      <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
-                    )}
-                  </button>
-                </motion.div>
-              )}
-
-              {/* A consistent action row works on desktop, touch and keyboard. */}
-              {msg.role === "ai" && msg.content && (
-                <div className="mt-3 flex w-full flex-col gap-2 border-t border-border/30 pt-2.5 dark:border-white/5">
-                  <div className="flex min-h-8 flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(msg.content, msg.id)}
-                      className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground"
-                      aria-label="Copy response"
-                      title="Copy response"
-                    >
-                      {copiedId === msg.id ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-500" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                      <span>{copiedId === msg.id ? "Copied" : "Copy"}</span>
-                    </button>
-
-                    {msg.type === "error" && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleRetryResponse(msg.id)}
-                          disabled={isProcessing}
-                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          Try again
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEditPreviousQuestion(msg.id)}
-                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                          Edit question
-                        </button>
-                      </>
-                    )}
-
-                    {msg.historyId && !feedbacks[msg.id] && (
-                      <>
-                        <span className="mx-1 h-4 w-px bg-border/70" aria-hidden="true" />
-                        <span className="sr-only">Was this response helpful?</span>
-                      <button
-                        type="button"
-                        onClick={() => handleFeedbackSubmit(msg.id, msg.historyId, true)}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="Helpful"
-                        aria-label="Mark response as helpful"
-                      >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleFeedbackNegativeClick(msg.id)}
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="Not helpful"
-                        aria-label="Mark response as not helpful"
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                      </button>
-                      </>
-                    )}
-
-                    {feedbacks[msg.id]?.submitted && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="ml-1 flex items-center gap-1.5 font-medium text-emerald-500"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        Feedback received
-                      </motion.span>
-                    )}
-                  </div>
-
-                  {msg.historyId && feedbacks[msg.id] && !feedbacks[msg.id].submitted && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex flex-col gap-3 p-3 bg-black/[0.02] dark:bg-black/20 border border-border/40 dark:border-white/5 rounded-xl w-full max-w-md mt-1"
-                    >
-                      <div className="text-xs font-semibold text-foreground">Why wasn't it helpful?</div>
-                      
-                      {/* Category selection */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {["Wrong Output", "Didn't understand", "Slow", "Other"].map((cat) => {
-                          const isSelected = feedbacks[msg.id].category === cat;
-                          return (
-                            <button
-                              key={cat}
-                              onClick={() => handleFeedbackCategoryChange(msg.id, cat)}
-                              className={`px-2.5 py-1 rounded-full text-xs transition-all border ${
-                                isSelected
-                                  ? "bg-blue-600 border-blue-600 text-white"
-                                  : "bg-white/5 hover:bg-white/10 dark:bg-black/20 dark:hover:bg-black/35 text-muted-foreground hover:text-foreground border-border/50 dark:border-white/5"
-                              }`}
-                            >
-                              {cat}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Text feedback comment */}
-                      <textarea
-                        placeholder="Describe the issue or how we can improve..."
-                        value={feedbacks[msg.id].comment || ""}
-                        onChange={(e) => handleFeedbackCommentChange(msg.id, e.target.value)}
-                        className="w-full bg-white dark:bg-black/25 border border-border/60 dark:border-white/5 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground resize-none"
-                        rows={2}
-                      />
-
-                      {/* Action Buttons */}
-                      <div className="flex justify-end gap-2 text-[11px]">
-                        <button
-                          onClick={() => handleFeedbackCancel(msg.id)}
-                          className="px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleFeedbackNegativeSubmit(msg.id, msg.historyId)}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
-                        >
-                          Submit Feedback
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                </div>
-              )}
-            </div>
-
-          </motion.div>
-        )))}
-
-        {/* One stable status card avoids a jump between separate loaders. */}
-        {isProcessing && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex w-full mb-6 justify-start"
-            role="status"
-            aria-live="polite"
-          >
-            <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
-            <PipelineStatus
-              currentStep={pipelineStep || "classify"}
-              completedSteps={completedSteps}
-              statusText={currentStatusText || "Understanding your question"}
-            />
-          </motion.div>
+      <div className="workspace-canvas relative flex h-full w-full flex-1 flex-col items-center overflow-hidden">
+        {/* Active data source */}
+        {activeConn && (
+          <div className="absolute left-1/2 top-3 z-20 max-w-[60vw] -translate-x-1/2">
+            <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl">
+              <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <Database className="h-3.5 w-3.5" />
+              <span className="truncate">{activeConn.name}</span>
+              {activeConn.tables > 0 ? <span className="hidden opacity-65 sm:inline">· {activeConn.tables} tables</span> : null}
+            </StatusPill>
+          </div>
         )}
 
-
-
-        {/* Follow-up suggestions */}
-        <AnimatePresence>
-          {showSuggestions && !isProcessing && currentSuggestions.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="custom-scrollbar mb-7 flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-2 pl-12 sm:flex-wrap sm:overflow-visible sm:pb-0"
-            >
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
-                <Lightbulb className="w-3.5 h-3.5" />
-                <span>Suggestions:</span>
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleConversationScroll}
+          className="custom-scrollbar flex w-full flex-1 flex-col overflow-y-auto pb-44 pt-16"
+        >
+          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
+            {loadingHistory ? (
+              <div className="flex-1 flex flex-col gap-6">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={`flex w-full ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
+                    {i % 2 === 0 && (
+                      <div className="w-9 h-9 rounded-full bg-muted shrink-0 mr-3" />
+                    )}
+                    <div className={`flex flex-col ${i % 2 === 0 ? "items-start" : "items-end"} max-w-[70%] w-full gap-2`}>
+                      <div className="h-4 bg-muted rounded w-1/3 animate-pulse" />
+                      <div className="h-12 bg-muted rounded-2xl w-full animate-pulse" />
+                    </div>
+                    {i % 2 !== 0 && (
+                      <div className="w-9 h-9 rounded-full bg-muted shrink-0 ml-3" />
+                    )}
+                  </div>
+                ))}
               </div>
-              {currentSuggestions.map((sug) => (
-                <button
-                  key={typeof sug === "string" ? sug : sug.text || String(sug)}
-                  disabled={isViewer}
-                  onClick={async () => {
-                    if (isViewer) return;
-                    setShowSuggestions(false);
-                    const sugText = typeof sug === "string" ? sug : sug.text || sug;
-                    if (sugText === "Contact your admin to request module access") {
-                      const lastMsg = [...messages].reverse().find(m => m.templateModule);
-                      if (lastMsg && lastMsg.templateModule) {
-                        try {
-                          await organizationApi.requestPermission(lastMsg.templateModule);
-                          setMessages(prev => [
-                            ...prev,
-                            {
-                              id: Date.now().toString(),
-                              role: "ai",
-                              type: "conversational",
-                              content: `Request submitted! A permission request for the **${lastMsg.templateModule.toUpperCase()}** module has been sent to your administrators.`,
-                            }
-                          ]);
-                          addNotification("success", "Permission request sent to administrators.");
-                        } catch (err) {
-                          addNotification("error", err.message || "Failed to submit request.");
-                        }
-                      } else {
-                        addNotification("error", "No module information found for request.");
-                      }
-                    } else {
-                      processQuery(sugText);
-                    }
-                  }}
-                  className={`app-card max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
+            ) : (
+              messages.map((msg) => (
+                <motion.div
+                  layout
+                  id={`message-${msg.id}`}
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {typeof sug === "string" ? sug : sug.text || sug}
-                </button>
-              ))}
-            </motion.div>
+                  {msg.role === "ai" && (
+                    <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
+                  )}
+
+                  <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} ${msg.role === "ai" && (msg.type === "executable" || msg.sql || msg.type === "template_preview")
+                      ? "w-full max-w-full"
+                      : "max-w-[88%] sm:max-w-[82%]"
+                    }`}>
+                    {/* Render content box for: user messages, errors, ai messages with content, or executable ai messages (so insight shows when it arrives) */}
+                    {(msg.content || msg.type === "error" || msg.role === "user" || (msg.role === "ai" && (msg.type === "executable" || !!msg.sql))) && (
+                      <div
+                        className={`relative group ${msg.role === "user"
+                            ? "brand-gradient rounded-2xl rounded-tr-md px-4 py-3 pr-11 text-white shadow-md shadow-primary/15 sm:px-5 sm:pr-11"
+                            : msg.type === "error"
+                              ? "w-full rounded-2xl rounded-tl-md border border-red-200/70 bg-red-50/85 p-4 shadow-sm dark:border-red-900/50 dark:bg-red-950/25 sm:p-5"
+                              : (msg.type === "executable" || msg.sql || msg.type === "template_preview")
+                                ? "app-card w-full rounded-2xl rounded-tl-md p-4 sm:p-5"
+                                : "app-card rounded-2xl rounded-tl-md p-4 sm:p-5"
+                          }`}
+                      >
+                        {/* Keep the disclosure only for responses that are genuinely long. */}
+                        {msg.role === "ai" && isMessageCollapsible(msg) && (
+                          <div className="mb-3 flex select-none items-center justify-between gap-3 border-b border-border/50 pb-3">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                              Response
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleSummaryCollapse(msg)}
+                              aria-expanded={!isSummaryCollapsed(msg)}
+                              className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8"
+                            >
+                              {isSummaryCollapsed(msg) ? (
+                                <>
+                                  <span>Show response</span>
+                                  <ChevronDown className="h-3 w-3" />
+                                </>
+                              ) : (
+                                <>
+                                  <span>Hide response</span>
+                                  <ChevronUp className="h-3 w-3" />
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {msg.role === "user" ? (
+                          editingMessageId === msg.id ? (
+                            <div className="flex w-[min(70vw,520px)] min-w-0 flex-col gap-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
+                                rows={2}
+                              />
+                              <p className="text-[11px] leading-4 text-blue-100/85">
+                                Editing this question will replace the replies below it.
+                              </p>
+                              <div className="flex justify-end gap-2 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingMessageId(null)}
+                                  className="px-3 py-1.5 bg-blue-800 hover:bg-blue-900 text-blue-200 rounded-md transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditSave(msg.id)}
+                                  className="px-3 py-1.5 bg-white text-blue-600 font-semibold hover:bg-blue-50 rounded-md transition-colors"
+                                >
+                                  Save and resend
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                          )
+                        ) : (
+                          /* AI message block */
+                          <div className="overflow-hidden">
+                            <AnimatePresence initial={false} mode="wait">
+                              {isSummaryCollapsed(msg) ? (
+                                <motion.div
+                                  key="collapsed"
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                                  className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
+                                >
+                                  <span>
+                                    {msg.type === "error"
+                                      ? "Error: Click expand to view details"
+                                      : msg.content
+                                        ? `${msg.content.slice(0, 100).replace(/[#*`_-]/g, '')}...`
+                                        : "Click expand to view details"
+                                    }
+                                  </span>
+                                  {msg.rowsReturned != null && (
+                                    <span className="shrink-0 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/15">
+                                      {msg.rowsReturned} rows
+                                    </span>
+                                  )}
+                                </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="expanded"
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                                  className="text-[15px] leading-relaxed text-foreground"
+                                >
+                                  {msg.type === "error" && (
+                                    <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                                      <AlertCircle className="w-4 h-4" />
+                                      <span className="text-xs font-semibold uppercase">Could not process</span>
+                                    </div>
+                                  )}
+                                  {msg.isStreaming && !msg.content ? (
+                                    /* Insight generating skeleton */
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
+                                      <div className="flex gap-1">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">Generating insights...</span>
+                                    </div>
+                                  ) : (
+                                    formatContent(
+                                      msg.content ||
+                                      (msg.type === "executable" || msg.sql
+                                        ? `Data query completed. Retrieved ${msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0)} records.`
+                                        : "")
+                                    )
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
+
+                        {/* Edit button for user message */}
+                        {msg.role === "user" && editingMessageId !== msg.id && (
+                          <button
+                            onClick={() => handleEditStart(msg)}
+                            className="absolute right-2 top-2 rounded-lg p-1.5 text-white/80 opacity-100 transition-all hover:bg-white/15 hover:text-white sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
+                            title="Edit question"
+                            aria-label="Edit question"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SQL display */}
+                    <AnimatePresence>
+                      {msg.sql && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          className="mt-4 w-full overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm dark:bg-slate-950"
+                        >
+                          {/* Code block header */}
+                          <div className="flex select-none items-center justify-between border-b border-border/70 bg-muted/60 px-4 py-2.5 text-foreground dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-sky-400 border border-blue-500/20">
+                                SQL
+                              </span>
+                              <span className="font-sans text-xs font-semibold text-foreground dark:text-slate-100">
+                                Query Execution
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!isSqlCollapsed(msg.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(msg.sql, `sql-${msg.id}`)}
+                                  className="flex items-center gap-1.5 rounded-lg bg-primary/8 px-2 py-1 text-xs font-medium text-primary transition-all hover:bg-primary/12 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                                  aria-label="Copy SQL query"
+                                >
+                                  {copiedId === `sql-${msg.id}` ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                      <span className="text-emerald-500 font-medium">Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="h-3.5 w-3.5" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => toggleSqlCollapse(msg.id)}
+                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8 dark:text-sky-300 dark:hover:bg-white/5"
+                                aria-expanded={!isSqlCollapsed(msg.id)}
+                                aria-controls={`sql-${msg.id}`}
+                              >
+                                {isSqlCollapsed(msg.id) ? (
+                                  <>
+                                    <span>Expand SQL</span>
+                                    <ChevronDown className="w-3 h-3" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Collapse SQL</span>
+                                    <ChevronUp className="w-3 h-3" />
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          {/* Highlighted SQL pre code */}
+                          <AnimatePresence initial={false}>
+                            {!isSqlCollapsed(msg.id) && (
+                              <motion.pre
+                                id={`sql-${msg.id}`}
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                className="custom-scrollbar select-all overflow-x-auto bg-card p-4 font-mono text-xs font-semibold leading-relaxed text-slate-800 outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-[13px]"
+                                dangerouslySetInnerHTML={{ __html: highlightSQL(msg.sql) }}
+                              />
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Execution stats */}
+                    {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                        {msg.rowsReturned != null && (
+                          <span className="flex items-center gap-1">
+                            <Rows3 className="w-3.5 h-3.5 text-slate-400" />
+                            {msg.rowsReturned.toLocaleString()} rows
+                          </span>
+                        )}
+                        {msg.executionTime != null && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {msg.executionTime}ms
+                          </span>
+                        )}
+                        {msg.timestamp && (
+                          <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            {formatMessageTimestamp(msg.timestamp)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      msg.timestamp && (
+                        <div className="mt-1 text-[10px] text-muted-foreground/75 px-1 font-sans">
+                          {formatMessageTimestamp(msg.timestamp)}
+                        </div>
+                      )
+                    )}
+
+                    {Array.isArray(msg.rows) && msg.rows.length > 0 && (
+                      <div className="mt-3 w-full">
+                        <button
+                          type="button"
+                          onClick={() => toggleVisuals(msg.id)}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          aria-expanded={Boolean(expandedVisuals[msg.id])}
+                        >
+                          <Table2 className="h-3.5 w-3.5" />
+                          <span>{expandedVisuals[msg.id] ? "Hide result preview" : "Preview results"}</span>
+                          {expandedVisuals[msg.id] ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {expandedVisuals[msg.id] && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <QuickVisuals msg={msg} initialTab="table" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* Parameter Card for params_needed */}
+                    {msg.type === "params_needed" && (
+                      <div className="mt-4">
+                        <ParameterCard
+                          templateId={msg.templateId}
+                          templateDescription={msg.templateDescription}
+                          extractedParams={msg.extractedParams}
+                          missingParams={msg.missingParams}
+                          onSubmit={(params) => handleParamSubmit(msg.templateId, params)}
+                          isLoading={isProcessing}
+                        />
+                      </div>
+                    )}
+
+                    {/* Report Button */}
+                    {((msg.showReportBtn && (msg.type === "executable" || !!msg.sql)) || (msg.type === "executable" && !!msg.sql && (msg.rowsReturned > 0 || (msg.rows && msg.rows.length > 0)))) && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-4"
+                      >
+                        <button
+                          onClick={() => {
+                            const reportData = {
+                              rows: msg.rows,
+                              columns: msg.columns,
+                              sql: msg.sql,
+                              templateId: msg.templateId,
+                              extractedParams: msg.extractedParams,
+                              summary: msg.summary || msg.content || '',
+                              col_meta: msg.colMeta || null,   // ← axis hints from backend
+                            };
+                            const reportQuery = msg.templateDescription || initialQuery;
+                            if (isProcessing) {
+                              // WS is active — open as popup to avoid killing the connection
+                              setPreviewReport({ query: reportQuery, data: reportData });
+                              setShowReportPreview(true);
+                            } else {
+                              onOpenReport(reportQuery, reportData);
+                            }
+                          }}
+                          className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-primary/15 bg-primary/8 px-5 py-3 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/12"
+                        >
+                          <Sparkles className="w-5 h-5 text-foreground/70 transition-transform group-hover:rotate-12 group-hover:text-primary" />
+                          <span>Open interactive report</span>
+                          {isProcessing && (
+                            <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
+                          )}
+                        </button>
+                      </motion.div>
+                    )}
+
+                    {/* A consistent action row works on desktop, touch and keyboard. */}
+                    {msg.role === "ai" && msg.content && (
+                      <div className="mt-3 flex w-full flex-col gap-2 border-t border-border/30 pt-2.5 dark:border-white/5">
+                        <div className="flex min-h-8 flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(msg.content, msg.id)}
+                            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                            aria-label="Copy response"
+                            title="Copy response"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                            <span>{copiedId === msg.id ? "Copied" : "Copy"}</span>
+                          </button>
+
+                          {msg.type === "error" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleRetryResponse(msg.id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                Try again
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditPreviousQuestion(msg.id)}
+                                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                Edit question
+                              </button>
+                            </>
+                          )}
+
+                          {msg.historyId && !feedbacks[msg.id] && (
+                            <>
+                              <span className="mx-1 h-4 w-px bg-border/70" aria-hidden="true" />
+                              <span className="sr-only">Was this response helpful?</span>
+                              <button
+                                type="button"
+                                onClick={() => handleFeedbackSubmit(msg.id, msg.historyId, true)}
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                title="Helpful"
+                                aria-label="Mark response as helpful"
+                              >
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleFeedbackNegativeClick(msg.id)}
+                                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                title="Not helpful"
+                                aria-label="Mark response as not helpful"
+                              >
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          {feedbacks[msg.id]?.submitted && (
+                            <motion.span
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="ml-1 flex items-center gap-1.5 font-medium text-emerald-500"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Feedback received
+                            </motion.span>
+                          )}
+                        </div>
+
+                        {msg.historyId && feedbacks[msg.id] && !feedbacks[msg.id].submitted && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="flex flex-col gap-3 p-3 bg-black/[0.02] dark:bg-black/20 border border-border/40 dark:border-white/5 rounded-xl w-full max-w-md mt-1"
+                          >
+                            <div className="text-xs font-semibold text-foreground">Why wasn't it helpful?</div>
+
+                            {/* Category selection */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {["Wrong Output", "Didn't understand", "Slow", "Other"].map((cat) => {
+                                const isSelected = feedbacks[msg.id].category === cat;
+                                return (
+                                  <button
+                                    key={cat}
+                                    onClick={() => handleFeedbackCategoryChange(msg.id, cat)}
+                                    className={`px-2.5 py-1 rounded-full text-xs transition-all border ${isSelected
+                                        ? "bg-blue-600 border-blue-600 text-white"
+                                        : "bg-white/5 hover:bg-white/10 dark:bg-black/20 dark:hover:bg-black/35 text-muted-foreground hover:text-foreground border-border/50 dark:border-white/5"
+                                      }`}
+                                  >
+                                    {cat}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Text feedback comment */}
+                            <textarea
+                              placeholder="Describe the issue or how we can improve..."
+                              value={feedbacks[msg.id].comment || ""}
+                              onChange={(e) => handleFeedbackCommentChange(msg.id, e.target.value)}
+                              className="w-full bg-white dark:bg-black/25 border border-border/60 dark:border-white/5 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground resize-none"
+                              rows={2}
+                            />
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-end gap-2 text-[11px]">
+                              <button
+                                onClick={() => handleFeedbackCancel(msg.id)}
+                                className="px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleFeedbackNegativeSubmit(msg.id, msg.historyId)}
+                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors"
+                              >
+                                Submit Feedback
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+
+                      </div>
+                    )}
+                  </div>
+
+                </motion.div>
+              )))}
+
+            {/* One stable status card avoids a jump between separate loaders. */}
+            {isProcessing && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex w-full mb-6 justify-start"
+                role="status"
+                aria-live="polite"
+              >
+                <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
+                <PipelineStatus
+                  currentStep={pipelineStep || "classify"}
+                  completedSteps={completedSteps}
+                  statusText={currentStatusText || "Understanding your question"}
+                />
+              </motion.div>
+            )}
+
+
+
+            {/* Follow-up suggestions */}
+            <AnimatePresence>
+              {showSuggestions && !isProcessing && currentSuggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="custom-scrollbar mb-7 flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-2 pl-12 sm:flex-wrap sm:overflow-visible sm:pb-0"
+                >
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+                    <Lightbulb className="w-3.5 h-3.5" />
+                    <span>Suggestions:</span>
+                  </div>
+                  {currentSuggestions.map((sug) => (
+                    <button
+                      key={typeof sug === "string" ? sug : sug.text || String(sug)}
+                      disabled={isViewer}
+                      onClick={async () => {
+                        if (isViewer) return;
+                        setShowSuggestions(false);
+                        const sugText = typeof sug === "string" ? sug : sug.text || sug;
+                        if (sugText === "Contact your admin to request module access") {
+                          const lastMsg = [...messages].reverse().find(m => m.templateModule);
+                          if (lastMsg && lastMsg.templateModule) {
+                            try {
+                              await organizationApi.requestPermission(lastMsg.templateModule);
+                              setMessages(prev => [
+                                ...prev,
+                                {
+                                  id: Date.now().toString(),
+                                  role: "ai",
+                                  type: "conversational",
+                                  content: `Request submitted! A permission request for the **${lastMsg.templateModule.toUpperCase()}** module has been sent to your administrators.`,
+                                }
+                              ]);
+                              addNotification("success", "Permission request sent to administrators.");
+                            } catch (err) {
+                              addNotification("error", err.message || "Failed to submit request.");
+                            }
+                          } else {
+                            addNotification("error", "No module information found for request.");
+                          }
+                        } else {
+                          processQuery(sugText);
+                        }
+                      }}
+                      className={`app-card max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
+                    >
+                      {typeof sug === "string" ? sug : sug.text || sug}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div ref={bottomRef} className="h-4 w-full shrink-0 block" />
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showScrollToLatest && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              onClick={() => scrollToLatest("smooth")}
+              className="app-card absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-foreground shadow-lg"
+              aria-label="Jump to the latest message"
+            >
+              <ArrowDown className="h-3.5 w-3.5 text-primary" />
+              Latest message
+            </motion.button>
           )}
         </AnimatePresence>
 
-        <div ref={bottomRef} className="h-4 w-full shrink-0 block" />
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {showScrollToLatest && (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.96 }}
-            onClick={() => scrollToLatest("smooth")}
-            className="app-card absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-foreground shadow-lg"
-            aria-label="Jump to the latest message"
-          >
-            <ArrowDown className="h-3.5 w-3.5 text-primary" />
-            Latest message
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Fixed Bottom Input */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 flex w-full justify-center bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-4 pt-10 sm:px-6">
-        <div className="pointer-events-auto w-full max-w-5xl">
-          <form
-            onSubmit={handleSubmit}
-            className="prompt-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
-            data-processing={isProcessing ? "true" : "false"}
-          >
-            <textarea
-              ref={composerRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask a follow-up question..."}
-              disabled={isViewer}
-              className="chat-composer-input min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
-              onKeyDown={(e) => {
-                if (isViewer) return;
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-            />
-            <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1">
-              <div className="flex min-w-0 items-center gap-2">
-                <ModelProviderMenu />
-                <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {isSpeechSupported ? (
-                  <button
-                    type="button"
-                    disabled={isViewer}
-                    onClick={toggleListening}
-                    className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-all ${
-                      isListening
-                        ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    } disabled:opacity-30`}
-                    title={isListening ? "Stop listening" : "Start voice typing"}
-                    aria-label={isListening ? "Stop listening" : "Start voice typing"}
-                  >
-                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-xl text-muted-foreground/30"
-                    title="Speech recognition is not supported in this browser"
-                    aria-label="Voice input unavailable"
-                  >
-                    <MicOff className="h-4 w-4" />
-                  </button>
-                )}
-                <button
-                  type={isProcessing ? "button" : "submit"}
-                  onClick={isProcessing ? handleCancel : undefined}
-                  disabled={isViewer || (!inputValue.trim() && !isProcessing)}
-                  className={`group flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-md transition-all ${
-                    isProcessing
-                      ? "bg-slate-700 shadow-slate-700/20 hover:bg-slate-800"
-                      : "brand-gradient shadow-primary/25 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-30 disabled:shadow-none"
-                  }`}
-                  aria-label={isProcessing ? "Stop response" : "Send question"}
-                >
-                  {isProcessing ? (
-                    <Square className="h-3.5 w-3.5 fill-current" />
+        {/* Fixed Bottom Input */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 flex w-full justify-center bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-4 pt-10 sm:px-6">
+          <div className="pointer-events-auto w-full max-w-5xl">
+            <form
+              onSubmit={handleSubmit}
+              className="prompt-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
+              data-processing={isProcessing ? "true" : "false"}
+            >
+              <textarea
+                ref={composerRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask a follow-up question..."}
+                disabled={isViewer}
+                className="chat-composer-input min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
+                onKeyDown={(e) => {
+                  if (isViewer) return;
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+              />
+              <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <ModelProviderMenu />
+                  <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {isSpeechSupported ? (
+                    <button
+                      type="button"
+                      disabled={isViewer}
+                      onClick={toggleListening}
+                      className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-all ${isListening
+                          ? "bg-rose-500 text-white shadow-lg shadow-rose-500/25"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        } disabled:opacity-30`}
+                      title={isListening ? "Stop listening" : "Start voice typing"}
+                      aria-label={isListening ? "Stop listening" : "Start voice typing"}
+                    >
+                      {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </button>
                   ) : (
-                    <ArrowUp className="h-4 w-4 stroke-[2.5px] transition-transform group-active:-translate-y-0.5" />
+                    <button
+                      type="button"
+                      disabled
+                      className="flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-xl text-muted-foreground/30"
+                      title="Speech recognition is not supported in this browser"
+                      aria-label="Voice input unavailable"
+                    >
+                      <MicOff className="h-4 w-4" />
+                    </button>
                   )}
-                </button>
+                  <button
+                    type={isProcessing ? "button" : "submit"}
+                    onClick={isProcessing ? handleCancel : undefined}
+                    disabled={isViewer || (!inputValue.trim() && !isProcessing)}
+                    className={`group flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-md transition-all ${isProcessing
+                        ? "bg-slate-700 shadow-slate-700/20 hover:bg-slate-800"
+                        : "brand-gradient shadow-primary/25 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-30 disabled:shadow-none"
+                      }`}
+                    aria-label={isProcessing ? "Stop response" : "Send question"}
+                  >
+                    {isProcessing ? (
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                    ) : (
+                      <ArrowUp className="h-4 w-4 stroke-[2.5px] transition-transform group-active:-translate-y-0.5" />
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          </form>
-          <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
-            Review important results before sharing them.
-          </p>
+            </form>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
+              Review important results before sharing them.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Accessible focus-trapped report preview. ReportBuilder provides the visible close button. */}
       <Sheet open={showReportPreview} onOpenChange={setShowReportPreview}>

@@ -200,6 +200,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedDataKeys, setSelectedDataKeys] = useState(["revenue", "margin"]);
   const [xAxisKey, setXAxisKey] = useState("product");
+  const [yAxisKey, setYAxisKey] = useState("margin"); // dedicated Y-axis for scatter chart
   const [zAxisKey, setZAxisKey] = useState("");
   const [secondaryLineKey, setSecondaryLineKey] = useState("");
   const [barMode, setBarMode] = useState("stacked"); // 'stacked' | 'grouped'
@@ -252,34 +253,29 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
            lower === 'job' || lower === 'orderno' || lower === 'invoiceno' || lower === 'seq' || lower === 'num';
   };
 
+  const isNumericValue = (val) => {
+    if (val === undefined || val === null || val === '' || typeof val === 'boolean') return false;
+    if (typeof val === 'number') return !isNaN(val);
+    const cleanStr = String(val).trim().replace(/,/g, '').replace(/[\$₹€]/g, '');
+    return cleanStr !== '' && !isNaN(Number(cleanStr));
+  };
+
   const availableKeys = useMemo(() => {
     if (!data.length) return [];
     
     // First priority: Numeric columns that are NOT ID/Key columns
     const metricCols = columns.filter(k => 
       !isIdColumn(k) &&
-      data.some(row => 
-        row[k] !== undefined && 
-        row[k] !== null && 
-        row[k] !== '' &&
-        !isNaN(Number(row[k])) &&
-        typeof row[k] !== 'boolean'
-      )
+      data.some(row => isNumericValue(row[k]))
     );
 
     if (metricCols.length > 0) return metricCols;
 
     // Fallback: All numeric columns
     return columns.filter(k => 
-      data.some(row => 
-        row[k] !== undefined && 
-        row[k] !== null && 
-        row[k] !== '' &&
-        !isNaN(Number(row[k])) &&
-        typeof row[k] !== 'boolean'
-      )
+      data.some(row => isNumericValue(row[k]))
     );
-  }, [columns, data]);
+  }, [data, columns]);
 
   const dimensionKeys = useMemo(
     () => columns.filter((key) => key !== '__rowId' && !availableKeys.includes(key) && !isIdColumn(key)),
@@ -518,62 +514,78 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     ? (isMobile ? 260 : 320)
     : (isMobile ? 280 : 380);
 
+  // ── Axis initialization: col_meta-driven (production) + data-type fallback ──
   useEffect(() => {
-    if (columns.length > 0 && data.length > 0) {
-      const numCols = columns.filter(k => 
-        data.some(row => 
-          row[k] !== undefined && 
-          row[k] !== null && 
-          row[k] !== '' &&
-          !isNaN(Number(row[k])) &&
-          typeof row[k] !== 'boolean'
-        )
+    if (columns.length === 0 || data.length === 0) return;
+
+    const colMeta = reportData?.col_meta || null;
+
+    if (colMeta) {
+      // ── PATH A: Backend-computed col_meta (authoritative) ─────────────────
+      // Validate each assignment against actual columns before applying
+      const has = (col) => col && columns.includes(col);
+      const hasNum = (col) => col && availableKeys.includes(col);
+
+      if (has(colMeta.x_axis)) setXAxisKey(colMeta.x_axis);
+      if (hasNum(colMeta.y_axis)) {
+        setSelectedDataKeys([colMeta.y_axis]);
+        setYAxisKey(colMeta.y_axis);
+      }
+      if (has(colMeta.z_axis)) setZAxisKey(colMeta.z_axis);
+      else setZAxisKey('');
+      if (hasNum(colMeta.secondary_y)) setSecondaryLineKey(colMeta.secondary_y);
+      else if (availableKeys.length > 1) setSecondaryLineKey(availableKeys.find(k => k !== colMeta.y_axis) || availableKeys[1] || '');
+      else setSecondaryLineKey('');
+      if (colMeta.chart_type) setChartType(colMeta.chart_type);
+
+    } else {
+      // ── PATH B: Fallback — data-type analysis only, zero keywords ─────────
+      // Numeric (non-boolean, non-blank) → metric candidates
+      const numCols = columns.filter(k =>
+        k !== '__rowId' && k !== 'id' && !isIdColumn(k) &&
+        data.some(row => isNumericValue(row[k]))
       );
-      setSelectedDataKeys(prev => {
-        const active = prev.filter(p => numCols.includes(p));
-        active.sort((a, b) => numCols.indexOf(a) - numCols.indexOf(b));
-        return active.length ? active : (numCols.length > 0 ? [numCols[0]] : []);
-      });
-      
+      // Date-like strings → date dimension
+      const ISO_DATE = /^\d{4}[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])/;
+      const MONTH_YEAR = /^\d{4}[-/](0?[1-9]|1[0-2])$/;
+      const dateCols = columns.filter(k =>
+        !numCols.includes(k) &&
+        data.slice(0, 10).some(row => {
+          const v = String(row[k] ?? '').trim();
+          return ISO_DATE.test(v) || MONTH_YEAR.test(v);
+        })
+      );
       const nonNumCols = columns.filter(k => !numCols.includes(k));
 
-      // 3. Profile X-Axis (Date/Time or Primary Dimension)
-      const dateKeywords = ["date", "month", "year", "quarter", "time", "day", "period", "created"];
-      const dateCol = nonNumCols.find(c => dateKeywords.some(kw => c.toLowerCase().includes(kw)));
-      const bestX = dateCol || (nonNumCols.length > 0 ? nonNumCols[0] : columns[0]);
+      // X: date dim > string name col (CustomerName > Customer) > first non-num col > first col
+      const nameCol = nonNumCols.find(c => c.toLowerCase().includes('name') || c.toLowerCase().includes('desc') || c.toLowerCase().includes('label'));
+      const bestX = dateCols[0] || nameCol || nonNumCols[0] || columns[0];
       setXAxisKey(bestX);
 
-      // 4. Profile Z-Axis (Grouping dimension with 2–12 unique values)
-      const remainingNonNum = nonNumCols.filter(c => c !== bestX);
-      let bestZ = "";
-      for (const col of remainingNonNum) {
-        const uniqueSet = new Set(data.map(r => String(r[col] ?? '')));
-        if (uniqueSet.size >= 2 && uniqueSet.size <= 12) {
-          bestZ = col;
-          break;
-        }
-      }
-      if (!bestZ && remainingNonNum.length > 0) {
-        bestZ = remainingNonNum[0];
+      // Y: first numeric col
+      setSelectedDataKeys(numCols.length > 0 ? [numCols[0]] : []);
+      setYAxisKey(numCols.length > 1 ? numCols[1] : numCols[0] || '');
+
+      // Z: first non-X non-numeric string col with 2–12 unique values
+      let bestZ = '';
+      for (const col of nonNumCols.filter(c => c !== bestX && !dateCols.includes(c))) {
+        const card = new Set(data.map(r => String(r[col] ?? ''))).size;
+        if (card >= 2 && card <= 15) { bestZ = col; break; }
       }
       setZAxisKey(bestZ);
 
-      // 5. Profile Secondary Line Metric (Profit Margin, Growth, Rate, %, or 2nd numeric key)
-      const lineKeywords = ["margin", "profit", "rate", "growth", "percent", "%", "ratio", "tax", "discount"];
-      const candidateLine = numCols.find(k => k !== numCols[0] && lineKeywords.some(kw => k.toLowerCase().includes(kw)));
-      const defaultLineKey = candidateLine || (numCols.length > 1 && selectedDataKeys.length > 1 ? selectedDataKeys[1] : (numCols.length > 1 ? numCols[1] : ""));
-      if (defaultLineKey) {
-        setSecondaryLineKey(defaultLineKey);
-      }
+      // Secondary Y: second numeric col
+      setSecondaryLineKey(numCols.length > 1 ? numCols[1] : '');
     }
-  }, [columns, data]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns, data, reportData?.col_meta]);
 
   // Keep all internal states synchronized when reportData or pinnedReports changes
   useEffect(() => {
     if (!reportData) return;
 
     // 1. Update charting config
-    setChartType(reportData.chartType || "table");
+    setChartType(reportData.chartType || reportData?.col_meta?.chart_type || "table");
     const reportColors = reportData.chartConfig?.colors;
     if (Array.isArray(reportColors) && reportColors.length > 0) {
       const matchedPalette = chartColors.find(palette => (
@@ -691,6 +703,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
           sql: reportData?.sql || "",
           data: data || [],
           summary: reportData?.summary || "",
+          col_meta: reportData?.col_meta || null,  // ← persist axis hints for reload
         },
         is_public: false,
         columns: columnsPayload
@@ -1056,35 +1069,58 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           </RechartsPie>
         );
       
-      case 'scatter':
+      case 'scatter': {
+        // X = selectedDataKeys[0] (primary numeric, e.g. revenue / base_price)
+        // Y = yAxisKey (dedicated scatter Y, e.g. margin / profit)
+        // Z = zAxisKey bubble size (when numeric)
+        const scatterXKey = selectedDataKeys[0] || availableKeys[0] || 'revenue';
+        const scatterYKey = yAxisKey || availableKeys[1] || availableKeys[0] || 'margin';
+        const commonScatterAxes = (
+          <>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+            <XAxis
+              dataKey={scatterXKey}
+              name={scatterXKey}
+              stroke="var(--muted-foreground)"
+              fontSize={isMobile ? 10 : 12}
+              tickLine={false}
+              label={{ value: scatterXKey, position: 'insideBottom', offset: -5, style: { fontSize: 10, fill: 'var(--muted-foreground)' } }}
+            />
+            <YAxis
+              dataKey={scatterYKey}
+              name={scatterYKey}
+              stroke="var(--muted-foreground)"
+              fontSize={isMobile ? 10 : 12}
+              tickLine={false}
+              tickFormatter={formatYAxis}
+              label={{ value: scatterYKey, angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: 10, fill: 'var(--muted-foreground)' } }}
+            />
+          </>
+        );
         if (zAxisKey && zValues.length > 0) {
           const isNumericZ = data.some(r => typeof r[zAxisKey] === 'number' || (!isNaN(Number(r[zAxisKey])) && r[zAxisKey] !== '' && r[zAxisKey] !== null));
           if (isNumericZ) {
             return (
               <ScatterChart>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
-                <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
-                <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
+                {commonScatterAxes}
                 <ZAxis dataKey={zAxisKey} name={zAxisKey} range={[60, 500]} />
-                <Tooltip 
-                  cursor={{ strokeDasharray: '3 3' }} 
-                  contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+                <Tooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }}
                   labelStyle={{ color: 'var(--foreground)' }}
                   itemStyle={{ color: 'var(--foreground)' }}
                 />
                 <Legend {...legendProps} />
-                <Scatter name={`Scatter (${zAxisKey} size)`} data={processedDataForChart} fill={colors[0]} />
+                <Scatter name={`Bubble (${zAxisKey} = size)`} data={data} fill={colors[0]} />
               </ScatterChart>
             );
           }
           return (
             <ScatterChart>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
-              <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
-              <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
-              <Tooltip 
-                cursor={{ strokeDasharray: '3 3' }} 
-                contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+              {commonScatterAxes}
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }}
                 labelStyle={{ color: 'var(--foreground)' }}
                 itemStyle={{ color: 'var(--foreground)' }}
               />
@@ -1097,18 +1133,17 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
         }
         return (
           <ScatterChart>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
-            <XAxis dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} name={selectedDataKeys[0] || (availableKeys[0] || 'revenue')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
-            <YAxis dataKey={selectedDataKeys[1] || (availableKeys[1] || 'margin')} name={selectedDataKeys[1] || (availableKeys[1] || 'margin')} stroke="var(--muted-foreground)" fontSize={isMobile ? 10 : 12} tickLine={false} />
-            <Tooltip 
-              cursor={{ strokeDasharray: '3 3' }} 
-              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }} 
+            {commonScatterAxes}
+            <Tooltip
+              cursor={{ strokeDasharray: '3 3' }}
+              contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '12px' }}
               labelStyle={{ color: 'var(--foreground)' }}
               itemStyle={{ color: 'var(--foreground)' }}
             />
-            <Scatter name="Data" data={processedDataForChart} fill={colors[0]} />
+            <Scatter name="Data" data={data} fill={colors[0]} />
           </ScatterChart>
         );
+      }
       
       case '3d':
         return (
@@ -1363,7 +1398,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     <select
                       value={xAxisKey}
                       onChange={(e) => setXAxisKey(e.target.value)}
-                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs"
+                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs truncate max-w-[100px]"
                     >
                       {columns.map(col => (
                         <option key={col} value={col} className="bg-card text-foreground">{col}</option>
@@ -1373,11 +1408,13 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
 
                   {/* Y Axis Selector */}
                   <div className="app-card flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs">
-                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">Y:</span>
+                    <span className="font-semibold text-muted-foreground text-[11px] uppercase">
+                      {chartType === 'scatter' ? 'X₂' : 'Y'}
+                    </span>
                     <select
                       value={selectedDataKeys[0] || ''}
                       onChange={(e) => setSelectedDataKeys([e.target.value])}
-                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs"
+                      className="bg-transparent font-medium outline-none cursor-pointer text-foreground text-xs truncate max-w-[100px]"
                     >
                       {availableKeys.map(col => (
                         <option key={col} value={col} className="bg-card text-foreground">{col}</option>
@@ -1403,15 +1440,15 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                   </div>
 
                   {/* Yellow Line (Y2 Secondary Axis) Selector */}
-                  {availableKeys.length > 1 && (
+                  {availableKeys.length > 1 && secondaryLineKey && chartType !== 'scatter' && (
                     <div className={`app-card flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs ${
                       secondaryLineKey ? 'border-amber-500/60 bg-amber-500/10 text-amber-500 font-bold' : 'border-border/50 dark:border-white/10'
                     }`}>
-                      <span className="text-[11px] font-semibold uppercase">Comparison line:</span>
+                      <span className="text-[11px] font-semibold uppercase">⟂ Line:</span>
                       <select
                         value={secondaryLineKey}
                         onChange={(e) => setSecondaryLineKey(e.target.value)}
-                        className="bg-transparent font-semibold outline-none cursor-pointer text-foreground text-xs"
+                        className="bg-transparent font-semibold outline-none cursor-pointer text-amber-400 text-[11px] truncate max-w-[80px]"
                       >
                         <option value="" className="bg-card text-foreground">None</option>
                         {availableKeys.map(col => (
@@ -1421,7 +1458,23 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     </div>
                   )}
 
-                  {/* Stacked vs Grouped Toggle (when chart is Bar & Z is active) */}
+                  {zAxisKey && (
+                    <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-primary/50 bg-primary/10 text-primary text-[11px] font-semibold whitespace-nowrap">
+                      <span>{chartType === 'scatter' ? '⊚ Bubble:' : '⊞ Split:'}</span>
+                      <select
+                        value={zAxisKey}
+                        onChange={(e) => setZAxisKey(e.target.value)}
+                        className="bg-transparent font-semibold outline-none cursor-pointer text-primary text-[11px] truncate max-w-[80px]"
+                      >
+                        <option value="" className="bg-card text-foreground">None</option>
+                        {columns.filter(c => c !== xAxisKey).map(col => (
+                          <option key={col} value={col} className="bg-card text-foreground">{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Stacked / Side-by-Side only when breakdown is active */}
                   {chartType === 'bar' && zAxisKey && (
                     <div className="app-card flex items-center rounded-xl p-0.5 text-xs">
                       <button
@@ -1570,18 +1623,30 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                 </h3>
                 <div className="flex gap-1 sm:gap-2 flex-wrap justify-end">
                    <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[80px] sm:max-w-[120px]">X: {xAxisKey}</span>
-                   <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[200px]">Y: {selectedDataKeys.join(', ')}</span>
-                   {zAxisKey && (
-                     <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Breakdown: {zAxisKey}</span>
-                   )}
-                   {secondaryLineKey && (
-                     <span className="text-[10px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Line (Y2): {secondaryLineKey}</span>
+                   {chartType === 'scatter' ? (
+                     <>
+                       <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[200px]">Metric (X): {selectedDataKeys[0]}</span>
+                       <span className="text-[10px] uppercase font-bold text-violet-500 bg-violet-500/10 border border-violet-500/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Y: {yAxisKey}</span>
+                       {zAxisKey && (
+                         <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Z (size): {zAxisKey}</span>
+                       )}
+                     </>
+                   ) : (
+                     <>
+                       <span className="text-[10px] uppercase font-bold text-muted-foreground bg-black/5 dark:bg-white/5 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[200px]">Y: {selectedDataKeys.join(', ')}</span>
+                       {zAxisKey && (
+                         <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Breakdown: {zAxisKey}</span>
+                       )}
+                       {secondaryLineKey && (
+                         <span className="text-[10px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded truncate max-w-[120px] sm:max-w-[180px]">Line (Y2): {secondaryLineKey}</span>
+                       )}
+                     </>
                    )}
                 </div>
               </div>
 
-              {/* 3-Column Breakdown Guide Banner */}
-              {zAxisKey && (
+              {/* Breakdown / Bubble Guide Banner */}
+              {zAxisKey && chartType !== 'scatter' && (
                 <div className="mx-3 sm:mx-4 mt-3 px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between gap-2 text-xs text-indigo-400">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-indigo-300">📊 3-Column Breakdown:</span>
@@ -1591,6 +1656,14 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                   </div>
                   <span className="text-[11px] opacity-80 shrink-0 hidden sm:inline">
                     Mode: <strong>{barMode === 'stacked' ? 'Stacked' : 'Side-by-Side'}</strong>
+                  </span>
+                </div>
+              )}
+              {zAxisKey && chartType === 'scatter' && (
+                <div className="mx-3 sm:mx-4 mt-3 px-3.5 py-2 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center gap-2 text-xs text-violet-400">
+                  <span className="font-bold text-violet-300">🫧 Bubble Chart:</span>
+                  <span>
+                    X = <strong className="text-foreground">{selectedDataKeys[0] || 'Metric'}</strong> · Y = <strong className="text-violet-200">{yAxisKey}</strong> · Bubble size = <strong className="text-foreground">{zAxisKey}</strong>
                   </span>
                 </div>
               )}

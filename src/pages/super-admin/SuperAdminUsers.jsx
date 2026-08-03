@@ -194,11 +194,7 @@ export default function SuperAdminUsers() {
                       </div>
                     </td>
                     <td className="px-4 py-3 font-medium text-xs">
-                      {u.org_name && u.org_name !== 'none' && u.org_name !== 'Unknown' ? (
-                        <span className="text-foreground">{u.org_name}</span>
-                      ) : (
-                        <span className="text-muted-foreground italic">Repnex Platform</span>
-                      )}
+                      <span className="text-foreground font-semibold">{u.org_name || 'Repnex Platform'}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border tracking-wider ${ROLE_BADGE[u.role] || ROLE_BADGE.viewer}`}>

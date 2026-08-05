@@ -637,12 +637,15 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     }
   }, [reportData, pinnedReports]);
 
-  // Keep saveName synced when query prop changes on new report
+  // Keep saveName & saveDescription synced when query prop changes on new report
   useEffect(() => {
-    if (isNewReport && query) {
-      setSaveName(query);
+    if (isNewReport) {
+      if (query) setSaveName(query);
+      if (reportData?.summary || reportData?.content) {
+        setSaveDescription(reportData.summary || reportData.content);
+      }
     }
-  }, [query, isNewReport]);
+  }, [query, isNewReport, reportData]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

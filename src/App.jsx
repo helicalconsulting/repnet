@@ -216,6 +216,7 @@ function App() {
           <Route path="/report" element={<ReportsListPage />} />
           <Route path="/report/:id" element={<ReportPage />} />
           <Route path="/reports" element={<Navigate to="/report" replace />} />
+          <Route path="/saved" element={<Navigate to="/report" replace />} />
 
           <Route
             path="/connections"

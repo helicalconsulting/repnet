@@ -330,11 +330,16 @@ export default function ReportsListPage() {
                             <h3 className="font-semibold text-foreground text-sm truncate leading-tight">
                               {report.name}
                             </h3>
-                            {report.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                {report.description}
-                              </p>
-                            )}
+                            {(() => {
+                              const rawDesc = report.description || report.parameters?.summary || report.parameters?.natural_language || (report.parameters?.sql ? `SQL: ${report.parameters.sql}` : '');
+                              if (!rawDesc) return null;
+                              const cleanDesc = String(rawDesc).replace(/[#*`_-]/g, '').trim();
+                              return (
+                                <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-2 leading-relaxed">
+                                  {cleanDesc}
+                                </p>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>

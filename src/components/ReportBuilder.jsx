@@ -41,7 +41,8 @@ import {
   Sparkles,
   FileSpreadsheet,
   File,
-  Box
+  Box,
+  Trash2
 } from "lucide-react";
 import { 
   BarChart, 
@@ -70,7 +71,8 @@ import {
   KeyboardSensor, 
   PointerSensor, 
   useSensor, 
-  useSensors 
+  useSensors,
+  useDroppable
 } from "@dnd-kit/core";
 import { 
   arrayMove, 
@@ -99,26 +101,81 @@ const dummyData = [
 const fallbackSQL = `-- No SQL available for this report.
 -- Connect a database and run a query to see generated SQL.`;
 
-function SortableColumn({ id, title }) {
+function DeleteDropZone({ isOver, isAccepting }) {
+  const { setNodeRef } = useDroppable({
+    id: 'delete-column-dropzone',
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex items-center gap-2.5 px-6 py-3 rounded-full border transition-all duration-200 ${
+        isAccepting
+          ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 scale-95'
+          : isOver
+            ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-md scale-105'
+            : 'bg-red-500/[0.03] border-red-500/20 text-red-500/80 hover:border-red-500/40'
+      }`}
+    >
+      <motion.div
+        animate={
+          isAccepting
+            ? { scale: [1, 1.4, 0.9, 1], rotate: [0, 15, -15, 0] }
+            : isOver
+              ? { scale: 1.25, rotate: [0, -10, 10, -10, 0] }
+              : { scale: 1 }
+        }
+        transition={{ duration: 0.3 }}
+      >
+        <Trash2 className={`w-4 h-4 transition-colors ${isAccepting ? 'text-emerald-500' : isOver ? 'text-red-500' : 'text-red-400'}`} />
+      </motion.div>
+      <span className="text-xs font-semibold select-none tracking-wide">
+        {isAccepting ? 'Removing...' : isOver ? 'Release to remove' : 'Drag here to remove column'}
+      </span>
+    </div>
+  );
+}
+
+function SortableColumn({ id, title, isRemoving }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `col-${id}` });
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
-    cursor: 'grab',
-    zIndex: isDragging ? 10 : 1,
+    opacity: isRemoving ? 0 : isDragging ? 0.9 : 1,
+    cursor: isDragging ? 'grabbing' : 'grab',
+    zIndex: isDragging ? 50 : 10,
+    boxShadow: isDragging ? "0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.15)" : "none",
   };
   return (
-    <th ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 sm:px-4 py-2.5 sm:py-3 font-medium bg-muted dark:bg-muted relative z-10 hover:bg-muted/80 dark:hover:bg-muted/80 touch-none first:rounded-tl-lg last:rounded-tr-lg">
+    <motion.th 
+      ref={setNodeRef} 
+      style={style} 
+      {...attributes} 
+      {...listeners} 
+      animate={isRemoving ? {
+        opacity: 0,
+        y: -35,
+        scale: 0.85,
+        width: 0,
+        paddingLeft: 0,
+        paddingRight: 0,
+        transition: { duration: 0.4, ease: "easeInOut" }
+      } : isDragging ? {
+        scale: 1.02,
+      } : {
+        scale: 1,
+      }}
+      className="px-3 sm:px-4 py-2.5 sm:py-3 font-medium bg-muted dark:bg-muted relative touch-none first:rounded-tl-lg last:rounded-tr-lg overflow-hidden hover:bg-muted/80 dark:hover:bg-muted/80 transition-shadow duration-200"
+    >
       <div className="flex items-center gap-2">
         <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />
         {title}
       </div>
-    </th>
+    </motion.th>
   );
 }
 
-function SortableRow({ rowId, row, columns }) {
+function SortableRow({ rowId, row, columns, removingColumn }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `row-${rowId}` });
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -139,8 +196,21 @@ function SortableRow({ rowId, row, columns }) {
       </td>
       {columns.map(key => {
         const value = row[key];
+        const isRemoving = removingColumn === key;
         return (
-          <td key={key} className="px-3 sm:px-4 py-3 sm:py-4">
+          <motion.td 
+            key={key} 
+            animate={isRemoving ? {
+              opacity: 0,
+              y: -35,
+              scale: 0.85,
+              width: 0,
+              paddingLeft: 0,
+              paddingRight: 0,
+              transition: { duration: 0.4, ease: "easeInOut" }
+            } : {}}
+            className="px-3 sm:px-4 py-3 sm:py-4 overflow-hidden whitespace-nowrap"
+          >
             {typeof value === 'number' && key.toLowerCase().includes('revenue') ? (
               `$${value.toLocaleString()}`
             ) : typeof value === 'number' && key.toLowerCase().includes('margin') ? (
@@ -158,7 +228,7 @@ function SortableRow({ rowId, row, columns }) {
                   : String(value ?? '')}
               </span>
             )}
-          </td>
+          </motion.td>
         );
       })}
     </tr>
@@ -205,6 +275,10 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const [secondaryLineKey, setSecondaryLineKey] = useState("");
   const [barMode, setBarMode] = useState("stacked"); // 'stacked' | 'grouped'
   const [isGlassMode, setIsGlassMode] = useState(true); // Stripe/Vercel Glassmorphic Aesthetic Mode
+
+  const [activeDragColumn, setActiveDragColumn] = useState(null);
+  const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
+  const [removingColumn, setRemovingColumn] = useState(null);
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState(query || "");
@@ -671,9 +745,43 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const handleDragStart = (event) => {
+    const { active } = event;
+    if (active.id.toString().startsWith('col-')) {
+      setActiveDragColumn(active.id.toString().replace('col-', ''));
+    }
+  };
+
+  const handleDragOver = (event) => {
+    const { over } = event;
+    if (over && over.id === 'delete-column-dropzone') {
+      setIsOverDeleteZone(true);
+    } else {
+      setIsOverDeleteZone(false);
+    }
+  };
+
+  const handleRemoveColumn = (colId) => {
+    setRemovingColumn(colId);
+    setTimeout(() => {
+      setColumns(prev => prev.filter(c => c !== colId));
+      setRemovingColumn(null);
+      addNotification('success', `Column "${colId}" removed from layout`);
+    }, 400);
+  };
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    setActiveDragColumn(null);
+    setIsOverDeleteZone(false);
+    
     if (!over) return;
+    
+    if (over.id === 'delete-column-dropzone') {
+      const colId = active.id.toString().replace('col-', '');
+      handleRemoveColumn(colId);
+      return;
+    }
     
     if (active.id !== over.id) {
       if (active.id.toString().startsWith('col-') && over.id.toString().startsWith('col-')) {
@@ -1302,10 +1410,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
     >
       {/* Dynamic Header */}
       <div className={`sticky top-0 z-10 flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-background/84 px-3 py-2 backdrop-blur-xl sm:px-4 sm:py-3 md:px-6 ${isSidebarOpen === false ? 'pl-14 md:pl-20' : ''}`}>
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 pr-0 sm:pr-4">
-          <button onClick={onClose} className="app-card flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:text-foreground" aria-label="Close report">
-            <X className="w-5 h-5" />
-          </button>
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           <div className="overflow-hidden min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <h2 className="font-semibold text-foreground flex items-center gap-2 truncate text-sm sm:text-base">
@@ -1322,13 +1427,10 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
-          
-
-          
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap justify-end">
           <button 
             onClick={() => setShowSQLModal(true)}
-            className="app-card hidden items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm text-foreground transition-all hover:-translate-y-0.5 sm:flex"
+            className="app-card hidden h-9 items-center gap-1.5 rounded-xl px-3 text-sm text-foreground transition-all duration-200 hover:-translate-y-0.5 sm:flex"
           >
             <Code className="w-4 h-4" />
             <span className="hidden md:inline">SQL</span>
@@ -1337,29 +1439,21 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
           {!isViewer && (
             <button 
               onClick={handlePinToggle}
-              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm transition-all ${
+              className={`hidden h-9 sm:flex items-center gap-1.5 px-3 rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 ${
                 isPinned 
                   ? 'bg-primary/10 text-primary border border-primary/20' 
-                  : 'app-card text-foreground hover:-translate-y-0.5'
+                  : 'app-card text-foreground'
               }`}
             >
-              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4 text-muted-foreground" />}
               <span className="hidden md:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
             </button>
           )}
           
-          <button 
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="app-card hidden h-9 w-9 items-center justify-center rounded-xl transition-all hover:-translate-y-0.5 sm:inline-flex"
-            aria-label={isFullscreen ? "Exit fullscreen" : "Open fullscreen"}
-          >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
-          
           {isNewReport && !isViewer && (
             <button 
               onClick={() => setShowSaveModal(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition-all hover:-translate-y-0.5 hover:bg-emerald-700"
+              className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700"
             >
               <Check className="w-4 h-4" />
               <span>Save report</span>
@@ -1378,10 +1472,19 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               setShowExportModal(true);
             }}
             disabled={isExporting}
-            className="flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/8 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/12 disabled:opacity-50"
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-primary/15 bg-primary/8 px-3 text-sm font-semibold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/12 disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             <span className="hidden md:inline">{isExporting ? "Exporting..." : "Export"}</span>
+          </button>
+
+          <button 
+            onClick={onClose} 
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-white text-red-500 shadow-sm transition-all duration-200 hover:bg-red-50 hover:shadow-md hover:-translate-y-0.5 dark:bg-zinc-950 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/30" 
+            title="Close Report"
+            aria-label="Close report"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1581,12 +1684,19 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                animate={{ opacity: 1, scale: 1 }}
                className="app-card flex min-w-0 flex-col overflow-hidden rounded-2xl"
             >
-              <div className="p-3 sm:p-4 border-b border-border/50 dark:border-white/5 flex justify-between items-center bg-black/[0.02] dark:bg-white/[0.02] gap-2">
-                <h3 className="font-medium text-sm flex items-center gap-2 min-w-0">
-                  <TableIcon className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">Data</span>
-                  <span className="text-xs text-muted-foreground shrink-0">({data.length} rows)</span>
-                </h3>
+              <DndContext 
+                sensors={sensors} 
+                collisionDetection={closestCenter} 
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="p-3 sm:p-4 border-b border-border/50 dark:border-white/5 flex justify-between items-center bg-black/[0.02] dark:bg-white/[0.02] gap-2">
+                  <h3 className="font-medium text-sm flex items-center gap-2 min-w-0">
+                    <TableIcon className="w-4 h-4 text-primary shrink-0" />
+                    <span className="truncate">Data</span>
+                    <span className="text-xs text-muted-foreground shrink-0">({data.length} rows)</span>
+                  </h3>
                   <button 
                     onClick={() => {
                       setExportOptions(prev => ({ 
@@ -1604,9 +1714,25 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                     {isExporting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ArrowDownToLine className="w-3.5 h-3.5" />}
                     <span>Export</span>
                   </button>
-              </div>
-              <div className="flex-1 overflow-auto max-h-[500px]">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                </div>
+
+                <AnimatePresence>
+                  {(activeDragColumn || removingColumn) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="overflow-hidden flex justify-center bg-black/[0.01] dark:bg-white/[0.01] border-b border-border/40"
+                    >
+                      <div className="p-3">
+                        <DeleteDropZone isOver={isOverDeleteZone} isAccepting={!!removingColumn} />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex-1 overflow-auto max-h-[500px]">
                   <SortableContext items={columns.map(c => `col-${c}`)} strategy={horizontalListSortingStrategy}>
                     <SortableContext items={data.map(r => `row-${r.__rowId}`)} strategy={verticalListSortingStrategy}>
                       <table className="w-full text-left text-xs sm:text-sm border-collapse">
@@ -1616,14 +1742,14 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                               #
                             </th>
                             {columns.map(col => (
-                              <SortableColumn key={`col-${col}`} id={col} title={col} />
+                              <SortableColumn key={`col-${col}`} id={col} title={col} isRemoving={removingColumn === col} />
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {data.length > 0 ? (
                             data.map((row) => (
-                              <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} />
+                              <SortableRow key={`row-${row.__rowId}`} rowId={row.__rowId} row={row} columns={columns} removingColumn={removingColumn} />
                             ))
                           ) : (
                             <tr>
@@ -1639,8 +1765,8 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
                       </table>
                     </SortableContext>
                   </SortableContext>
-                </DndContext>
-              </div>
+                </div>
+              </DndContext>
             </motion.div>
           )}
 

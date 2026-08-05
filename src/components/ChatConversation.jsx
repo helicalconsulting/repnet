@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDown, ArrowUp, Sparkles, Copy, Check,
   Database, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
-  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Table2
+  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
@@ -11,7 +11,6 @@ import { usePersonalization } from "../context/PersonalizationContext";
 import { queryApi, sessionsApi, organizationApi, getToken } from "../services/api";
 import ParameterCard from "./ParameterCard";
 import PipelineStatus from "./PipelineStatus";
-import { QuickVisuals } from "./chat/QuickVisuals";
 import ReportBuilder from "./ReportBuilder";
 import ModelProviderMenu from "./ModelProviderMenu";
 import { format } from "date-fns";
@@ -62,7 +61,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [feedbacks, setFeedbacks] = useState({});
   const [collapsedSummaries, setCollapsedSummaries] = useState({});
   const [collapsedSQLs, setCollapsedSQLs] = useState({});
-  const [expandedVisuals, setExpandedVisuals] = useState({});
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
@@ -208,13 +206,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     return collapsedSQLs[id] !== false;
   };
 
-
-  const toggleVisuals = (msgId) => {
-    setExpandedVisuals((prev) => ({
-      ...prev,
-      [msgId]: !prev[msgId],
-    }));
-  };
 
   const handleFeedbackSubmit = async (msgId, historyId, isPositive) => {
     try {
@@ -1722,37 +1713,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       )
                     )}
 
-                    {Array.isArray(msg.rows) && msg.rows.length > 0 && (
-                      <div className="mt-3 w-full">
-                        <button
-                          type="button"
-                          onClick={() => toggleVisuals(msg.id)}
-                          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          aria-expanded={Boolean(expandedVisuals[msg.id])}
-                        >
-                          <Table2 className="h-3.5 w-3.5" />
-                          <span>{expandedVisuals[msg.id] ? "Hide result preview" : "Preview results"}</span>
-                          {expandedVisuals[msg.id] ? (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <AnimatePresence initial={false}>
-                          {expandedVisuals[msg.id] && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <QuickVisuals msg={msg} initialTab="table" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    )}
-
                     {/* Parameter Card for params_needed */}
                     {msg.type === "params_needed" && (
                       <div className="mt-4">
@@ -1773,7 +1733,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="mt-4"
+                        className="mt-2"
                       >
                         <button
                           onClick={() => {

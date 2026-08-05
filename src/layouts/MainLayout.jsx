@@ -156,7 +156,7 @@ export default function MainLayout({ user, onSignOut }) {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <h1 className="truncate text-sm font-semibold leading-none tracking-tight text-foreground">{headerConfig.title}</h1>
+                      <h1 className="truncate text-base sm:text-lg font-bold tracking-tight text-foreground">{headerConfig.title}</h1>
                       {headerConfig.subtitle && (
                         <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{headerConfig.subtitle}</p>
                       )}

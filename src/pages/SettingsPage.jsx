@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SmartSkeleton } from "@ela-labs/smart-skeleton-react";
 import {
@@ -7,7 +8,7 @@ import {
 } from 'lucide-react';
 import { organizationApi, authApi } from '../services/api';
 import { usePersonalization } from '../context/PersonalizationContext';
-import { PageFrame, PageLead, ProductMark, SegmentedControl, StatusPill } from '../components/ui/product-ui';
+import { PageFrame, ProductMark, SegmentedControl, StatusPill } from '../components/ui/product-ui';
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 const TABS = [
@@ -1002,6 +1003,17 @@ function SecurityTab({ showToast }) {
 export default function SettingsPage({ user }) {
   const [activeTab, setActiveTab] = useState('profile');
   const [toast, setToast] = useState(null);
+  const { setHeaderConfig } = useOutletContext() || {};
+
+  useEffect(() => {
+    if (setHeaderConfig) {
+      setHeaderConfig({
+        title: "Settings",
+        subtitle: "",
+        icon: null,
+      });
+    }
+  }, [setHeaderConfig]);
 
   const isAdmin = user?.role === 'admin';
   const filteredTabs = TABS.filter(tab => {
@@ -1022,23 +1034,30 @@ export default function SettingsPage({ user }) {
       <Toast toast={toast} />
 
       <PageFrame>
-        <PageLead
-          title="Make Repnex work your way"
-          description="Manage your profile, organization, members and account security."
-        />
+        {/* Hero Section with Title and Profile Card */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-12 mb-8">
+          <div className="min-w-0">
+            <h1 className="page-heading text-2xl font-semibold text-foreground sm:text-3xl">
+              Make Repnex work your way
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Manage your profile, organization, members and account security.
+            </p>
+          </div>
 
-        {/* User info banner */}
-        <div className="app-surface mb-6 flex items-center gap-3 rounded-2xl px-4 py-4 sm:gap-4 sm:px-5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-bold text-primary">
-            {(user?.email || 'U').charAt(0).toUpperCase()}
+          {/* Profile Card */}
+          <div className="app-surface flex items-center gap-3 rounded-2xl py-2.5 px-4 w-full md:w-[360px] h-[84px] shrink-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-bold text-primary">
+              {(user?.email || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <p className="text-sm font-semibold truncate leading-tight">{user?.name || user?.email}</p>
+              <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">{user?.email}</p>
+            </div>
+            <StatusPill tone={user?.role === 'admin' ? 'warning' : user?.role === 'editor' ? 'primary' : 'neutral'} className="capitalize shrink-0">
+              {user?.role || 'viewer'}
+            </StatusPill>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{user?.name || user?.email}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-          </div>
-          <StatusPill tone={user?.role === 'admin' ? 'warning' : user?.role === 'editor' ? 'primary' : 'neutral'} className="capitalize">
-            {user?.role || 'viewer'}
-          </StatusPill>
         </div>
 
         {/* Tabs */}

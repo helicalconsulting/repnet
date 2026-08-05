@@ -7,55 +7,6 @@ import { queryApi } from "../services/api";
 import { ProductMark, StatusPill } from "./ui/product-ui";
 import ModelProviderMenu from "./ModelProviderMenu";
 
-const DEFAULT_SUGGESTIONS = [
-  {
-    module: "Finance & Accounting",
-    submodules: [
-      {
-        name: "AP & Suppliers",
-        prompts: [
-          { text: "Show AP ageing report with 30-60-90 buckets", icon: "📊" },
-          { text: "List overdue supplier invoices as of today", icon: "⚠️" },
-          { text: "Top 10 suppliers by outstanding amount", icon: "🏆" },
-          { text: "Supplier payment history last 3 months", icon: "💳" },
-        ],
-      },
-      {
-        name: "AR & Customers",
-        prompts: [
-          { text: "Customer ageing report with overdue buckets", icon: "📋" },
-          { text: "Top 10 customers by outstanding receivables", icon: "📈" },
-          { text: "Overdue customer invoices older than 60 days", icon: "⚠️" },
-          { text: "Customer payment collection trend this quarter", icon: "💰" },
-        ],
-      },
-      {
-        name: "Cashbook & GL",
-        prompts: [
-          { text: "Cashbook summary for current month", icon: "💵" },
-          { text: "GL journal entries posted today", icon: "📝" },
-          { text: "Trial balance for current period", icon: "📑" },
-          { text: "Bank reconciliation status report", icon: "🏦" },
-        ],
-      }
-    ]
-  },
-  {
-    module: "Sales & Operations",
-    submodules: [
-      {
-        name: "Sales & Revenue",
-        prompts: [
-          { text: "Sales orders by customer this month", icon: "🛒" },
-          { text: "Top 10 customers by revenue", icon: "🏆" },
-          { text: "Monthly revenue trend last 6 months", icon: "📈" },
-          { text: "Outstanding sales orders summary", icon: "📦" },
-        ],
-      }
-    ]
-  }
-];
-
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatArea({ onSearch }) {
@@ -163,10 +114,6 @@ export default function AIChatArea({ onSearch }) {
 
   const activeConn = connections.find(c => c.id === activeConnection);
   const isViewer = user?.role === 'viewer';
-  const quickPrompts = (suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS)
-    .flatMap((module) => module.submodules || [])
-    .flatMap((submodule) => submodule.prompts || [])
-    .slice(0, 4);
 
   const categoryIcons = {
     "AP & Suppliers": <DollarSign className="w-4 h-4" />,
@@ -185,10 +132,10 @@ export default function AIChatArea({ onSearch }) {
   };
 
   return (
-    <div className="relative z-10 mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col items-center px-4 pb-8 pt-16 sm:px-6 sm:pt-12">
+    <div className="relative z-10 mx-auto flex min-h-full w-full max-w-[900px] flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[720px] max-w-[100vw] -translate-x-1/2 rounded-full bg-primary/8 blur-[110px]" />
 
-      <div className="relative z-20 flex w-full flex-col items-center">
+      <div className="relative z-20 flex w-full flex-col items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -205,7 +152,7 @@ export default function AIChatArea({ onSearch }) {
           </p>
         </motion.div>
 
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
           {activeConn ? (
             <StatusPill tone="success">
               <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -219,6 +166,18 @@ export default function AIChatArea({ onSearch }) {
               Choose a connection to use live data
             </StatusPill>
           )}
+
+          {!isViewer ? (
+            <button
+              type="button"
+              onClick={() => setShowQueriesDrawer(true)}
+              aria-haspopup="dialog"
+              className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-border/70 bg-white/60 dark:bg-white/10 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-white/80 dark:hover:bg-white/20 cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
+              Explore Prompt Ideas
+            </button>
+          ) : null}
         </div>
 
         <motion.form
@@ -226,7 +185,7 @@ export default function AIChatArea({ onSearch }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12 }}
           onSubmit={handleSearch}
-          className="w-full max-w-3xl"
+          className="w-full max-w-[900px]"
         >
           <div className="prompt-shell flex min-h-[132px] flex-col rounded-[24px] p-2">
             <textarea
@@ -277,47 +236,6 @@ export default function AIChatArea({ onSearch }) {
             </div>
           </div>
         </motion.form>
-
-        {!isViewer ? (
-          <div className="mt-6 w-full max-w-3xl">
-            <div className="mb-2.5 flex items-center justify-between px-1">
-              <p className="text-xs font-semibold text-foreground">Try a question</p>
-              <button
-                type="button"
-                onClick={() => setShowQueriesDrawer(true)}
-                aria-haspopup="dialog"
-                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/8"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                View all ideas
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {quickPrompts.map((prompt, index) => (
-                <motion.button
-                  key={`${prompt.text}-${index}`}
-                  type="button"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.17 + (index * 0.035) }}
-                  onClick={() => {
-                    setQuery(prompt.text);
-                    onSearch?.(prompt.text);
-                  }}
-                  className="interactive-card app-card flex min-h-12 items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-left text-xs font-medium text-foreground/85"
-                >
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-sm">
-                      {prompt.icon || "✦"}
-                    </span>
-                    <span className="line-clamp-2">{prompt.text}</span>
-                  </span>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         <p className="mt-6 text-center text-[11px] text-muted-foreground/75">
           Repnex may make mistakes. Review important results before sharing them.

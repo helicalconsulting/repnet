@@ -434,7 +434,7 @@ export default function Dashboard() {
 
   return (
     <div className="custom-scrollbar h-full w-full flex-1 overflow-y-auto">
-      <PageFrame className="pb-24">
+      <PageFrame>
         <PageLead
           title={`Welcome back${user?.name ? `, ${user.name.split(" ")[0]}` : ""}`}
           description="Track report activity and return to your pinned analysis."
@@ -566,80 +566,6 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* ── Reports Grid ────────────────────────────────────────────── */}
-        <div className="mt-5" aria-busy={isLoadingReports}>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={isLoadingReports ? [1, 2, 3, 4, 5, 6] : filteredReports.map((r) => r.id)} strategy={rectSortingStrategy}>
-              <div
-                className={`grid gap-5 pb-20 ${
-                  viewMode === "grid"
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                    : "grid-cols-1"
-                }`}
-              >
-                {isLoadingReports ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="bg-card rounded-2xl border border-border p-5 flex flex-col gap-4 shadow-sm">
-                      <div className="h-6 w-1/3 bg-muted rounded-md" />
-                      <div className="h-4 w-3/4 bg-muted rounded-md" />
-                      <div className="h-20 bg-muted rounded-xl" />
-                      <div className="h-6 w-1/2 bg-muted rounded-md" />
-                    </div>
-                  ))
-                ) : (
-                  <AnimatePresence>
-                    {filteredReports.map((report) => (
-                      <SortableReportCard
-                        key={report.id}
-                        report={report}
-                        reorderable={!showAllReports}
-                        onUnpin={handleUnpin}
-                        onOpen={handleOpen}
-                        onSchedule={(r) => setScheduleReport(r)}
-                      />
-                    ))}
-                  </AnimatePresence>
-                )}
-
-                {/* Empty state */}
-                {!isLoadingReports && filteredReports.length === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="app-card col-span-full rounded-2xl"
-                  >
-                    <EmptyState
-                      icon={Search}
-                      title="No reports found"
-                      description={searchQuery ? `No reports match “${searchQuery}”.` : "Pin reports from the report library to see them here."}
-                      action={!searchQuery ? (
-                        <button
-                          onClick={() => navigate("/report")}
-                          className="flex h-9 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent/60"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Browse reports
-                        </button>
-                      ) : null}
-                    />
-                  </motion.div>
-                )}
-
-                {/* "Pin from All Reports" hint */}
-                {!isLoadingReports && showAllReports && filteredReports.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="col-span-full text-center py-4 text-xs text-muted-foreground/60"
-                  >
-                    Showing all {filteredReports.length} report{filteredReports.length !== 1 ? "s" : ""} — click a card to open, or use the pin button to add to your dashboard
-                  </motion.div>
-                )}
-              </div>
-            </SortableContext>
-          </DndContext>
         </div>
       </PageFrame>
 

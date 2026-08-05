@@ -389,6 +389,7 @@ function MembersTab({ user, showToast }) {
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
+  const [showInviteRoleDropdown, setShowInviteRoleDropdown] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [showRoleFor, setShowRoleFor] = useState(null);
   const [activeAccessMember, setActiveAccessMember] = useState(null);
@@ -396,6 +397,17 @@ function MembersTab({ user, showToast }) {
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    const handleDocumentClick = (e) => {
+      if (!e.target.closest('.role-dropdown-container')) {
+        setShowRoleFor(null);
+        setShowInviteRoleDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => document.removeEventListener('click', handleDocumentClick);
+  }, []);
 
   const loadMembers = useCallback(async () => {
     setLoading(true);
@@ -539,10 +551,10 @@ function MembersTab({ user, showToast }) {
   };
 
   const roleColor = (role) => ({
-    admin: 'text-amber-600 bg-amber-500/10',
-    editor: 'text-blue-600 bg-blue-500/10',
-    viewer: 'text-slate-600 bg-slate-500/10',
-  }[role] || 'text-muted-foreground bg-muted/50');
+    admin: 'text-amber-600 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 dark:text-amber-500 dark:bg-amber-500/10 dark:border-amber-500/30 dark:hover:bg-amber-500/20',
+    editor: 'text-blue-600 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/30 dark:hover:bg-blue-500/20',
+    viewer: 'text-slate-600 bg-slate-500/10 border border-slate-500/20 hover:bg-slate-500/20 dark:text-slate-400 dark:bg-slate-500/10 dark:border-slate-500/30 dark:hover:bg-slate-500/20',
+  }[role] || 'text-muted-foreground bg-muted/50 border border-transparent');
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -563,13 +575,37 @@ function MembersTab({ user, showToast }) {
                   className="w-full rounded-xl border border-transparent bg-black/5 pl-10 pr-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
                 />
               </div>
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value)}
-                className="rounded-xl border border-transparent bg-black/5 px-3 py-2.5 text-sm outline-none dark:bg-white/5 cursor-pointer"
-              >
-                {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-              </select>
+              <div className="relative role-dropdown-container">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteRoleDropdown(!showInviteRoleDropdown)}
+                  className="flex h-10 items-center justify-between gap-2 rounded-xl border border-border/60 bg-black/5 px-4 text-sm font-medium dark:bg-white/5 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-all text-foreground min-w-[120px]"
+                >
+                  <span className="capitalize">{inviteRole}</span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${showInviteRoleDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showInviteRoleDropdown && (
+                  <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[140px] rounded-2xl border border-border/60 bg-white dark:bg-[#111217] shadow-xl p-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {ROLE_OPTIONS.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => {
+                          setInviteRole(r);
+                          setShowInviteRoleDropdown(false);
+                        }}
+                        className={`w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium capitalize transition-all duration-200 ${
+                          inviteRole === r
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                            : 'text-neutral-700 dark:text-neutral-200 hover:bg-blue-50/55 dark:hover:bg-blue-950/20'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <button
               type="submit"
@@ -679,21 +715,25 @@ function MembersTab({ user, showToast }) {
 
                     <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-end">
                       {member.role === 'admin' && <Crown className="h-3.5 w-3.5 text-amber-500" />}
-                      <div className="relative">
+                      <div className="relative role-dropdown-container">
                         <button
                           onClick={() => isAdmin && member.id !== user?.id && setShowRoleFor(showRoleFor === member.id ? null : member.id)}
-                          className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium capitalize sm:min-h-0 sm:px-2.5 sm:py-1 ${roleColor(member.role)} ${isAdmin && member.id !== user?.id ? 'cursor-pointer' : 'cursor-default'}`}
+                          className={`h-7 flex items-center justify-between gap-1.5 rounded-full px-3 text-xs font-medium capitalize transition-all duration-200 ${roleColor(member.role)} ${isAdmin && member.id !== user?.id ? 'cursor-pointer hover:opacity-90' : 'cursor-default'}`}
                         >
                           {member.role}
-                          {isAdmin && member.id !== user?.id && <ChevronDown className="h-3 w-3" />}
+                          {isAdmin && member.id !== user?.id && <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showRoleFor === member.id ? 'rotate-180' : ''}`} />}
                         </button>
                         {showRoleFor === member.id && (
-                          <div className="absolute right-0 top-full mt-1 z-20 min-w-[100px] rounded-xl border border-border/60 bg-card shadow-xl overflow-hidden">
+                          <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[140px] rounded-2xl border border-border/60 bg-white dark:bg-[#111217] shadow-xl p-1 animate-in fade-in slide-in-from-top-1 duration-150">
                             {ROLE_OPTIONS.map((r) => (
                               <button
                                 key={r}
                                 onClick={() => handleRoleChange(member.id, r)}
-                                className={`w-full px-3 py-2 text-left text-xs font-medium capitalize hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${member.role === r ? 'text-primary' : 'text-foreground'}`}
+                                className={`w-full rounded-xl px-4 py-2.5 text-left text-xs font-medium capitalize transition-all duration-200 ${
+                                  member.role === r
+                                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                                    : 'text-neutral-700 dark:text-neutral-200 hover:bg-blue-50/55 dark:hover:bg-blue-950/20'
+                                }`}
                               >
                                 {r}
                               </button>
@@ -845,57 +885,34 @@ function MembersTab({ user, showToast }) {
         )}
       </AnimatePresence>
 
-      {/* Invite Link Backup Modal */}
+      {/* Invite Link Success Modal */}
       <AnimatePresence>
         {createdInvite && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4 text-foreground"
+              exit={{ scale: 0.97, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-sm bg-card border border-border rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center space-y-6 text-foreground"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/10 rounded-xl">
-                  <Mail className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-base">Invite Link Generated</h3>
-                  <p className="text-xs text-muted-foreground">An invitation email was sent to {createdInvite.email}</p>
-                </div>
+              <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500">
+                <Mail className="h-6 w-6" />
               </div>
-
+              
               <div className="space-y-2">
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Backup Invitation Link
-                </label>
-                <div className="flex items-center gap-2 bg-muted/40 border border-border rounded-xl p-2.5">
-                  <input
-                    type="text"
-                    readOnly
-                    value={createdInvite.acceptUrl}
-                    className="flex-1 bg-transparent text-xs text-foreground outline-none select-all"
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(createdInvite.acceptUrl);
-                      showToast('Copied to clipboard!', 'success');
-                    }}
-                    className="flex items-center justify-center p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                    title="Copy Link"
-                  >
-                    <Check className="h-4 w-4 text-emerald-500" />
-                  </button>
+                <h3 className="text-xl font-bold text-foreground tracking-tight">Invite Sent</h3>
+                <div className="text-sm text-muted-foreground space-y-1.5 leading-relaxed">
+                  <p>Your invitation has been successfully sent to</p>
+                  <p className="font-semibold text-foreground break-all">{createdInvite.email}</p>
+                  <p className="text-xs text-muted-foreground/80 pt-2">They will receive an email with instructions to join the workspace.</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground/80">
-                  If they do not receive the email, you can copy and share this link directly with them.
-                </p>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="w-full flex justify-center pt-2">
                 <button
                   onClick={() => setCreatedInvite(null)}
-                  className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-xs font-medium transition-colors"
+                  className="px-8 py-2.5 bg-gradient-to-r from-primary to-blue-600 hover:opacity-95 text-white font-semibold rounded-xl text-xs shadow-lg shadow-primary/25 transition-all"
                 >
                   Done
                 </button>

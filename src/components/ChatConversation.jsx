@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDown, ArrowUp, Sparkles, Copy, Check,
   Database, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
-  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff
+  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Plus
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
@@ -1400,17 +1400,28 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   return (
     <>
       <div className="workspace-canvas relative flex h-full w-full flex-1 flex-col items-center overflow-hidden">
-        {/* Active data source */}
-        {activeConn && (
-          <div className="absolute left-1/2 top-3 z-20 max-w-[60vw] -translate-x-1/2">
-            <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl">
+        {/* Active data source & New Chat button */}
+        <div className="absolute left-1/2 top-3 z-20 max-w-[95vw] -translate-x-1/2 flex items-center justify-between gap-3 w-full max-w-5xl px-4 pointer-events-none">
+          {activeConn ? (
+            <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl pointer-events-auto">
               <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <Database className="h-3.5 w-3.5" />
               <span className="truncate">{activeConn.name}</span>
               {activeConn.tables > 0 ? <span className="hidden opacity-65 sm:inline">· {activeConn.tables} tables</span> : null}
             </StatusPill>
-          </div>
-        )}
+          ) : <div />}
+
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+            }}
+            className="group pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white font-semibold text-xs rounded-xl shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-95 transition-all duration-200 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-300" />
+            <span>New Chat</span>
+          </button>
+        </div>
 
         <div
           ref={scrollContainerRef}

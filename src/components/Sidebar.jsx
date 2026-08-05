@@ -12,7 +12,8 @@ import {
   Sun,
   Moon,
   LogOut,
-  Shield
+  Shield,
+  Plus
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect, useCallback } from "react";
@@ -174,6 +175,27 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             </div>
           </div>
 
+          {/* New Chat Button */}
+          {!isViewer && (
+            <div className="mb-4 px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/chat');
+                  window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+                  if (window.innerWidth < 768) {
+                    setIsOpen(false);
+                  }
+                }}
+                className="group relative flex w-full items-center justify-center gap-2.5 rounded-xl py-2.5 px-4 brand-gradient text-white font-semibold text-xs tracking-wide shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Plus className="w-4 h-4 text-white shrink-0 group-hover:rotate-90 transition-transform duration-300" />
+                <span>New Chat</span>
+              </button>
+            </div>
+          )}
+
           {/* Navigation */}
           <nav className="custom-scrollbar flex-1 space-y-5 overflow-y-auto">
             {navSections.map((section, si) => (
@@ -254,7 +276,24 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                     </span>
                   )}
                 </span>
-                <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showHistory && "rotate-90")} />
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/chat');
+                      window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+                      if (window.innerWidth < 768) {
+                        setIsOpen(false);
+                      }
+                    }}
+                    title="Start New Chat"
+                    className="p-1 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showHistory && "rotate-90")} />
+                </div>
               </button>
 
               <AnimatePresence>

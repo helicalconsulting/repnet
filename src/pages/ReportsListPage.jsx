@@ -118,9 +118,9 @@ export default function ReportsListPage() {
   useEffect(() => {
     if (setHeaderConfig) {
       setHeaderConfig({
-        title: "Reports",
-        subtitle: `${reports.length} saved report${reports.length !== 1 ? 's' : ''}`,
-        icon: <BarChart3 className="w-4 h-4 text-foreground" />,
+        title: "Saved reports",
+        subtitle: "",
+        icon: null,
         actions: (
           <>
             <div className="hidden sm:flex items-center gap-2">

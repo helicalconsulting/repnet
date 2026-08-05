@@ -36,7 +36,6 @@ import SuperAdminFeedback from './pages/super-admin/SuperAdminFeedback';
 import SuperAdminTokenEstimator from './pages/super-admin/SuperAdminTokenEstimator';
 import SuperAdminConversationalQueries from './pages/super-admin/SuperAdminConversationalQueries';
 
-
 function LoginRoute({ sessionUser, onAuthSuccess }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -144,7 +143,8 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <>
+      <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route
@@ -238,7 +238,9 @@ function App() {
             }
           />
           <Route path="/settings" element={<SettingsPage user={sessionUser} />} />
-          {/* Fallback for other sidebar items like /saved */}
+          <Route path="/saved" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/saved-views" element={<Navigate to="/dashboard" replace />} />
+          {/* Fallback for other sidebar items */}
           <Route path="*" element={
             <div className="flex h-full items-center justify-center text-foreground font-semibold flex-col gap-2">
                <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
@@ -251,7 +253,8 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  );
+  </>
+);
 }
 
 export default App;

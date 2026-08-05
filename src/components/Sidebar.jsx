@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   MessageSquare,
   BarChart3,
-  Bookmark,
   Settings,
   Database,
   History,
@@ -35,8 +34,7 @@ const navSections = [
   {
     label: "ANALYTICS",
     items: [
-      { icon: BarChart3, label: "Reports", id: "reports", path: "/report" },
-      { icon: Bookmark, label: "Saved Views", id: "saved", path: "/saved" },
+      { icon: BarChart3, label: "Saved Reports", id: "reports", path: "/report" },
     ]
   },
   {
@@ -171,7 +169,6 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">Repnex</p>
-                <StatusPill tone="primary" className="min-h-5 px-2 py-0 text-[9px]">AI</StatusPill>
               </div>
               <p className="truncate text-[11px] font-medium text-muted-foreground">ERP intelligence workspace</p>
             </div>

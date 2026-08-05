@@ -2245,8 +2245,8 @@ export default function DatabaseConnections() {
     if (setHeaderConfig) {
       setHeaderConfig({
         title: "Database Connections",
-        subtitle: `${connections.length} active connection${connections.length !== 1 ? 's' : ''} • Connect ERP and SQL databases`,
-        icon: <Database className="w-4 h-4 text-foreground" />,
+        subtitle: "",
+        icon: null,
         actions: !isViewer ? (
           <button
             onClick={() => setIsModalOpen(true)}

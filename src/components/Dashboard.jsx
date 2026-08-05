@@ -411,10 +411,8 @@ export default function Dashboard() {
     if (setHeaderConfig) {
       setHeaderConfig({
         title: "Dashboard",
-        subtitle: showAllReports
-          ? `${allReports.length} report${allReports.length !== 1 ? "s" : ""} in your workspace`
-          : `${reports.length} pinned report${reports.length !== 1 ? "s" : ""}`,
-        icon: <LayoutDashboard className="w-4 h-4 text-foreground" />,
+        subtitle: "",
+        icon: null,
         actions: (
           <button
             onClick={() => setShowAllReports((prev) => !prev)}

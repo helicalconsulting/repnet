@@ -18,101 +18,10 @@ import {
 import { authApi } from '../services/api';
 import { ProductMark } from '../components/ui/product-ui';
 
-// ── Password strength ──────────────────────────────────────────────────
-const checkStrength = (pwd) => {
-  const checks = [
-    { label: 'At least 8 characters', pass: pwd.length >= 8 },
-    { label: 'Uppercase letter', pass: /[A-Z]/.test(pwd) },
-    { label: 'Lowercase letter', pass: /[a-z]/.test(pwd) },
-    { label: 'Number', pass: /\d/.test(pwd) },
-    { label: 'Special character (!@#$…)', pass: /[^A-Za-z0-9]/.test(pwd) },
-  ];
-  const score = checks.filter((c) => c.pass).length;
-  return { checks, score };
-};
-
-const strengthLabel = (score) => {
-  if (score <= 1) return { label: 'Very weak', color: '#ef4444' };
-  if (score === 2) return { label: 'Weak', color: '#f97316' };
-  if (score === 3) return { label: 'Fair', color: '#eab308' };
-  if (score === 4) return { label: 'Strong', color: '#22c55e' };
-  return { label: 'Very strong', color: '#10b981' };
-};
-
-// ── PasswordInput ──────────────────────────────────────────────────────
-function PasswordInput({ id, label, value, onChange, placeholder, autoComplete }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-foreground/85">
-        {label}
-      </label>
-      <div className="relative">
-        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <input
-          id={id}
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          className="w-full rounded-xl border border-transparent bg-black/5 pl-10 pr-12 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-        />
-        <button
-          type="button"
-          onClick={() => setShow((p) => !p)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors dark:hover:bg-white/10"
-          aria-label={show ? 'Hide password' : 'Show password'}
-        >
-          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Strength Meter ─────────────────────────────────────────────────────
-function StrengthMeter({ password }) {
-  if (!password) return null;
-  const { checks, score } = checkStrength(password);
-  const { label, color } = strengthLabel(score);
-
-  return (
-    <Motion.div
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mt-3 space-y-2.5"
-    >
-      {/* Bar */}
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="h-1.5 flex-1 rounded-full transition-all duration-300"
-            style={{ background: i <= score ? color : 'rgba(0,0,0,0.08)' }}
-          />
-        ))}
-      </div>
-      <p className="text-xs font-medium" style={{ color }}>
-        {label}
-      </p>
-      {/* Checklist */}
-      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-        {checks.map((c) => (
-          <div key={c.label} className="flex items-center gap-1.5 text-xs">
-            <CheckCircle2
-              className="h-3.5 w-3.5 shrink-0 transition-colors"
-              style={{ color: c.pass ? '#22c55e' : 'rgba(0,0,0,0.25)' }}
-            />
-            <span className={c.pass ? 'text-foreground/70' : 'text-muted-foreground'}>
-              {c.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </Motion.div>
-  );
-}
+import { checkStrength } from '../utils/password';
+import PasswordField from '../components/PasswordField';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import PasswordChecklist from '../components/PasswordChecklist';
 
 // ── Main Page ──────────────────────────────────────────────────────────
 const STATUS = {
@@ -472,9 +381,8 @@ export default function AcceptInvitePage({ onAuthSuccess }) {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {/* Password */}
               <div>
-                <PasswordInput
+                <PasswordField
                   id="invite-password"
                   label="New password"
                   value={password}
@@ -483,7 +391,12 @@ export default function AcceptInvitePage({ onAuthSuccess }) {
                   autoComplete="new-password"
                 />
                 <AnimatePresence>
-                  {password && <StrengthMeter password={password} />}
+                  {password && (
+                    <>
+                      <PasswordStrengthMeter password={password} />
+                      <PasswordChecklist password={password} />
+                    </>
+                  )}
                 </AnimatePresence>
               </div>
 

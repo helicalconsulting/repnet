@@ -10,9 +10,16 @@ import {
   Loader2,
   RefreshCw,
   Sparkles,
+  Lock,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 import { authApi } from '../services/api';
 import { ProductMark } from './ui/product-ui';
+import { checkStrength } from '../utils/password';
+import PasswordField from './PasswordField';
+import PasswordStrengthMeter from './PasswordStrengthMeter';
+import PasswordChecklist from './PasswordChecklist';
 
 const defaultFormData = {
   name: '',
@@ -56,9 +63,25 @@ export default function AuthPage({ onAuthSuccess }) {
   const [mfaCode, setMfaCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+
   const isSignIn = mode === 'signin';
   const isMfaStep = Boolean(mfaChallenge);
   const hasGoogleClient = Boolean(GOOGLE_CLIENT_ID);
+
+  const passwordVal = formData.password || '';
+  const confirmPasswordVal = formData.confirmPassword || '';
+
+  const { score: pwdScore } = checkStrength(passwordVal);
+  const meetsServerPolicy = /[A-Z]/.test(passwordVal) && /[a-z]/.test(passwordVal) && /\d/.test(passwordVal);
+  const passwordsMatch = passwordVal === confirmPasswordVal && confirmPasswordVal.length > 0;
+  
+  const canSignUp =
+    pwdScore >= 3 &&
+    passwordVal.length >= 8 &&
+    meetsServerPolicy &&
+    passwordsMatch;
+
+  const isButtonDisabled = isSignIn ? isSubmitting : (!canSignUp || isSubmitting);
 
   useEffect(() => {
     let isDark = false;
@@ -501,69 +524,116 @@ export default function AuthPage({ onAuthSuccess }) {
                       />
                     </div>
 
-                    <div>
-                      <div className="mb-1.5 flex items-center justify-between gap-3">
-                        <label htmlFor="password" className="block text-sm font-medium text-foreground/85">
-                          Password
-                        </label>
-                        {isSignIn && (
+                    {isSignIn ? (
+                      <div>
+                        <div className="mb-1.5 flex items-center justify-between gap-3">
+                          <label htmlFor="password" className="block text-sm font-medium text-foreground/85">
+                            Password
+                          </label>
                           <a href="/forgot-password" className="text-xs font-medium text-primary hover:text-primary/80">
                             Forgot password?
                           </a>
-                        )}
+                        </div>
+                        <div className="relative">
+                          <input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            value={formData.password}
+                            onChange={(event) => updateField('password', event.target.value)}
+                            placeholder="Minimum 8 characters"
+                            className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 pr-12 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors dark:hover:bg-white/10"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </div>
-                      <div className="relative">
-                        <input
-                          id="password"
-                          type={showPassword ? 'text' : 'password'}
-                          value={formData.password}
-                          onChange={(event) => updateField('password', event.target.value)}
-                          placeholder="Minimum 8 characters"
-                          className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 pr-12 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                          autoComplete={isSignIn ? 'current-password' : 'new-password'}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-black/5 hover:text-foreground transition-colors dark:hover:bg-white/10"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div>
+                          <PasswordField
+                            id="password"
+                            label="Password"
+                            value={formData.password}
+                            onChange={(value) => updateField('password', value)}
+                            placeholder="Minimum 8 characters"
+                            autoComplete="new-password"
+                          />
+                          <AnimatePresence>
+                            {formData.password && (
+                              <>
+                                <PasswordStrengthMeter password={formData.password} />
+                                <PasswordChecklist password={formData.password} />
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
 
-                    {!isSignIn && (
-                      <div>
-                        <label htmlFor="confirm-password" className="mb-1.5 block text-sm font-medium text-foreground/85">
-                          Confirm password
-                        </label>
-                        <input
-                          id="confirm-password"
-                          type="password"
-                          value={formData.confirmPassword}
-                          onChange={(event) => updateField('confirmPassword', event.target.value)}
-                          placeholder="Re-enter your password"
-                          className="w-full rounded-xl border border-transparent bg-black/5 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/50 dark:bg-white/5"
-                          autoComplete="new-password"
-                        />
-                      </div>
+                        <div>
+                          <label htmlFor="confirm-password" className="mb-1.5 block text-sm font-medium text-foreground/85">
+                            Confirm password
+                          </label>
+                          <div className="relative">
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <input
+                              id="confirm-password"
+                              type="password"
+                              value={formData.confirmPassword}
+                              onChange={(event) => updateField('confirmPassword', event.target.value)}
+                              placeholder="Re-enter your password"
+                              autoComplete="new-password"
+                              className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-sm outline-none transition-colors bg-black/5 dark:bg-white/5 ${
+                                formData.confirmPassword && !passwordsMatch
+                                  ? 'border-rose-500/50 focus:border-rose-500/70'
+                                  : formData.confirmPassword && passwordsMatch
+                                  ? 'border-emerald-500/50 focus:border-emerald-500/70'
+                                  : 'border-transparent focus:border-primary/50'
+                              }`}
+                            />
+                            {formData.confirmPassword && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                {passwordsMatch
+                                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                  : <AlertTriangle className="h-4 w-4 text-rose-500" />}
+                              </div>
+                            )}
+                          </div>
+                          <AnimatePresence>
+                            {formData.confirmPassword && !passwordsMatch && (
+                              <Motion.p
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                className="mt-1 text-xs text-rose-500"
+                              >
+                                Passwords do not match
+                              </Motion.p>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </>
                     )}
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="brand-gradient mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          {isSignIn ? 'Sign in' : 'Create account'}
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </button>
+ 
+                     <button
+                       type="submit"
+                       disabled={isButtonDisabled}
+                       className="brand-gradient mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
+                     >
+                       {isSubmitting ? (
+                         <Loader2 className="h-4 w-4 animate-spin" />
+                       ) : (
+                         <>
+                           {isSignIn ? 'Sign in' : 'Create account'}
+                           <ArrowRight className="h-4 w-4" />
+                         </>
+                       )}
+                     </button>
                   </form>
                 )}
 

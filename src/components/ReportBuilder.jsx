@@ -307,6 +307,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     return data.some(r => typeof r[zAxisKey] === 'number' || (!isNaN(Number(r[zAxisKey])) && r[zAxisKey] !== '' && r[zAxisKey] !== null));
   }, [zAxisKey, data]);
 
+  // Effective X-Axis key (swap to zAxisKey if X is numeric metric & Z is string dimension to prevent broken charts)
+  const effectiveXKey = useMemo(() => {
+    const isXNumeric = availableKeys.includes(xAxisKey);
+    const isZString = zAxisKey && !availableKeys.includes(zAxisKey);
+    if (isXNumeric && isZString) return zAxisKey;
+    return xAxisKey;
+  }, [xAxisKey, zAxisKey, availableKeys]);
+
   // Unique values or buckets for Z-Axis
   const zValues = useMemo(() => {
     if (!zAxisKey || !data.length) return [];
@@ -350,6 +358,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
     const primaryMetric = selectedDataKeys[0] || availableKeys[0] || 'revenue';
     const groupMap = new Map();
 
+    // Safety guard: if xAxisKey is numeric and zAxisKey is string, swap effectiveXKey to zAxisKey
+    const isXNumeric = availableKeys.includes(xAxisKey);
+    const isZString = zAxisKey && !availableKeys.includes(zAxisKey);
+    const effectiveXKey = (isXNumeric && isZString) ? zAxisKey : xAxisKey;
+
     const set = new Set();
     data.forEach(r => {
       const val = r[zAxisKey];
@@ -368,7 +381,7 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       const range = (maxV - minV) || 1;
 
       data.forEach(row => {
-        const xVal = String(row[xAxisKey] ?? 'Unknown');
+        const xVal = String(row[effectiveXKey] ?? 'Unknown');
         const numV = Number(row[zAxisKey]) || 0;
         let bucket = "Medium";
         if (numV <= minV + range / 3) bucket = "Low";
@@ -376,19 +389,19 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
 
         const val = Number(row[primaryMetric]) || 0;
         if (!groupMap.has(xVal)) {
-          groupMap.set(xVal, { [xAxisKey]: xVal });
+          groupMap.set(xVal, { [effectiveXKey]: xVal });
         }
         const entry = groupMap.get(xVal);
         entry[bucket] = (entry[bucket] || 0) + val;
       });
     } else {
       data.forEach(row => {
-        const xVal = String(row[xAxisKey] ?? 'Unknown');
+        const xVal = String(row[effectiveXKey] ?? 'Unknown');
         const zVal = String(row[zAxisKey] ?? 'Other');
         const val = Number(row[primaryMetric]) || 0;
 
         if (!groupMap.has(xVal)) {
-          groupMap.set(xVal, { [xAxisKey]: xVal });
+          groupMap.set(xVal, { [effectiveXKey]: xVal });
         }
         const entry = groupMap.get(xVal);
         entry[zVal] = (entry[zVal] || 0) + val;
@@ -957,7 +970,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
   const renderChart = () => {
     const colors = selectedColors.colors;
     const xAxisProps = {
-      dataKey: xAxisKey,
+      dataKey: effectiveXKey,
       stroke: "var(--muted-foreground)",
       fontSize: isMobile ? 10 : 11,
       tickLine: false,
@@ -1054,7 +1067,7 @@ const CustomGlassTooltip = ({ active, payload, label }) => {
               innerRadius={chartType === 'donut' ? 60 : 0}
               fill="#8884d8"
               dataKey={selectedDataKeys[0] || (availableKeys[0] || 'revenue')}
-              nameKey={xAxisKey}
+              nameKey={effectiveXKey}
             >
               {processedDataForChart.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />

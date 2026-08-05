@@ -248,9 +248,14 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   });
   
   const isIdColumn = (colName) => {
-    const lower = String(colName).toLowerCase();
-    return lower === 'id' || lower === '__rowid' || lower.endsWith('id') || lower.endsWith('_id') ||
-           lower === 'job' || lower === 'orderno' || lower === 'invoiceno' || lower === 'seq' || lower === 'num';
+    if (!colName) return false;
+    const lower = String(colName).toLowerCase().trim();
+    return lower === 'id' || lower === '__rowid' ||
+           lower.endsWith('_id') || lower.endsWith('id') ||
+           lower.endsWith('_code') || lower.endsWith('code') ||
+           lower.endsWith('_no') || lower.endsWith('no') ||
+           lower.endsWith('_num') || lower.endsWith('num') ||
+           lower.endsWith('_key') || lower.endsWith('key');
   };
 
   const isNumericValue = (val) => {
@@ -263,16 +268,25 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
   const availableKeys = useMemo(() => {
     if (!data.length) return [];
     
-    // First priority: Numeric columns that are NOT ID/Key columns
+    // Dynamic data inspector: a column is a string dimension if sample values contain letters, spaces, or dates
+    const isStringCol = (col) => {
+      const vals = data.slice(0, 20).map(r => r[col]).filter(v => v !== null && v !== undefined && v !== '');
+      if (!vals.length) return false;
+      return vals.some(v => typeof v === 'string' && (/[a-zA-Z\s]/.test(v) || v.includes('-') || v.includes('/')));
+    };
+
+    // First priority: Numeric columns that are NOT string dimensions and NOT ID/Key columns
     const metricCols = columns.filter(k => 
       !isIdColumn(k) &&
+      !isStringCol(k) &&
       data.some(row => isNumericValue(row[k]))
     );
 
     if (metricCols.length > 0) return metricCols;
 
-    // Fallback: All numeric columns
+    // Fallback: All numeric non-string columns
     return columns.filter(k => 
+      !isStringCol(k) &&
       data.some(row => isNumericValue(row[k]))
     );
   }, [data, columns]);
@@ -537,17 +551,20 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       // ── PATH A: Backend-computed col_meta (authoritative) ─────────────────
       // Validate each assignment against actual columns before applying
       const has = (col) => col && columns.includes(col);
-      const hasNum = (col) => col && availableKeys.includes(col);
+      const hasNum = (col) => col && (availableKeys.includes(col) || (columns.includes(col) && !isIdColumn(col)));
 
       if (has(colMeta.x_axis)) setXAxisKey(colMeta.x_axis);
       if (hasNum(colMeta.y_axis)) {
         setSelectedDataKeys([colMeta.y_axis]);
         setYAxisKey(colMeta.y_axis);
+      } else if (availableKeys.length > 0) {
+        setSelectedDataKeys([availableKeys[0]]);
+        setYAxisKey(availableKeys[0]);
       }
       if (has(colMeta.z_axis)) setZAxisKey(colMeta.z_axis);
       else setZAxisKey('');
       if (hasNum(colMeta.secondary_y)) setSecondaryLineKey(colMeta.secondary_y);
-      else if (availableKeys.length > 1) setSecondaryLineKey(availableKeys.find(k => k !== colMeta.y_axis) || availableKeys[1] || '');
+      else if (availableKeys.length > 1) setSecondaryLineKey(availableKeys.find(k => k !== (colMeta.y_axis || availableKeys[0])) || availableKeys[1] || '');
       else setSecondaryLineKey('');
       if (colMeta.chart_type) setChartType(colMeta.chart_type);
 
@@ -575,9 +592,11 @@ export default function ReportBuilder({ query, onClose, reportData, onToggleInsi
       const bestX = dateCols[0] || nameCol || nonNumCols[0] || columns[0];
       setXAxisKey(bestX);
 
-      // Y: first numeric col
-      setSelectedDataKeys(numCols.length > 0 ? [numCols[0]] : []);
-      setYAxisKey(numCols.length > 1 ? numCols[1] : numCols[0] || '');
+      // Y: first numeric col that is not an ID column
+      const validMetricCols = numCols.length > 0 ? numCols : availableKeys;
+      const bestY = validMetricCols[0] || '';
+      setSelectedDataKeys(bestY ? [bestY] : []);
+      setYAxisKey(validMetricCols.length > 1 ? validMetricCols[1] : bestY);
 
       // Z: first non-X non-numeric string col with 2–12 unique values
       let bestZ = '';

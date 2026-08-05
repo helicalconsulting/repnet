@@ -112,6 +112,24 @@ function DatabaseIcon({ type, className = "w-6 h-6" }) {
       </svg>
     );
   }
+
+  if (normType === 'epicor') {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="6" fill="#00828A" />
+        <path d="M9 7H15M9 12H14M9 17H15M9 7V17" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (normType === 'sage') {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="6" fill="#00D26A" />
+        <path d="M15 9C15 7.9 14.1 7 13 7H10.5C9.67 7 9 7.67 9 8.5C9 9.33 9.67 10 10.5 10H13.5C14.33 10 15 10.67 15 11.5C15 12.33 14.33 13 13.5 13H11C9.9 13 9 12.1 9 11" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
   
   // Custom/Other
   return (
@@ -1069,6 +1087,17 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const [sslEnabled, setSslEnabled] = useState(false);
 
   useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isOpen && connectionMode === 'gateway' && !agentToken) {
       databaseApi.getAgentToken()
         .then(token => setAgentToken(token))
@@ -1317,6 +1346,48 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
   const defaultPorts = {};
   dbTypes.forEach(d => { defaultPorts[d.id] = d.port; });
 
+  const erps = [
+    {
+      id: 'syspro',
+      name: 'Syspro ERP',
+      description: 'Connect your Syspro ERP database and automatically map business concepts',
+      active: true,
+      onClick: () => {
+        setConnectionCategory('syspro');
+        setSelectedType('mssql');
+        setFormData(prev => ({ ...prev, name: 'Syspro ERP (SQL Server)', port: '1433' }));
+        setSslEnabled(false);
+        setInputMode('fields');
+        setStep(2);
+      }
+    },
+    {
+      id: 'helios',
+      name: 'Helios ERP',
+      description: 'Connect your Helios ERP database (via Supabase PostgreSQL)',
+      active: true,
+      onClick: () => {
+        setConnectionCategory('helios');
+        setSelectedType('postgres');
+        setFormData(prev => ({ ...prev, name: 'Helios ERP (PostgreSQL)', port: '5432' }));
+        setSslEnabled(true);
+        setInputMode('fields');
+        setStep(2);
+      }
+    },
+    {
+      id: 'epicor',
+      name: 'Epicor ERP',
+      description: 'Connect Epicor database and map business concepts',
+      active: false,
+    },
+    {
+      id: 'sage',
+      name: 'Sage ERP',
+      description: 'Connect Sage database and map business concepts',
+      active: false,
+    }
+  ];
 
   if (!isOpen) return null;
 
@@ -1332,15 +1403,17 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-card dark:bg-[#1C1C1C] rounded-2xl w-full max-w-lg overflow-hidden border border-border/50 dark:border-white/10"
+        className={`bg-card dark:bg-[#1C1C1C] rounded-2xl w-full overflow-hidden border border-border/50 dark:border-white/10 transition-all duration-300 flex flex-col max-h-[85vh] ${
+          step === 1 ? 'max-w-[1050px]' : 'max-w-lg'
+        }`}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border/50 dark:border-white/5">
+        <div className="flex-shrink-0 flex items-center justify-between p-5 border-b border-border/50 dark:border-white/5">
           <div>
             <h2 className="text-lg font-semibold">Connect Database</h2>
             <p className="text-sm text-muted-foreground">
-              {step === 1 ? 'Select connection flow' : step === 1.5 ? 'Select database technology' : 'Enter connection details'}
+              {step === 1 ? 'Select connection flow' : 'Enter connection details'}
             </p>
           </div>
           <button 
@@ -1352,7 +1425,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
         </div>
 
         {/* Content */}
-        <div className="p-5">
+        <div className={`overflow-y-auto flex-1 ${step === 1 ? "p-6 md:p-8" : "p-5"}`}>
           <AnimatePresence mode="wait">
             {step === 1 && (
               <motion.div
@@ -1360,101 +1433,75 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="flex flex-col gap-3"
+                className="grid grid-cols-1 md:grid-cols-2 gap-0 items-stretch"
               >
-                {/* Option 1: Own DB */}
-                <button
-                  onClick={() => {
-                    setConnectionCategory('custom');
-                    setStep(1.5);
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group animate-fade-in"
-                >
-                  <DatabaseIcon type="custom" className="w-10 h-10 shrink-0" />
-                  <div className="text-left font-sans">
-                    <p className="font-semibold text-foreground text-sm">Own DB</p>
-                    <p className="text-[11px] text-muted-foreground">Connect a custom database (PostgreSQL, MySQL, SQL Server, MongoDB, Oracle, Cloud SQL)</p>
+                {/* Left Panel: Custom Database */}
+                <div className="flex flex-col md:pr-8 md:border-r border-border/50 dark:border-white/10">
+                  <div className="mb-6 text-left">
+                    <h3 className="font-semibold text-foreground text-base">Custom Database</h3>
+                    <p className="text-xs text-muted-foreground">Connect your own database</p>
                   </div>
-                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </button>
-
-                {/* Option 2: Syspro ERP */}
-                <button
-                  onClick={() => {
-                    setConnectionCategory('syspro');
-                    setSelectedType('mssql');
-                    setFormData(prev => ({ ...prev, name: 'Syspro ERP (SQL Server)', port: '1433' }));
-                    setSslEnabled(false);
-                    setInputMode('fields');
-                    setStep(2);
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                >
-                  <DatabaseIcon type="syspro" className="w-10 h-10 shrink-0" />
-                  <div className="text-left font-sans">
-                    <p className="font-semibold text-foreground text-sm">Syspro ERP</p>
-                    <p className="text-[11px] text-muted-foreground">Connect your Syspro ERP database and automatically map business concepts</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {dbTypes.map(db => (
+                      <button
+                        key={db.id}
+                        onClick={() => {
+                          setConnectionCategory('custom');
+                          handleDbSelect(db);
+                        }}
+                        className="flex items-center gap-3.5 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group text-left cursor-pointer w-full min-h-[76px] h-auto py-3"
+                      >
+                        <DatabaseIcon type={db.id} className="w-8 h-8 shrink-0" />
+                        <div className="flex-1 min-w-0 font-sans">
+                          <p className="font-semibold text-foreground text-sm leading-tight">{db.name}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Click to connect</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 ml-auto shrink-0 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </button>
+                    ))}
                   </div>
-                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </button>
+                </div>
 
-                {/* Option 3: Helios ERP */}
-                <button
-                  onClick={() => {
-                    setConnectionCategory('helios');
-                    setSelectedType('postgres');
-                    setFormData(prev => ({ ...prev, name: 'Helios ERP (PostgreSQL)', port: '5432' }));
-                    setSslEnabled(true);
-                    setInputMode('fields');
-                    setStep(2);
-                  }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                >
-                  <DatabaseIcon type="helios" className="w-10 h-10 shrink-0" />
-                  <div className="text-left font-sans">
-                    <p className="font-semibold text-foreground text-sm">Helios ERP</p>
-                    <p className="text-[11px] text-muted-foreground">Connect your Helios ERP database (via Supabase PostgreSQL)</p>
+                {/* Right Panel: ERP Connectors list */}
+                <div className="flex flex-col md:pl-8">
+                  <div className="mb-6 text-left">
+                    <h3 className="font-semibold text-foreground text-base">ERP Connectors</h3>
+                    <p className="text-xs text-muted-foreground">Connect pre-built enterprise flows</p>
                   </div>
-                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </button>
-              </motion.div>
-            )}
-
-            {step === 1.5 && (
-              <motion.div
-                key="step1.5"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="space-y-4"
-              >
-                {/* Back button */}
-                <button
-                  onClick={() => {
-                    setConnectionCategory(null);
-                    setStep(1);
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium mb-2"
-                >
-                  <ChevronRight className="w-3.5 h-3.5 rotate-180" />
-                  Back to connection options
-                </button>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {getFilteredDbTypes().map(db => (
-                    <button
-                      key={db.id}
-                      onClick={() => handleDbSelect(db)}
-                      className="flex items-center gap-3 p-4 rounded-xl border border-border/50 dark:border-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all group"
-                    >
-                      <DatabaseIcon type={db.id} className="w-10 h-10 shrink-0" />
-                      <div className="text-left">
-                        <p className="font-medium text-foreground text-sm">{db.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Click to connect</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </button>
-                  ))}
+                  <div className="flex flex-col gap-4">
+                    {erps.map((erp) => {
+                      if (erp.active) {
+                        return (
+                          <button
+                            key={erp.id}
+                            onClick={erp.onClick}
+                            className="flex items-center gap-4 p-4 rounded-xl border border-transparent hover:border-border/50 dark:hover:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-all group text-left w-full cursor-pointer min-h-[76px] h-auto py-3"
+                          >
+                            <DatabaseIcon type={erp.id} className="w-10 h-10 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground text-sm">{erp.name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{erp.description}</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all ml-auto" />
+                          </button>
+                        );
+                      } else {
+                        return (
+                          <div
+                            key={erp.id}
+                            className="flex items-center gap-4 p-4 rounded-xl opacity-60 border border-transparent text-left cursor-not-allowed select-none w-full min-h-[76px] h-auto py-3"
+                          >
+                            <DatabaseIcon type={erp.id} className="w-10 h-10 shrink-0 grayscale" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground/80 text-sm">{erp.name}</p>
+                              <p className="text-[11px] text-muted-foreground/60 truncate">{erp.description}</p>
+                            </div>
+                            <span className="text-[10px] bg-muted dark:bg-white/10 px-2 py-0.5 rounded text-muted-foreground font-sans font-medium shrink-0 ml-auto">Soon</span>
+                          </div>
+                        );
+                      }
+                    })}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1470,11 +1517,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
                 {/* Back button */}
                 <button
                   onClick={() => {
-                    if (connectionCategory === 'custom') {
-                      setStep(1.5);
-                    } else {
-                      setStep(1);
-                    }
+                    setStep(1);
                   }}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium mb-2"
                 >
@@ -2170,7 +2213,7 @@ function AddConnectionModal({ isOpen, onClose, onAdd }) {
 
         {/* Footer */}
         {step === 2 && (
-          <div className="flex flex-col gap-3 p-5 border-t border-border/50 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+          <div className="flex-shrink-0 flex flex-col gap-3 p-5 border-t border-border/50 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
             {/* Gateway offline warning */}
             {connectionMode === 'gateway' && agentName.trim() && !agentOnline && (
               <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">

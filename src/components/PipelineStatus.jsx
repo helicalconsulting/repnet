@@ -20,7 +20,7 @@ export default function PipelineStatus({ currentStep = "classify", completedStep
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-3xl rounded-2xl border border-border/30 bg-card/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#1C1C1C]/80"
+      className="w-fit max-w-full rounded-2xl border border-border/30 bg-card/80 px-5 py-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#1C1C1C]/80"
     >
       <div className="sm:hidden">
         <div className="flex items-center justify-between gap-3">
@@ -44,7 +44,7 @@ export default function PipelineStatus({ currentStep = "classify", completedStep
         </div>
       </div>
 
-      <div className="hidden items-center gap-1 sm:flex">
+      <div className="hidden flex-wrap items-center gap-y-2 gap-x-1 sm:flex">
         {STEPS.map((step, i) => {
         const Icon = step.icon;
         const isCompleted = completedSteps.includes(step.id);

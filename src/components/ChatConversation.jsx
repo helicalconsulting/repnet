@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDown, ArrowUp, Sparkles, Copy, Check,
   Database, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
-  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Plus
+  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Plus, BarChart3, ArrowRight
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
@@ -16,6 +16,68 @@ import ModelProviderMenu from "./ModelProviderMenu";
 import { format } from "date-fns";
 import { ProductMark, StatusPill } from "./ui/product-ui";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./ui/sheet";
+
+// Module-level tracking for message IDs that have already played the report button's entrance animation
+const playedReportPulseIds = new Set();
+
+function ReportButton({ msg, initialQuery, isProcessing, onOpenReport, setPreviewReport, setShowReportPreview }) {
+  const [showPulse, setShowPulse] = useState(false);
+
+  useEffect(() => {
+    if (msg.id && !playedReportPulseIds.has(msg.id)) {
+      playedReportPulseIds.add(msg.id);
+      setShowPulse(true);
+      const timer = setTimeout(() => {
+        setShowPulse(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [msg.id]);
+
+  const rowCount = msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0);
+
+  return (
+    <div className="relative w-full">
+      {showPulse && <span className="pulse-ring" />}
+      <button
+        onClick={() => {
+          const reportData = {
+            rows: msg.rows,
+            columns: msg.columns,
+            sql: msg.sql,
+            templateId: msg.templateId,
+            extractedParams: msg.extractedParams,
+            summary: msg.summary || msg.content || '',
+            col_meta: msg.colMeta || null,
+          };
+          const reportQuery = msg.templateDescription || initialQuery;
+          if (isProcessing) {
+            setPreviewReport({ query: reportQuery, data: reportData });
+            setShowReportPreview(true);
+          } else {
+            onOpenReport(reportQuery, reportData);
+          }
+        }}
+        className="interactive-report-btn group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="interactive-report-icon-tile">
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex flex-col items-start text-left">
+            <span className="text-[15px] font-bold text-white leading-tight">
+              Open interactive report
+            </span>
+            <span className="text-[12.5px] text-white/90 font-normal mt-0.5 leading-tight">
+              Charts, breakdowns and drill-downs for these {rowCount} results
+            </span>
+          </div>
+        </div>
+        <ArrowRight className="w-5 h-5 text-white/90 group-hover:translate-x-0.5 transition-transform" />
+      </button>
+    </div>
+  );
+}
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, selectActiveConnection, addNotification, user } = useApp();
@@ -1658,7 +1720,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               <button
                                 type="button"
                                 onClick={() => toggleSqlCollapse(msg.id)}
-                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8 dark:text-sky-300 dark:hover:bg-white/5"
+                                style={{ color: 'var(--text-muted)' }}
+                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                                 aria-expanded={!isSqlCollapsed(msg.id)}
                                 aria-controls={`sql-${msg.id}`}
                               >
@@ -1696,23 +1759,20 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
                     {/* Execution stats */}
                     {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                      <div
+                        style={{ color: 'var(--text-muted)' }}
+                        className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs"
+                      >
                         {msg.rowsReturned != null && (
                           <span className="flex items-center gap-1">
-                            <Rows3 className="w-3.5 h-3.5 text-slate-400" />
+                            <Rows3 className="w-3.5 h-3.5" />
                             {msg.rowsReturned.toLocaleString()} rows
                           </span>
                         )}
                         {msg.executionTime != null && (
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <Clock className="w-3.5 h-3.5" />
                             {msg.executionTime}ms
-                          </span>
-                        )}
-                        {msg.timestamp && (
-                          <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {formatMessageTimestamp(msg.timestamp)}
                           </span>
                         )}
                       </div>
@@ -1746,34 +1806,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         transition={{ delay: 0.2 }}
                         className="mt-2"
                       >
-                        <button
-                          onClick={() => {
-                            const reportData = {
-                              rows: msg.rows,
-                              columns: msg.columns,
-                              sql: msg.sql,
-                              templateId: msg.templateId,
-                              extractedParams: msg.extractedParams,
-                              summary: msg.summary || msg.content || '',
-                              col_meta: msg.colMeta || null,   // ← axis hints from backend
-                            };
-                            const reportQuery = msg.templateDescription || initialQuery;
-                            if (isProcessing) {
-                              // WS is active — open as popup to avoid killing the connection
-                              setPreviewReport({ query: reportQuery, data: reportData });
-                              setShowReportPreview(true);
-                            } else {
-                              onOpenReport(reportQuery, reportData);
-                            }
-                          }}
-                          className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-primary/15 bg-primary/8 px-5 py-3 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/12"
-                        >
-                          <Sparkles className="w-5 h-5 text-foreground/70 transition-transform group-hover:rotate-12 group-hover:text-primary" />
-                          <span>Open interactive report</span>
-                          {isProcessing && (
-                            <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
-                          )}
-                        </button>
+                        <ReportButton
+                          msg={msg}
+                          initialQuery={initialQuery}
+                          isProcessing={isProcessing}
+                          onOpenReport={onOpenReport}
+                          setPreviewReport={setPreviewReport}
+                          setShowReportPreview={setShowReportPreview}
+                        />
                       </motion.div>
                     )}
 

@@ -8,6 +8,7 @@ const defaults = {
   preferredName: '',
   greetingStyle: 'time-based',
   aiTone: 'friendly',
+  chatTextSize: 'm',
 };
 
 /**
@@ -137,7 +138,13 @@ export function PersonalizationProvider({ children, user }) {
 
   const updateProfile = useCallback((updates) => {
     setProfile(prev => {
-      const next = { ...prev, ...updates };
+      const next = {
+        ...prev,
+        ...updates,
+        chatTextSize: ['s', 'm', 'l'].includes(updates.chatTextSize)
+          ? updates.chatTextSize
+          : prev.chatTextSize || defaults.chatTextSize,
+      };
       saveToStorage(next, user);
       return next;
     });
@@ -188,6 +195,7 @@ export function PersonalizationProvider({ children, user }) {
   const value = {
     profile,
     updateProfile,
+    setChatTextSize: (chatTextSize) => updateProfile({ chatTextSize }),
     getGreeting,
     getDisplayName,
     getCasualResponse,

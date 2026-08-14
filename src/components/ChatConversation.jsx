@@ -17,6 +17,24 @@ import { format } from "date-fns";
 import { ProductMark, StatusPill } from "./ui/product-ui";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./ui/sheet";
 
+const CHAT_TEXT_SIZES = [
+  { value: "s", label: "S" },
+  { value: "m", label: "M" },
+  { value: "l", label: "L" },
+];
+
+const CHAT_TEXT_STYLE = {
+  s: { fontSize: "13px", lineHeight: 1.5 },
+  m: { fontSize: "16px", lineHeight: 1.62 },
+  l: { fontSize: "22px", lineHeight: 1.72 },
+};
+
+const CHAT_META_STYLE = {
+  s: { fontSize: "11px" },
+  m: { fontSize: "12px" },
+  l: { fontSize: "14px" },
+};
+
 // Module-level tracking for message IDs that have already played the report button's entrance animation
 const playedReportPulseIds = new Set();
 
@@ -81,8 +99,8 @@ function ReportButton({ msg, initialQuery, isProcessing, onOpenReport, setPrevie
 
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, selectActiveConnection, addNotification, user } = useApp();
-  const { getCasualResponse, profile } = usePersonalization();
-  const { setHeaderConfig } = useOutletContext() || {};
+  const { getCasualResponse, profile, setChatTextSize } = usePersonalization();
+  const { setHeaderConfig, isSidebarOpen } = useOutletContext() || {};
 
   const activeConn = connections.find((c) => c.id === activeConnection);
 
@@ -126,10 +144,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
+  const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
   // ── Report preview popup (shown instead of navigating when WS is active) ──
   const [previewReport, setPreviewReport] = useState(null); // { query, data }
   const [showReportPreview, setShowReportPreview] = useState(false);
+  const chatTextSize = profile.chatTextSize || "m";
+  const chatTextStyle = CHAT_TEXT_STYLE[chatTextSize] || CHAT_TEXT_STYLE.m;
+  const chatMetaStyle = CHAT_META_STYLE[chatTextSize] || CHAT_META_STYLE.m;
 
   const progressQueue = useRef([]);
   const progressTimer = useRef(null);
@@ -1334,8 +1356,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             {emoji}
           </div>
           <div className="flex-1 space-y-1">
-            <h4 className="font-semibold text-foreground text-sm tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
-            <p className="text-sm text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+            <h4 className="font-semibold text-foreground tracking-wide" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: title }} />
+            <p className="text-foreground/80 leading-relaxed" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: desc }} />
           </div>
         </div>
       );
@@ -1348,7 +1370,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       return (
         <div key={key} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500/70 mt-2 shrink-0" />
-          <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
+          <p className="text-foreground/90 leading-relaxed flex-1" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: itemContent }} />
         </div>
       );
     }
@@ -1363,7 +1385,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
             {num}
           </span>
-          <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
+          <p className="text-foreground/90 leading-relaxed flex-1" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: text }} />
         </div>
       );
     }
@@ -1371,7 +1393,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     // Default paragraph
     const processedLine = formatLine(line);
     return (
-      <p key={key} className="mb-3 text-foreground/90 leading-relaxed text-[15px]" dangerouslySetInnerHTML={{ __html: processedLine }} />
+      <p key={key} className="chat-text-body mb-3 text-foreground/90 leading-relaxed" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: processedLine }} />
     );
   };
 
@@ -1408,13 +1430,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           const { headers, rows } = parsed;
           return (
             <div key={`table-${idx}`} className="my-4 overflow-x-auto rounded-xl border border-border/60 bg-card/45 shadow-sm">
-              <table className="w-full border-collapse text-left text-xs">
+              <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/40">
                     {headers.map((h, hIdx) => (
                       <th
                         key={hIdx}
-                        className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider text-[11px]"
+                        className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider"
+                        style={chatMetaStyle}
                         dangerouslySetInnerHTML={{ __html: formatLine(h) }}
                       />
                     ))}
@@ -1429,7 +1452,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       {row.map((cell, cIdx) => (
                         <td
                           key={cIdx}
-                          className="px-4 py-3 text-foreground/90 font-medium text-[13px]"
+                          className="px-4 py-3 text-foreground/90 font-medium"
+                          style={chatTextStyle}
                           dangerouslySetInnerHTML={{ __html: formatLine(cell) }}
                         />
                       ))}
@@ -1461,9 +1485,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <>
-      <div className="workspace-canvas relative flex h-full w-full flex-1 flex-col items-center overflow-hidden">
+      <div
+        className="workspace-canvas chat-surface relative flex h-full w-full flex-1 flex-col items-center overflow-hidden"
+        data-chat-text-size={chatTextSize}
+      >
         {/* Active data source & New Chat button */}
-        <div className="absolute left-1/2 top-3 z-20 max-w-[95vw] -translate-x-1/2 flex items-center justify-between gap-3 w-full max-w-5xl px-4 pointer-events-none">
+        <div className="absolute left-1/2 top-3 z-20 flex w-full max-w-5xl max-w-[95vw] -translate-x-1/2 items-center justify-between gap-3 px-4 pointer-events-none">
           {activeConn ? (
             <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl pointer-events-auto">
               <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -1473,16 +1500,18 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             </StatusPill>
           ) : <div />}
 
-          <button
-            type="button"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-            }}
-            className="group pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white font-semibold text-xs rounded-xl shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-95 transition-all duration-200 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-300" />
-            <span>New Chat</span>
-          </button>
+          {!isSidebarOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+              }}
+              className="group pointer-events-auto inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-white px-3.5 py-2 text-xs font-semibold text-primary shadow-sm shadow-primary/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/15 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-card dark:hover:bg-primary/10"
+            >
+              <Plus className="h-3.5 w-3.5 text-primary transition-transform duration-300 group-hover:rotate-90" />
+              <span>New Chat</span>
+            </button>
+          )}
         </div>
 
         <div
@@ -1516,7 +1545,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   key={msg.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`chat-message mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.role === "ai" && (
                     <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
@@ -1529,7 +1558,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     {/* Render content box for: user messages, errors, ai messages with content, or executable ai messages (so insight shows when it arrives) */}
                     {(msg.content || msg.type === "error" || msg.role === "user" || (msg.role === "ai" && (msg.type === "executable" || !!msg.sql))) && (
                       <div
-                        className={`relative group ${msg.role === "user"
+                        className={`chat-message-surface relative group ${msg.role === "user"
                             ? "brand-gradient rounded-2xl rounded-tr-md px-4 py-3 pr-11 text-white shadow-md shadow-primary/15 sm:px-5 sm:pr-11"
                             : msg.type === "error"
                               ? "w-full rounded-2xl rounded-tl-md border border-red-200/70 bg-red-50/85 p-4 shadow-sm dark:border-red-900/50 dark:bg-red-950/25 sm:p-5"
@@ -1541,7 +1570,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         {/* Keep the disclosure only for responses that are genuinely long. */}
                         {msg.role === "ai" && isMessageCollapsible(msg) && (
                           <div className="mb-3 flex select-none items-center justify-between gap-3 border-b border-border/50 pb-3">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                            <span className="chat-meta font-semibold uppercase tracking-[0.08em] text-muted-foreground" style={chatMetaStyle}>
                               Response
                             </span>
                             <button
@@ -1571,10 +1600,11 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               <textarea
                                 value={editingText}
                                 onChange={(e) => setEditingText(e.target.value)}
-                                className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
+                                className="chat-text-body w-full rounded-lg border border-blue-500 bg-blue-700 p-2 text-white focus:outline-none resize-none text-[15px]"
+                                style={chatTextStyle}
                                 rows={2}
                               />
-                              <p className="text-[11px] leading-4 text-blue-100/85">
+                              <p className="chat-meta leading-4 text-blue-100/85" style={chatMetaStyle}>
                                 Editing this question will replace the replies below it.
                               </p>
                               <div className="flex justify-end gap-2 text-xs">
@@ -1595,7 +1625,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               </div>
                             </div>
                           ) : (
-                            <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                            <span className="chat-text-body leading-relaxed" style={chatTextStyle}>{msg.content}</span>
                           )
                         ) : (
                           /* AI message block */
@@ -1608,7 +1638,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   animate={{ opacity: 1, height: "auto" }}
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.25, ease: "easeInOut" }}
-                                  className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
+                                  className="chat-text-body text-muted-foreground italic flex items-center justify-between gap-4"
+                                  style={chatTextStyle}
                                 >
                                   <span>
                                     {msg.type === "error"
@@ -1631,7 +1662,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   animate={{ opacity: 1, height: "auto" }}
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.25, ease: "easeInOut" }}
-                                  className="text-[15px] leading-relaxed text-foreground"
+                                  className="chat-text-body leading-relaxed text-foreground"
+                                  style={chatTextStyle}
                                 >
                                   {msg.type === "error" && (
                                     <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
@@ -1641,7 +1673,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   )}
                                   {msg.isStreaming && !msg.content ? (
                                     /* Insight generating skeleton */
-                                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
+                                    <div className="flex items-center gap-2 text-muted-foreground py-1" style={chatTextStyle}>
                                       <div className="flex gap-1">
                                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -2057,7 +2089,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <div className="pointer-events-auto w-full max-w-5xl">
             <form
               onSubmit={handleSubmit}
-              className="prompt-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
+              className="prompt-shell chat-composer-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
               data-processing={isProcessing ? "true" : "false"}
             >
               <textarea
@@ -2066,7 +2098,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask a follow-up question..."}
                 disabled={isViewer}
-                className="chat-composer-input min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
+                className="chat-composer-input chat-text-body min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
+                style={chatTextStyle}
                 onKeyDown={(e) => {
                   if (isViewer) return;
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -2077,8 +2110,54 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               />
               <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1">
                 <div className="flex min-w-0 items-center gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowTextSizeMenu((open) => !open)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                      aria-haspopup="menu"
+                      aria-expanded={showTextSizeMenu}
+                      aria-label="Change chat text size"
+                    >
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <AnimatePresence>
+                      {showTextSizeMenu && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                          className="absolute bottom-full left-0 z-30 mb-2 w-28 rounded-2xl border border-border/70 bg-card p-2 shadow-xl"
+                          role="menu"
+                        >
+                          {CHAT_TEXT_SIZES.map((size) => {
+                            const selected = chatTextSize === size.value;
+                            return (
+                              <button
+                                key={size.value}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={selected}
+                                onClick={() => {
+                                  setChatTextSize(size.value);
+                                  setShowTextSizeMenu(false);
+                                }}
+                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${selected ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"}`}
+                              >
+                                <span>{size.label}</span>
+                                <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                                  {size.value === "s" ? "Small" : size.value === "m" ? "Medium" : "Large"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <ModelProviderMenu />
-                  <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
+                  <span className="hidden chat-meta text-muted-foreground sm:inline" style={chatMetaStyle}>Enter to send · Shift + Enter for a new line</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {isSpeechSupported ? (

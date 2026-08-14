@@ -11,12 +11,13 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function AIChatArea({ onSearch }) {
   const { connections, activeConnection, user } = useApp();
-  const { getGreeting, getDisplayName } = usePersonalization();
+  const { getGreeting, getDisplayName, profile, setChatTextSize } = usePersonalization();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showQueriesDrawer, setShowQueriesDrawer] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [hasFetchedDynamic, setHasFetchedDynamic] = useState(false);
+  const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
   // Fetch suggestions from backend only when drawer is opened and we haven't fetched them yet
   useEffect(() => {
@@ -114,6 +115,18 @@ export default function AIChatArea({ onSearch }) {
 
   const activeConn = connections.find(c => c.id === activeConnection);
   const isViewer = user?.role === 'viewer';
+  const chatTextSize = profile.chatTextSize || "m";
+  const chatTextStyle = {
+    s: { fontSize: "13px", lineHeight: 1.5 },
+    m: { fontSize: "16px", lineHeight: 1.62 },
+    l: { fontSize: "22px", lineHeight: 1.72 },
+  }[chatTextSize] || { fontSize: "16px", lineHeight: 1.62 };
+
+  const CHAT_TEXT_SIZES = [
+    { value: "s", label: "S" },
+    { value: "m", label: "M" },
+    { value: "l", label: "L" },
+  ];
 
   const categoryIcons = {
     "AP & Suppliers": <DollarSign className="w-4 h-4" />,
@@ -132,7 +145,7 @@ export default function AIChatArea({ onSearch }) {
   };
 
   return (
-    <div className="relative z-10 mx-auto flex min-h-full w-full max-w-[900px] flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6">
+    <div className="chat-surface relative z-10 mx-auto flex min-h-full w-full max-w-[900px] flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6" data-chat-text-size={chatTextSize}>
       <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[720px] max-w-[100vw] -translate-x-1/2 rounded-full bg-primary/8 blur-[110px]" />
 
       <div className="relative z-20 flex w-full flex-col items-center justify-center">
@@ -193,7 +206,8 @@ export default function AIChatArea({ onSearch }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask about revenue, orders, inventory, suppliers..."}
               disabled={isViewer}
-              className="chat-composer-input min-h-[72px] w-full resize-none border-none bg-transparent p-4 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/70"
+              className="chat-composer-input chat-text-body min-h-[72px] w-full resize-none border-none bg-transparent p-4 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/70"
+              style={chatTextStyle}
               onKeyDown={(e) => {
                 if (isViewer) return;
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -205,6 +219,52 @@ export default function AIChatArea({ onSearch }) {
 
             <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1.5">
               <div className="flex min-w-0 items-center gap-2">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowTextSizeMenu((open) => !open)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                    aria-haspopup="menu"
+                    aria-expanded={showTextSizeMenu}
+                    aria-label="Change chat text size"
+                  >
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
+                    <ChevronRight className="h-3.5 w-3.5 rotate-90 text-muted-foreground" />
+                  </button>
+                  <AnimatePresence>
+                    {showTextSizeMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                        className="absolute bottom-full left-0 z-30 mb-2 w-28 rounded-2xl border border-border/70 bg-card p-2 shadow-xl"
+                        role="menu"
+                      >
+                        {CHAT_TEXT_SIZES.map((size) => {
+                          const selected = chatTextSize === size.value;
+                          return (
+                            <button
+                              key={size.value}
+                              type="button"
+                              role="menuitemradio"
+                              aria-checked={selected}
+                              onClick={() => {
+                                setChatTextSize(size.value);
+                                setShowTextSizeMenu(false);
+                              }}
+                              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${selected ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"}`}
+                            >
+                              <span>{size.label}</span>
+                              <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                                {size.value === "s" ? "Small" : size.value === "m" ? "Medium" : "Large"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <ModelProviderMenu />
                 <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
               </div>

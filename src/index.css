@@ -277,6 +277,45 @@ select {
   box-shadow: none !important;
 }
 
+.chat-surface[data-chat-text-size="s"] .chat-text-body {
+  font-size: 0.92rem !important;
+  line-height: 1.52 !important;
+}
+
+.chat-surface[data-chat-text-size="m"] .chat-text-body {
+  font-size: 0.975rem !important;
+  line-height: 1.58 !important;
+}
+
+.chat-surface[data-chat-text-size="l"] .chat-text-body {
+  font-size: 1.15rem !important;
+  line-height: 1.72 !important;
+}
+
+.chat-surface[data-chat-text-size="s"] .chat-meta {
+  font-size: 0.68rem !important;
+}
+
+.chat-surface[data-chat-text-size="m"] .chat-meta {
+  font-size: 0.72rem !important;
+}
+
+.chat-surface[data-chat-text-size="l"] .chat-meta {
+  font-size: 0.8rem !important;
+}
+
+.chat-surface[data-chat-text-size="s"] .chat-composer-shell {
+  min-height: 92px !important;
+}
+
+.chat-surface[data-chat-text-size="m"] .chat-composer-shell {
+  min-height: 98px !important;
+}
+
+.chat-surface[data-chat-text-size="l"] .chat-composer-shell {
+  min-height: 116px !important;
+}
+
 .workspace-canvas {
   background-color: var(--background);
   background-image:
@@ -317,6 +356,36 @@ select {
 
 .brand-gradient {
   background: linear-gradient(135deg, color-mix(in oklab, var(--primary) 88%, white), var(--primary-hover));
+}
+
+.new-chat-cta {
+  background: linear-gradient(135deg, #4f7df9 0%, #3b5fe0 100%);
+  box-shadow: 0 4px 14px rgba(59, 95, 224, 0.35);
+}
+
+.new-chat-cta:hover {
+  background: linear-gradient(135deg, #5b88fb 0%, #4067ea 100%);
+  box-shadow: 0 8px 20px rgba(59, 95, 224, 0.42);
+}
+
+.new-chat-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: -140%;
+  width: 55%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: skewX(-18deg);
+  transition: transform 380ms ease;
+  pointer-events: none;
+}
+
+.new-chat-cta:hover::after {
+  transform: translateX(300%) skewX(-18deg);
+}
+
+.new-chat-cta:active {
+  box-shadow: 0 2px 10px rgba(59, 95, 224, 0.28);
 }
 
 .brand-text-gradient {

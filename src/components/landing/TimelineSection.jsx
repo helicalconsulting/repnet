@@ -71,10 +71,10 @@ export default function WhyRepnexSection() {
           viewport={{ once: true }}
           className="text-center mb-20 max-w-2xl mx-auto"
         >
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             Why Repnex
           </span>
-          <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
+          <h2 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 leading-[1.1] sm:text-5xl">
             Built for teams who are{" "}
             <span className="bg-gradient-to-r from-[#0055FF] to-[#6366F1] bg-clip-text text-transparent">
               tired of waiting
@@ -102,11 +102,11 @@ export default function WhyRepnexSection() {
                   <div className={`w-12 h-12 rounded-xl ${b.bg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                     <b.icon size={22} className={b.color} />
                   </div>
-                  <span className={`text-3xl font-black font-['Outfit'] ${b.color} tracking-tight opacity-90`}>
+                  <span className={`text-3xl font-black tracking-tight opacity-90 ${b.color}`}>
                     {b.stat}
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 font-['Outfit'] mb-1.5">{b.label}</h3>
+                <h3 className="mb-1.5 text-lg font-semibold text-slate-900">{b.label}</h3>
                 <p className="text-sm text-slate-500 leading-relaxed">{b.desc}</p>
               </div>
             </motion.div>

@@ -13,13 +13,13 @@ export default function EarlyBirdBanner() {
           <Sparkles className="text-black" size={24} />
         </div>
         <div>
-          <h3 className="text-xl font-black text-black font-['Outfit'] uppercase tracking-tight leading-none">Early Bird Offer</h3>
-          <p className="text-sm text-slate-600 font-bold mt-1">Get 25% discount on launch.</p>
+          <h3 className="text-xl font-bold tracking-[-0.03em] text-black uppercase leading-none">Early Bird Offer</h3>
+          <p className="mt-1 text-sm font-medium text-slate-600">Get 25% discount on launch.</p>
         </div>
       </div>
       <button 
         onClick={openModal} 
-        className="px-8 py-4 bg-[#0055FF] text-white text-lg font-black rounded-2xl border-[3px] border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[4px] hover:translate-y-[4px] transition-all cursor-pointer whitespace-nowrap"
+        className="cursor-pointer whitespace-nowrap rounded-2xl border-[3px] border-black bg-[#0055FF] px-8 py-4 text-lg font-bold text-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
       >
         Claim Now
       </button>

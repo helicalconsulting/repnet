@@ -98,7 +98,7 @@ const features = [
             <div className="flex gap-1">{[20,30,25,35,28].map((h,i)=><div key={i} className="w-1.5 rounded-full bg-blue-400/60" style={{height:h}} />)}</div>
           </div>
           <div className="h-12 rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-100/60 flex items-center justify-center">
-            <span className="text-lg font-bold text-indigo-600 font-['Outfit']">87%</span>
+            <span className="text-lg font-bold text-indigo-600">87%</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -176,10 +176,10 @@ export default function FeaturesGrid() {
           viewport={{ once: true }}
           className="mb-16 max-w-2xl"
         >
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             Capabilities
           </span>
-          <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
+          <h2 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 leading-[1.1] sm:text-5xl">
             Everything you need to{" "}
             <span className="bg-gradient-to-r from-[#0055FF] to-[#6366F1] bg-clip-text text-transparent">
               master your ERP data
@@ -207,7 +207,7 @@ export default function FeaturesGrid() {
                     <feature.icon size={20} className="text-[#0055FF]" />
                   </div>
                   <div className="flex items-start justify-between">
-                    <h3 className="text-xl font-semibold text-slate-900 font-['Outfit']" data-testid={`feature-card-${feature.title.replace(/\s+/g, '-').toLowerCase()}`}>
+                    <h3 className="text-xl font-semibold text-slate-900" data-testid={`feature-card-${feature.title.replace(/\s+/g, '-').toLowerCase()}`}>
                       {feature.title}
                     </h3>
                     <ArrowUpRight size={16} className="text-slate-300 mt-1 flex-shrink-0" />

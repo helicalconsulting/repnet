@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/dm-sans";
 @import "@fontsource-variable/geist";
 /* Custom theme-aware SmartSkeleton styles */
 .skeleton-shimmer {
@@ -103,7 +104,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'DM Sans Variable', sans-serif;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -181,7 +182,7 @@
 html {
   background: var(--background);
   color-scheme: light;
-  font-family: 'Geist Variable', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .dark {
@@ -242,7 +243,7 @@ html.theme-transition-fallback *::after {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Geist Variable', var(--font-sans);
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
   min-height: 100vh;
@@ -472,7 +473,7 @@ select {
 }
 
 .page-heading {
-  letter-spacing: -0.035em;
+  letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
@@ -699,7 +700,7 @@ select {
 
 /* Super Admin UI compatibility overrides for light/dark theme matching standard dashboard */
 .super-admin-root {
-  font-family: 'Manrope', var(--font-sans) !important;
+  font-family: var(--font-sans) !important;
 }
 
 .super-admin-root .bg-slate-950 {

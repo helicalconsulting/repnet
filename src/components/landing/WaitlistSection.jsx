@@ -51,10 +51,10 @@ export default function WaitlistSection() {
             viewport={{ once: true }}
             className="text-center mb-10"
           >
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
               Early Access
             </span>
-            <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
+            <h2 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 leading-[1.1] sm:text-5xl">
               Subscribe to learn more
             </h2>
             <p className="text-lg text-slate-500 mt-4">
@@ -104,7 +104,7 @@ export default function WaitlistSection() {
                 >
                   <CheckCircle2 size={56} className="text-emerald-500 mx-auto mb-4" />
                 </motion.div>
-                <h3 className="text-2xl font-bold text-slate-900 font-['Outfit']">You're on the list!</h3>
+                <h3 className="text-2xl font-bold text-slate-900">You're on the list!</h3>
                 <p className="text-sm text-slate-500 mt-2">Thanks for subscribing. We'll share updates shortly.</p>
               </motion.div>
             ) : (

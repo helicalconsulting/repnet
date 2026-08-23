@@ -52,10 +52,10 @@ export default function ProductShowcase() {
           viewport={{ once: true }}
           className="text-center mb-16 max-w-2xl mx-auto"
         >
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             See It In Action
           </span>
-          <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
+          <h2 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 leading-[1.1] sm:text-5xl">
             A product built for{" "}
             <span className="bg-gradient-to-r from-[#0055FF] to-[#6366F1] bg-clip-text text-transparent">
               real users
@@ -109,7 +109,7 @@ export default function ProductShowcase() {
                       <div className={`w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-5`}>
                         <active.icon size={22} className="text-[#0055FF]" />
                       </div>
-                      <h3 className="text-2xl font-bold text-slate-900 font-['Outfit'] mb-3">
+                      <h3 className="mb-3 text-2xl font-bold text-slate-900">
                         {active.label}
                       </h3>
                       <p className="text-base text-slate-500 leading-relaxed mb-6">

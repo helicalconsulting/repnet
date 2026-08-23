@@ -277,43 +277,61 @@ select {
   box-shadow: none !important;
 }
 
-.chat-surface[data-chat-text-size="s"] .chat-text-body {
-  font-size: 0.92rem !important;
-  line-height: 1.52 !important;
+.chat-surface {
+  --chat-body-font-size: 0.975rem;
+  --chat-body-line-height: 1.62;
+  --chat-meta-font-size: 0.72rem;
+  --chat-ui-font-size: 0.875rem;
+  --chat-caption-font-size: 0.6875rem;
+  --chat-composer-min-height: 98px;
 }
 
-.chat-surface[data-chat-text-size="m"] .chat-text-body {
-  font-size: 0.975rem !important;
-  line-height: 1.58 !important;
+.chat-surface[data-chat-text-size="s"] {
+  --chat-body-font-size: 0.92rem;
+  --chat-body-line-height: 1.54;
+  --chat-meta-font-size: 0.68rem;
+  --chat-ui-font-size: 0.8125rem;
+  --chat-caption-font-size: 0.65625rem;
+  --chat-composer-min-height: 92px;
 }
 
-.chat-surface[data-chat-text-size="l"] .chat-text-body {
-  font-size: 1.15rem !important;
-  line-height: 1.72 !important;
+.chat-surface[data-chat-text-size="m"] {
+  --chat-body-font-size: 0.975rem;
+  --chat-body-line-height: 1.62;
+  --chat-meta-font-size: 0.72rem;
+  --chat-ui-font-size: 0.875rem;
+  --chat-caption-font-size: 0.6875rem;
+  --chat-composer-min-height: 98px;
 }
 
-.chat-surface[data-chat-text-size="s"] .chat-meta {
-  font-size: 0.68rem !important;
+.chat-surface[data-chat-text-size="l"] {
+  --chat-body-font-size: 1.1rem;
+  --chat-body-line-height: 1.7;
+  --chat-meta-font-size: 0.8rem;
+  --chat-ui-font-size: 0.9375rem;
+  --chat-caption-font-size: 0.75rem;
+  --chat-composer-min-height: 116px;
 }
 
-.chat-surface[data-chat-text-size="m"] .chat-meta {
-  font-size: 0.72rem !important;
+.chat-text-body {
+  font-size: var(--chat-body-font-size) !important;
+  line-height: var(--chat-body-line-height) !important;
 }
 
-.chat-surface[data-chat-text-size="l"] .chat-meta {
-  font-size: 0.8rem !important;
+.chat-text-meta {
+  font-size: var(--chat-meta-font-size) !important;
 }
 
-.chat-surface[data-chat-text-size="s"] .chat-composer-shell {
-  min-height: 92px !important;
+.chat-text-ui {
+  font-size: var(--chat-ui-font-size) !important;
 }
 
-.chat-surface[data-chat-text-size="m"] .chat-composer-shell {
-  min-height: 98px !important;
+.chat-text-caption {
+  font-size: var(--chat-caption-font-size) !important;
 }
 
-.chat-surface[data-chat-text-size="l"] .chat-composer-shell {
-  min-height: 116px !important;
+.chat-composer-shell {
+  min-height: var(--chat-composer-min-height) !important;
 }
 
 .workspace-canvas {

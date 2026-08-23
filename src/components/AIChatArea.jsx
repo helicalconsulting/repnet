@@ -116,11 +116,6 @@ export default function AIChatArea({ onSearch }) {
   const activeConn = connections.find(c => c.id === activeConnection);
   const isViewer = user?.role === 'viewer';
   const chatTextSize = profile.chatTextSize || "m";
-  const chatTextStyle = {
-    s: { fontSize: "13px", lineHeight: 1.5 },
-    m: { fontSize: "16px", lineHeight: 1.62 },
-    l: { fontSize: "22px", lineHeight: 1.72 },
-  }[chatTextSize] || { fontSize: "16px", lineHeight: 1.62 };
 
   const CHAT_TEXT_SIZES = [
     { value: "s", label: "S" },
@@ -158,7 +153,7 @@ export default function AIChatArea({ onSearch }) {
           <h2 className="page-heading brand-text-gradient text-3xl font-semibold sm:text-4xl">
             {getGreeting()}, {getDisplayName()}
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+          <p className="chat-text-meta mx-auto mt-3 max-w-lg leading-6 text-muted-foreground">
             {isViewer
               ? "Explore saved reports and shared analysis from your workspace."
               : "Ask a business question. Repnex will find the right ERP data and build the report with you."}
@@ -185,7 +180,7 @@ export default function AIChatArea({ onSearch }) {
               type="button"
               onClick={() => setShowQueriesDrawer(true)}
               aria-haspopup="dialog"
-              className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-border/70 bg-white/60 dark:bg-white/10 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-white/80 dark:hover:bg-white/20 cursor-pointer"
+              className="chat-text-caption inline-flex min-h-6 items-center gap-1.5 rounded-full border border-border/70 bg-white/60 dark:bg-white/10 backdrop-blur-sm px-2.5 py-1 font-semibold text-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-white/80 dark:hover:bg-white/20 cursor-pointer"
             >
               <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
               Explore Prompt Ideas
@@ -206,8 +201,7 @@ export default function AIChatArea({ onSearch }) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask about revenue, orders, inventory, suppliers..."}
               disabled={isViewer}
-              className="chat-composer-input chat-text-body min-h-[72px] w-full resize-none border-none bg-transparent p-4 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/70"
-              style={chatTextStyle}
+              className="chat-composer-input chat-text-body min-h-[72px] w-full resize-none border-none bg-transparent p-4 text-foreground outline-none placeholder:text-muted-foreground/70"
               onKeyDown={(e) => {
                 if (isViewer) return;
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -223,12 +217,12 @@ export default function AIChatArea({ onSearch }) {
                   <button
                     type="button"
                     onClick={() => setShowTextSizeMenu((open) => !open)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                    className="chat-text-ui inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 font-semibold text-foreground transition-colors hover:bg-muted"
                     aria-haspopup="menu"
                     aria-expanded={showTextSizeMenu}
                     aria-label="Change chat text size"
                   >
-                    <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
+                    <span className="chat-text-caption uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
                     <ChevronRight className="h-3.5 w-3.5 rotate-90 text-muted-foreground" />
                   </button>
                   <AnimatePresence>
@@ -252,10 +246,12 @@ export default function AIChatArea({ onSearch }) {
                                 setChatTextSize(size.value);
                                 setShowTextSizeMenu(false);
                               }}
-                              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${selected ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"}`}
+                              className={`chat-text-ui flex w-full items-center justify-between rounded-xl px-3 py-2 font-semibold transition-colors ${selected ? "bg-primary/10 text-primary ring-1 ring-primary/10" : "text-foreground hover:bg-muted"}`}
                             >
-                              <span>{size.label}</span>
-                              <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                              <span className={`flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-medium tracking-normal ${selected ? "bg-primary/15 text-primary" : "bg-muted/60 text-foreground/80"}`}>
+                                {size.label}
+                              </span>
+                              <span className="chat-text-caption tracking-[0.08em] text-muted-foreground">
                                 {size.value === "s" ? "Small" : size.value === "m" ? "Medium" : "Large"}
                               </span>
                             </button>
@@ -266,7 +262,7 @@ export default function AIChatArea({ onSearch }) {
                   </AnimatePresence>
                 </div>
                 <ModelProviderMenu />
-                <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
+                <span className="chat-text-caption hidden text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5">
@@ -297,7 +293,7 @@ export default function AIChatArea({ onSearch }) {
           </div>
         </motion.form>
 
-        <p className="mt-6 text-center text-[11px] text-muted-foreground/75">
+        <p className="chat-text-caption mt-6 text-center text-muted-foreground/75">
           Repnex may make mistakes. Review important results before sharing them.
         </p>
       </div>
@@ -331,7 +327,7 @@ export default function AIChatArea({ onSearch }) {
                     <ProductMark className="h-8 w-8" />
                     Query ideas
                   </h3>
-                  <p className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">
+                  <p className="chat-text-caption mt-2 max-w-xs leading-5 text-muted-foreground">
                     Useful questions based on the tables in your selected connection.
                   </p>
                 </div>
@@ -351,10 +347,10 @@ export default function AIChatArea({ onSearch }) {
                 {isLoadingSuggestions ? (
                   <div className="app-card flex flex-col items-center justify-center gap-3 rounded-2xl py-10 text-muted-foreground">
                     <RefreshCw className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-sm">Finding useful questions...</span>
+                    <span className="chat-text-ui">Finding useful questions...</span>
                   </div>
                 ) : suggestions.length === 0 ? (
-                  <div className="app-card flex flex-col items-center gap-2 rounded-2xl px-5 py-10 text-center text-sm text-muted-foreground">
+                  <div className="app-card chat-text-ui flex flex-col items-center gap-2 rounded-2xl px-5 py-10 text-center text-muted-foreground">
                     <Database className="mb-1 h-8 w-8 text-muted-foreground/40" />
                     <span>
                       {!activeConnection
@@ -367,7 +363,7 @@ export default function AIChatArea({ onSearch }) {
                   suggestions.map((mod, modIdx) => (
                     <div key={modIdx} className="flex flex-col gap-3 border-b border-border/50 pb-5 last:border-0 last:pb-0">
                       {/* Module Title */}
-                      <h4 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-foreground">
+                      <h4 className="chat-text-ui flex items-center gap-2 font-semibold tracking-tight text-foreground">
                         <span className="h-3.5 w-1 rounded-full bg-primary" />
                         {mod.module || "General Modules"}
                       </h4>
@@ -376,7 +372,7 @@ export default function AIChatArea({ onSearch }) {
                       <div className="flex flex-col gap-4">
                         {mod.submodules?.map((sub, subIdx) => (
                           <div key={subIdx} className="flex flex-col gap-2">
-                            <h5 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                            <h5 className="chat-text-caption flex items-center gap-1.5 font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                               {categoryIcons[sub.name] || <Sparkles className="h-3.5 w-3.5 text-primary" />}
                               {sub.name}
                             </h5>
@@ -392,10 +388,10 @@ export default function AIChatArea({ onSearch }) {
                                     }
                                   }}
                                   disabled={isViewer}
-                                  className="interactive-card app-card group flex w-full items-start justify-between gap-3 rounded-xl p-3 text-left text-xs font-medium text-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                  className="interactive-card app-card chat-text-caption group flex w-full items-start justify-between gap-3 rounded-xl p-3 text-left font-medium text-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   <span className="flex items-start gap-2">
-                                    <span className="text-sm select-none shrink-0">{sug.icon || "📊"}</span>
+                                    <span className="chat-text-ui select-none shrink-0">{sug.icon || "📊"}</span>
                                     <span className="leading-normal">{sug.text}</span>
                                   </span>
                                   <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />

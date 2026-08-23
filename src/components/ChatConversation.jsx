@@ -23,18 +23,6 @@ const CHAT_TEXT_SIZES = [
   { value: "l", label: "L" },
 ];
 
-const CHAT_TEXT_STYLE = {
-  s: { fontSize: "13px", lineHeight: 1.5 },
-  m: { fontSize: "16px", lineHeight: 1.62 },
-  l: { fontSize: "22px", lineHeight: 1.72 },
-};
-
-const CHAT_META_STYLE = {
-  s: { fontSize: "11px" },
-  m: { fontSize: "12px" },
-  l: { fontSize: "14px" },
-};
-
 // Module-level tracking for message IDs that have already played the report button's entrance animation
 const playedReportPulseIds = new Set();
 
@@ -83,10 +71,10 @@ function ReportButton({ msg, initialQuery, isProcessing, onOpenReport, setPrevie
             <BarChart3 className="w-5 h-5 text-white" />
           </div>
           <div className="flex flex-col items-start text-left">
-            <span className="text-[15px] font-bold text-white leading-tight">
+            <span className="chat-text-ui font-bold text-white leading-tight">
               Open interactive report
             </span>
-            <span className="text-[12.5px] text-white/90 font-normal mt-0.5 leading-tight">
+            <span className="chat-text-caption text-white/90 font-normal mt-0.5 leading-tight">
               Charts, breakdowns and drill-downs for these {rowCount} results
             </span>
           </div>
@@ -150,8 +138,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [previewReport, setPreviewReport] = useState(null); // { query, data }
   const [showReportPreview, setShowReportPreview] = useState(false);
   const chatTextSize = profile.chatTextSize || "m";
-  const chatTextStyle = CHAT_TEXT_STYLE[chatTextSize] || CHAT_TEXT_STYLE.m;
-  const chatMetaStyle = CHAT_META_STYLE[chatTextSize] || CHAT_META_STYLE.m;
 
   const progressQueue = useRef([]);
   const progressTimer = useRef(null);
@@ -1328,19 +1314,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     if (trimmed.startsWith("### ")) {
       const hContent = formatLine(trimmed.slice(4));
       return (
-        <h3 key={key} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+        <h3 key={key} className="chat-text-ui font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
       );
     }
     if (trimmed.startsWith("## ")) {
       const hContent = formatLine(trimmed.slice(3));
       return (
-        <h2 key={key} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+        <h2 key={key} className="chat-text-ui font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
       );
     }
     if (trimmed.startsWith("# ")) {
       const hContent = formatLine(trimmed.slice(2));
       return (
-        <h1 key={key} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+        <h1 key={key} className="chat-text-ui font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
       );
     }
 
@@ -1356,8 +1342,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             {emoji}
           </div>
           <div className="flex-1 space-y-1">
-            <h4 className="font-semibold text-foreground tracking-wide" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: title }} />
-            <p className="text-foreground/80 leading-relaxed" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: desc }} />
+            <h4 className="chat-text-ui font-semibold text-foreground tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
+            <p className="chat-text-body text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
           </div>
         </div>
       );
@@ -1370,7 +1356,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       return (
         <div key={key} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500/70 mt-2 shrink-0" />
-          <p className="text-foreground/90 leading-relaxed flex-1" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: itemContent }} />
+          <p className="chat-text-body text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
         </div>
       );
     }
@@ -1385,7 +1371,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
             {num}
           </span>
-          <p className="text-foreground/90 leading-relaxed flex-1" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: text }} />
+          <p className="chat-text-body text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
         </div>
       );
     }
@@ -1393,7 +1379,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     // Default paragraph
     const processedLine = formatLine(line);
     return (
-      <p key={key} className="chat-text-body mb-3 text-foreground/90 leading-relaxed" style={chatTextStyle} dangerouslySetInnerHTML={{ __html: processedLine }} />
+      <p key={key} className="chat-text-body mb-3 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: processedLine }} />
     );
   };
 
@@ -1437,7 +1423,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       <th
                         key={hIdx}
                         className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider"
-                        style={chatMetaStyle}
                         dangerouslySetInnerHTML={{ __html: formatLine(h) }}
                       />
                     ))}
@@ -1453,7 +1438,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         <td
                           key={cIdx}
                           className="px-4 py-3 text-foreground/90 font-medium"
-                          style={chatTextStyle}
                           dangerouslySetInnerHTML={{ __html: formatLine(cell) }}
                         />
                       ))}
@@ -1570,7 +1554,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         {/* Keep the disclosure only for responses that are genuinely long. */}
                         {msg.role === "ai" && isMessageCollapsible(msg) && (
                           <div className="mb-3 flex select-none items-center justify-between gap-3 border-b border-border/50 pb-3">
-                            <span className="chat-meta font-semibold uppercase tracking-[0.08em] text-muted-foreground" style={chatMetaStyle}>
+            <span className="chat-text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                               Response
                             </span>
                             <button
@@ -1600,11 +1584,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               <textarea
                                 value={editingText}
                                 onChange={(e) => setEditingText(e.target.value)}
-                                className="chat-text-body w-full rounded-lg border border-blue-500 bg-blue-700 p-2 text-white focus:outline-none resize-none text-[15px]"
-                                style={chatTextStyle}
+                                className="chat-text-body w-full rounded-lg border border-blue-500 bg-blue-700 p-2 text-white focus:outline-none resize-none"
                                 rows={2}
                               />
-                              <p className="chat-meta leading-4 text-blue-100/85" style={chatMetaStyle}>
+                              <p className="chat-text-caption leading-4 text-blue-100/85">
                                 Editing this question will replace the replies below it.
                               </p>
                               <div className="flex justify-end gap-2 text-xs">
@@ -1625,7 +1608,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               </div>
                             </div>
                           ) : (
-                            <span className="chat-text-body leading-relaxed" style={chatTextStyle}>{msg.content}</span>
+                            <span className="chat-text-body leading-relaxed">{msg.content}</span>
                           )
                         ) : (
                           /* AI message block */
@@ -1639,7 +1622,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.25, ease: "easeInOut" }}
                                   className="chat-text-body text-muted-foreground italic flex items-center justify-between gap-4"
-                                  style={chatTextStyle}
                                 >
                                   <span>
                                     {msg.type === "error"
@@ -1663,7 +1645,6 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.25, ease: "easeInOut" }}
                                   className="chat-text-body leading-relaxed text-foreground"
-                                  style={chatTextStyle}
                                 >
                                   {msg.type === "error" && (
                                     <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
@@ -1673,7 +1654,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   )}
                                   {msg.isStreaming && !msg.content ? (
                                     /* Insight generating skeleton */
-                                    <div className="flex items-center gap-2 text-muted-foreground py-1" style={chatTextStyle}>
+                                    <div className="chat-text-body flex items-center gap-2 text-muted-foreground py-1">
                                       <div className="flex gap-1">
                                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -2017,7 +1998,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   exit={{ opacity: 0, y: 10 }}
                   className="custom-scrollbar mb-7 flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-2 pl-12 sm:flex-wrap sm:overflow-visible sm:pb-0"
                 >
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+                        <div className="chat-text-caption flex items-center gap-1.5 text-muted-foreground mr-2">
                     <Lightbulb className="w-3.5 h-3.5" />
                     <span>Suggestions:</span>
                   </div>
@@ -2054,7 +2035,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                           processQuery(sugText);
                         }
                       }}
-                      className={`app-card max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
+                      className={`app-card chat-text-caption max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
                     >
                       {typeof sug === "string" ? sug : sug.text || sug}
                     </button>
@@ -2075,7 +2056,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               onClick={() => scrollToLatest("smooth")}
-              className="app-card absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-foreground shadow-lg"
+              className="app-card chat-text-caption absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 font-semibold text-foreground shadow-lg"
               aria-label="Jump to the latest message"
             >
               <ArrowDown className="h-3.5 w-3.5 text-primary" />
@@ -2098,8 +2079,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask a follow-up question..."}
                 disabled={isViewer}
-                className="chat-composer-input chat-text-body min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
-                style={chatTextStyle}
+                className="chat-composer-input chat-text-body min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-foreground outline-none placeholder:text-muted-foreground/65"
                 onKeyDown={(e) => {
                   if (isViewer) return;
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -2114,12 +2094,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     <button
                       type="button"
                       onClick={() => setShowTextSizeMenu((open) => !open)}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                      className="chat-text-ui inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 font-semibold text-foreground transition-colors hover:bg-muted"
                       aria-haspopup="menu"
                       aria-expanded={showTextSizeMenu}
                       aria-label="Change chat text size"
                     >
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
+                      <span className="chat-text-caption uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
                       <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                     <AnimatePresence>
@@ -2143,13 +2123,15 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   setChatTextSize(size.value);
                                   setShowTextSizeMenu(false);
                                 }}
-                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${selected ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"}`}
-                              >
-                                <span>{size.label}</span>
-                                <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                                  {size.value === "s" ? "Small" : size.value === "m" ? "Medium" : "Large"}
-                                </span>
-                              </button>
+                              className={`chat-text-ui flex w-full items-center justify-between rounded-xl px-3 py-2 font-semibold transition-colors ${selected ? "bg-primary/10 text-primary ring-1 ring-primary/10" : "text-foreground hover:bg-muted"}`}
+                            >
+                              <span className={`flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-medium tracking-normal ${selected ? "bg-primary/15 text-primary" : "bg-muted/60 text-foreground/80"}`}>
+                                {size.label}
+                              </span>
+                              <span className="chat-text-caption tracking-[0.08em] text-muted-foreground">
+                                {size.value === "s" ? "Small" : size.value === "m" ? "Medium" : "Large"}
+                              </span>
+                            </button>
                             );
                           })}
                         </motion.div>
@@ -2157,7 +2139,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     </AnimatePresence>
                   </div>
                   <ModelProviderMenu />
-                  <span className="hidden chat-meta text-muted-foreground sm:inline" style={chatMetaStyle}>Enter to send · Shift + Enter for a new line</span>
+                  <span className="hidden chat-text-caption text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {isSpeechSupported ? (
@@ -2204,7 +2186,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 </div>
               </div>
             </form>
-            <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
+            <p className="chat-text-caption mt-2 text-center text-muted-foreground/70">
               Review important results before sharing them.
             </p>
           </div>

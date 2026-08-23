@@ -5,7 +5,7 @@ import { cn } from "../../lib/utils";
 export function ProductMark({ className }) {
   return (
     <img
-      src="/270970406.jpeg"
+      src="/repnexlogo.png"
       alt=""
       className={cn(
         "inline-block h-9 w-9 shrink-0 rounded-xl border border-border/50 bg-white object-contain p-0.5 shadow-sm",

@@ -59,7 +59,7 @@ export default function Header() {
           <div className="flex items-center justify-between h-16">
             <Link to="/" data-testid="header-logo" className="flex items-center gap-2.5 group">
               <div className="flex-shrink-0 w-8 h-8 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border">
-                <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
+                <img src="/repnexlogo.png" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
               </div>
               <span className="text-lg font-semibold text-slate-900 font-['Outfit'] tracking-tight">
                 Repnex

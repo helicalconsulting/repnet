@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowDown, ArrowUp, Sparkles, Copy, Check,
   Database, Lightbulb, AlertCircle, Clock, Rows3, ChevronDown, ChevronUp, Calendar,
-  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Plus
+  Edit2, RotateCcw, Square, ThumbsUp, ThumbsDown, Mic, MicOff, Plus, BarChart3, ArrowRight
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
@@ -17,10 +17,78 @@ import { format } from "date-fns";
 import { ProductMark, StatusPill } from "./ui/product-ui";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./ui/sheet";
 
+const CHAT_TEXT_SIZES = [
+  { value: "s", label: "S" },
+  { value: "m", label: "M" },
+  { value: "l", label: "L" },
+];
+
+// Module-level tracking for message IDs that have already played the report button's entrance animation
+const playedReportPulseIds = new Set();
+
+function ReportButton({ msg, initialQuery, isProcessing, onOpenReport, setPreviewReport, setShowReportPreview }) {
+  const [showPulse, setShowPulse] = useState(false);
+
+  useEffect(() => {
+    if (msg.id && !playedReportPulseIds.has(msg.id)) {
+      playedReportPulseIds.add(msg.id);
+      setShowPulse(true);
+      const timer = setTimeout(() => {
+        setShowPulse(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [msg.id]);
+
+  const rowCount = msg.rowsReturned ?? (msg.rows ? msg.rows.length : 0);
+
+  return (
+    <div className="relative w-full">
+      {showPulse && <span className="pulse-ring" />}
+      <button
+        onClick={() => {
+          const reportData = {
+            rows: msg.rows,
+            columns: msg.columns,
+            sql: msg.sql,
+            templateId: msg.templateId,
+            extractedParams: msg.extractedParams,
+            summary: msg.summary || msg.content || '',
+            col_meta: msg.colMeta || null,
+          };
+          const reportQuery = msg.templateDescription || initialQuery;
+          if (isProcessing) {
+            setPreviewReport({ query: reportQuery, data: reportData });
+            setShowReportPreview(true);
+          } else {
+            onOpenReport(reportQuery, reportData);
+          }
+        }}
+        className="interactive-report-btn group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="interactive-report-icon-tile">
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex flex-col items-start text-left">
+            <span className="chat-text-ui font-bold text-white leading-tight">
+              Open interactive report
+            </span>
+            <span className="chat-text-caption text-white/90 font-normal mt-0.5 leading-tight">
+              Charts, breakdowns and drill-downs for these {rowCount} results
+            </span>
+          </div>
+        </div>
+        <ArrowRight className="w-5 h-5 text-white/90 group-hover:translate-x-0.5 transition-transform" />
+      </button>
+    </div>
+  );
+}
+
 export default function ChatConversation({ initialQuery, onOpenReport, sessionId, onSessionCreated }) {
   const { connections, activeConnection, selectActiveConnection, addNotification, user } = useApp();
-  const { getCasualResponse, profile } = usePersonalization();
-  const { setHeaderConfig } = useOutletContext() || {};
+  const { getCasualResponse, profile, setChatTextSize } = usePersonalization();
+  const { setHeaderConfig, isSidebarOpen } = useOutletContext() || {};
 
   const activeConn = connections.find((c) => c.id === activeConnection);
 
@@ -64,10 +132,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
+  const [showTextSizeMenu, setShowTextSizeMenu] = useState(false);
 
   // ── Report preview popup (shown instead of navigating when WS is active) ──
   const [previewReport, setPreviewReport] = useState(null); // { query, data }
   const [showReportPreview, setShowReportPreview] = useState(false);
+  const chatTextSize = profile.chatTextSize || "m";
 
   const progressQueue = useRef([]);
   const progressTimer = useRef(null);
@@ -1244,19 +1314,19 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     if (trimmed.startsWith("### ")) {
       const hContent = formatLine(trimmed.slice(4));
       return (
-        <h3 key={key} className="text-base font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+        <h3 key={key} className="chat-text-ui font-bold mt-4 mb-2 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
       );
     }
     if (trimmed.startsWith("## ")) {
       const hContent = formatLine(trimmed.slice(3));
       return (
-        <h2 key={key} className="text-lg font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+        <h2 key={key} className="chat-text-ui font-bold mt-5 mb-2.5 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
       );
     }
     if (trimmed.startsWith("# ")) {
       const hContent = formatLine(trimmed.slice(2));
       return (
-        <h1 key={key} className="text-xl font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
+        <h1 key={key} className="chat-text-ui font-bold mt-6 mb-3 text-foreground flex items-center gap-2" dangerouslySetInnerHTML={{ __html: hContent }} />
       );
     }
 
@@ -1272,8 +1342,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             {emoji}
           </div>
           <div className="flex-1 space-y-1">
-            <h4 className="font-semibold text-foreground text-sm tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
-            <p className="text-sm text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+            <h4 className="chat-text-ui font-semibold text-foreground tracking-wide" dangerouslySetInnerHTML={{ __html: title }} />
+            <p className="chat-text-body text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
           </div>
         </div>
       );
@@ -1286,7 +1356,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
       return (
         <div key={key} className={`flex items-start gap-2.5 my-1.5 ${isNested ? "pl-8" : "pl-3"}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500/70 mt-2 shrink-0" />
-          <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
+          <p className="chat-text-body text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: itemContent }} />
         </div>
       );
     }
@@ -1301,7 +1371,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold mt-0.5 shrink-0 border border-blue-500/20">
             {num}
           </span>
-          <p className="text-sm text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
+          <p className="chat-text-body text-foreground/90 leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: text }} />
         </div>
       );
     }
@@ -1309,7 +1379,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
     // Default paragraph
     const processedLine = formatLine(line);
     return (
-      <p key={key} className="mb-3 text-foreground/90 leading-relaxed text-[15px]" dangerouslySetInnerHTML={{ __html: processedLine }} />
+      <p key={key} className="chat-text-body mb-3 text-foreground/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: processedLine }} />
     );
   };
 
@@ -1346,13 +1416,13 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           const { headers, rows } = parsed;
           return (
             <div key={`table-${idx}`} className="my-4 overflow-x-auto rounded-xl border border-border/60 bg-card/45 shadow-sm">
-              <table className="w-full border-collapse text-left text-xs">
+              <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/40">
                     {headers.map((h, hIdx) => (
                       <th
                         key={hIdx}
-                        className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider text-[11px]"
+                        className="px-4 py-3 font-semibold text-muted-foreground uppercase tracking-wider"
                         dangerouslySetInnerHTML={{ __html: formatLine(h) }}
                       />
                     ))}
@@ -1367,7 +1437,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                       {row.map((cell, cIdx) => (
                         <td
                           key={cIdx}
-                          className="px-4 py-3 text-foreground/90 font-medium text-[13px]"
+                          className="px-4 py-3 text-foreground/90 font-medium"
                           dangerouslySetInnerHTML={{ __html: formatLine(cell) }}
                         />
                       ))}
@@ -1399,9 +1469,12 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
   // ── Render ──────────────────────────────────────────────────────────
   return (
     <>
-      <div className="workspace-canvas relative flex h-full w-full flex-1 flex-col items-center overflow-hidden">
+      <div
+        className="workspace-canvas chat-surface relative flex h-full w-full flex-1 flex-col items-center overflow-hidden"
+        data-chat-text-size={chatTextSize}
+      >
         {/* Active data source & New Chat button */}
-        <div className="absolute left-1/2 top-3 z-20 max-w-[95vw] -translate-x-1/2 flex items-center justify-between gap-3 w-full max-w-5xl px-4 pointer-events-none">
+        <div className="absolute left-1/2 top-3 z-20 flex w-full max-w-5xl max-w-[95vw] -translate-x-1/2 items-center justify-between gap-3 px-4 pointer-events-none">
           {activeConn ? (
             <StatusPill tone="success" className="max-w-full bg-card/90 shadow-sm backdrop-blur-xl pointer-events-auto">
               <span className="status-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -1411,16 +1484,18 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
             </StatusPill>
           ) : <div />}
 
-          <button
-            type="button"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('repnex-new-chat'));
-            }}
-            className="group pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white font-semibold text-xs rounded-xl shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-95 transition-all duration-200 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-white group-hover:rotate-90 transition-transform duration-300" />
-            <span>New Chat</span>
-          </button>
+          {!isSidebarOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('repnex-new-chat'));
+              }}
+              className="group pointer-events-auto inline-flex items-center gap-2 rounded-xl border border-primary/35 bg-white px-3.5 py-2 text-xs font-semibold text-primary shadow-sm shadow-primary/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/15 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-card dark:hover:bg-primary/10"
+            >
+              <Plus className="h-3.5 w-3.5 text-primary transition-transform duration-300 group-hover:rotate-90" />
+              <span>New Chat</span>
+            </button>
+          )}
         </div>
 
         <div
@@ -1454,7 +1529,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   key={msg.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`chat-message mb-7 flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.role === "ai" && (
                     <ProductMark className="mr-3 h-9 w-9 shrink-0 rounded-xl" />
@@ -1467,7 +1542,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                     {/* Render content box for: user messages, errors, ai messages with content, or executable ai messages (so insight shows when it arrives) */}
                     {(msg.content || msg.type === "error" || msg.role === "user" || (msg.role === "ai" && (msg.type === "executable" || !!msg.sql))) && (
                       <div
-                        className={`relative group ${msg.role === "user"
+                        className={`chat-message-surface relative group ${msg.role === "user"
                             ? "brand-gradient rounded-2xl rounded-tr-md px-4 py-3 pr-11 text-white shadow-md shadow-primary/15 sm:px-5 sm:pr-11"
                             : msg.type === "error"
                               ? "w-full rounded-2xl rounded-tl-md border border-red-200/70 bg-red-50/85 p-4 shadow-sm dark:border-red-900/50 dark:bg-red-950/25 sm:p-5"
@@ -1479,7 +1554,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         {/* Keep the disclosure only for responses that are genuinely long. */}
                         {msg.role === "ai" && isMessageCollapsible(msg) && (
                           <div className="mb-3 flex select-none items-center justify-between gap-3 border-b border-border/50 pb-3">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <span className="chat-text-caption font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                               Response
                             </span>
                             <button
@@ -1509,10 +1584,10 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               <textarea
                                 value={editingText}
                                 onChange={(e) => setEditingText(e.target.value)}
-                                className="w-full bg-blue-700 text-white rounded-lg p-2 border border-blue-500 focus:outline-none resize-none text-[15px]"
+                                className="chat-text-body w-full rounded-lg border border-blue-500 bg-blue-700 p-2 text-white focus:outline-none resize-none"
                                 rows={2}
                               />
-                              <p className="text-[11px] leading-4 text-blue-100/85">
+                              <p className="chat-text-caption leading-4 text-blue-100/85">
                                 Editing this question will replace the replies below it.
                               </p>
                               <div className="flex justify-end gap-2 text-xs">
@@ -1533,7 +1608,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               </div>
                             </div>
                           ) : (
-                            <span className="text-[15px] leading-relaxed">{msg.content}</span>
+                            <span className="chat-text-body leading-relaxed">{msg.content}</span>
                           )
                         ) : (
                           /* AI message block */
@@ -1546,7 +1621,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   animate={{ opacity: 1, height: "auto" }}
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.25, ease: "easeInOut" }}
-                                  className="text-xs text-muted-foreground italic flex items-center justify-between gap-4"
+                                  className="chat-text-body text-muted-foreground italic flex items-center justify-between gap-4"
                                 >
                                   <span>
                                     {msg.type === "error"
@@ -1569,7 +1644,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   animate={{ opacity: 1, height: "auto" }}
                                   exit={{ opacity: 0, height: 0 }}
                                   transition={{ duration: 0.25, ease: "easeInOut" }}
-                                  className="text-[15px] leading-relaxed text-foreground"
+                                  className="chat-text-body leading-relaxed text-foreground"
                                 >
                                   {msg.type === "error" && (
                                     <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
@@ -1579,7 +1654,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                                   )}
                                   {msg.isStreaming && !msg.content ? (
                                     /* Insight generating skeleton */
-                                    <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
+                                    <div className="chat-text-body flex items-center gap-2 text-muted-foreground py-1">
                                       <div className="flex gap-1">
                                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -1658,7 +1733,8 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                               <button
                                 type="button"
                                 onClick={() => toggleSqlCollapse(msg.id)}
-                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-primary transition-colors hover:bg-primary/8 dark:text-sky-300 dark:hover:bg-white/5"
+                                style={{ color: 'var(--text-muted)' }}
+                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                                 aria-expanded={!isSqlCollapsed(msg.id)}
                                 aria-controls={`sql-${msg.id}`}
                               >
@@ -1696,23 +1772,20 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
 
                     {/* Execution stats */}
                     {(msg.type === "executable" || msg.sql || msg.type === "template_preview") ? (
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                      <div
+                        style={{ color: 'var(--text-muted)' }}
+                        className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs"
+                      >
                         {msg.rowsReturned != null && (
                           <span className="flex items-center gap-1">
-                            <Rows3 className="w-3.5 h-3.5 text-slate-400" />
+                            <Rows3 className="w-3.5 h-3.5" />
                             {msg.rowsReturned.toLocaleString()} rows
                           </span>
                         )}
                         {msg.executionTime != null && (
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <Clock className="w-3.5 h-3.5" />
                             {msg.executionTime}ms
-                          </span>
-                        )}
-                        {msg.timestamp && (
-                          <span className="flex items-center gap-1 text-[11px] opacity-80 font-sans">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {formatMessageTimestamp(msg.timestamp)}
                           </span>
                         )}
                       </div>
@@ -1746,34 +1819,14 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                         transition={{ delay: 0.2 }}
                         className="mt-2"
                       >
-                        <button
-                          onClick={() => {
-                            const reportData = {
-                              rows: msg.rows,
-                              columns: msg.columns,
-                              sql: msg.sql,
-                              templateId: msg.templateId,
-                              extractedParams: msg.extractedParams,
-                              summary: msg.summary || msg.content || '',
-                              col_meta: msg.colMeta || null,   // ← axis hints from backend
-                            };
-                            const reportQuery = msg.templateDescription || initialQuery;
-                            if (isProcessing) {
-                              // WS is active — open as popup to avoid killing the connection
-                              setPreviewReport({ query: reportQuery, data: reportData });
-                              setShowReportPreview(true);
-                            } else {
-                              onOpenReport(reportQuery, reportData);
-                            }
-                          }}
-                          className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-primary/15 bg-primary/8 px-5 py-3 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/12"
-                        >
-                          <Sparkles className="w-5 h-5 text-foreground/70 transition-transform group-hover:rotate-12 group-hover:text-primary" />
-                          <span>Open interactive report</span>
-                          {isProcessing && (
-                            <span className="text-[10px] font-normal text-muted-foreground ml-1">(preview)</span>
-                          )}
-                        </button>
+                        <ReportButton
+                          msg={msg}
+                          initialQuery={initialQuery}
+                          isProcessing={isProcessing}
+                          onOpenReport={onOpenReport}
+                          setPreviewReport={setPreviewReport}
+                          setShowReportPreview={setShowReportPreview}
+                        />
                       </motion.div>
                     )}
 
@@ -1945,7 +1998,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                   exit={{ opacity: 0, y: 10 }}
                   className="custom-scrollbar mb-7 flex max-w-full flex-nowrap gap-2 overflow-x-auto pb-2 pl-12 sm:flex-wrap sm:overflow-visible sm:pb-0"
                 >
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+                        <div className="chat-text-caption flex items-center gap-1.5 text-muted-foreground mr-2">
                     <Lightbulb className="w-3.5 h-3.5" />
                     <span>Suggestions:</span>
                   </div>
@@ -1982,7 +2035,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                           processQuery(sugText);
                         }
                       }}
-                      className={`app-card max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
+                      className={`app-card chat-text-caption max-w-[280px] shrink-0 rounded-xl px-3 py-2 text-left font-medium transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:text-primary ${isViewer ? 'cursor-not-allowed opacity-50' : ''}`}
                     >
                       {typeof sug === "string" ? sug : sug.text || sug}
                     </button>
@@ -2003,7 +2056,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               onClick={() => scrollToLatest("smooth")}
-              className="app-card absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-foreground shadow-lg"
+              className="app-card chat-text-caption absolute bottom-[142px] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 font-semibold text-foreground shadow-lg"
               aria-label="Jump to the latest message"
             >
               <ArrowDown className="h-3.5 w-3.5 text-primary" />
@@ -2017,7 +2070,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
           <div className="pointer-events-auto w-full max-w-5xl">
             <form
               onSubmit={handleSubmit}
-              className="prompt-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
+              className="prompt-shell chat-composer-shell flex min-h-[96px] w-full flex-col rounded-[22px] p-2"
               data-processing={isProcessing ? "true" : "false"}
             >
               <textarea
@@ -2026,7 +2079,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={isViewer ? "Chat is unavailable for viewer accounts" : "Ask a follow-up question..."}
                 disabled={isViewer}
-                className="chat-composer-input min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-[15px] leading-6 text-foreground outline-none placeholder:text-muted-foreground/65"
+                className="chat-composer-input chat-text-body min-h-[46px] max-h-[200px] w-full resize-none overflow-y-auto border-none bg-transparent p-3 text-foreground outline-none placeholder:text-muted-foreground/65"
                 onKeyDown={(e) => {
                   if (isViewer) return;
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -2037,8 +2090,56 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
               />
               <div className="mt-auto flex items-center justify-between gap-3 px-2 py-1">
                 <div className="flex min-w-0 items-center gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowTextSizeMenu((open) => !open)}
+                      className="chat-text-ui inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/70 bg-muted/50 px-3 font-semibold text-foreground transition-colors hover:bg-muted"
+                      aria-haspopup="menu"
+                      aria-expanded={showTextSizeMenu}
+                      aria-label="Change chat text size"
+                    >
+                      <span className="chat-text-caption uppercase tracking-[0.12em] text-muted-foreground">Aa</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <AnimatePresence>
+                      {showTextSizeMenu && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                          className="absolute bottom-full left-0 z-30 mb-2 w-28 rounded-2xl border border-border/70 bg-card p-2 shadow-xl"
+                          role="menu"
+                        >
+                          {CHAT_TEXT_SIZES.map((size) => {
+                            const selected = chatTextSize === size.value;
+                            return (
+                              <button
+                                key={size.value}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={selected}
+                                onClick={() => {
+                                  setChatTextSize(size.value);
+                                  setShowTextSizeMenu(false);
+                                }}
+                              className={`chat-text-ui flex w-full items-center justify-between rounded-xl px-3 py-2 font-semibold transition-colors ${selected ? "bg-primary/10 text-primary ring-1 ring-primary/10" : "text-foreground hover:bg-muted"}`}
+                            >
+                              <span className={`flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-medium tracking-normal ${selected ? "bg-primary/15 text-primary" : "bg-muted/60 text-foreground/80"}`}>
+                                {size.label}
+                              </span>
+                              <span className="chat-text-caption tracking-[0.08em] text-muted-foreground">
+                                {size.value === "s" ? "Small" : size.value === "m" ? "Medium" : "Large"}
+                              </span>
+                            </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <ModelProviderMenu />
-                  <span className="hidden text-[11px] text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
+                  <span className="hidden chat-text-caption text-muted-foreground sm:inline">Enter to send · Shift + Enter for a new line</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {isSpeechSupported ? (
@@ -2085,7 +2186,7 @@ export default function ChatConversation({ initialQuery, onOpenReport, sessionId
                 </div>
               </div>
             </form>
-            <p className="mt-2 text-center text-[10px] text-muted-foreground/70">
+            <p className="chat-text-caption mt-2 text-center text-muted-foreground/70">
               Review important results before sharing them.
             </p>
           </div>

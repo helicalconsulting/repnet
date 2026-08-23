@@ -112,7 +112,7 @@ export default function HeroSection() {
       </motion.div>
 
       <div className="relative z-10 max-w-[90rem] mx-auto px-6 md:px-12 lg:px-16 w-full flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20">
-        <div className="max-w-3xl w-full">
+        <div className="w-full max-w-2xl">
           {/* Badge */}
 
           {/* Heading */}
@@ -120,15 +120,21 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-5xl sm:text-6xl lg:text-[4.5rem] tracking-tighter font-bold text-slate-900 font-['Outfit'] leading-[1.02]"
+            className="max-w-[13.5ch] text-[clamp(2.75rem,5vw,3.6rem)] font-extrabold leading-[0.98] tracking-[-0.05em] text-slate-900 sm:max-w-[14ch] sm:text-[clamp(3.15rem,4.7vw,3.9rem)] lg:max-w-[15ch] lg:text-[clamp(3.2rem,3.9vw,4rem)]"
           >
-            Fed up with Crystal Reports and Power BI?
-            <span className="relative inline-block mt-4">
-              <span className="relative z-10 bg-gradient-to-r from-[#0055FF] via-[#3B82F6] to-[#6366F1] bg-clip-text text-transparent block">
-                Talk to your data with Repnex.
+            <span className="block max-w-[12.5ch]">
+              Fed up with Crystal Reports and
+              <br />
+               Power BI?
+            </span>
+            <span className="relative mt-2 block max-w-[11ch] sm:max-w-[12ch] lg:max-w-[13ch]">
+              <span className="relative z-10 block bg-gradient-to-r from-[#0055FF] via-[#3B82F6] to-[#6366F1] bg-clip-text text-transparent text-[clamp(1.08em,calc(1.02em+0.35vw),1.15em)] leading-[0.95] tracking-[-0.05em]">
+                Talk to your data
+                <br />
+                with Repnex.
               </span>
               <motion.span
-                className="absolute -bottom-1 left-0 right-0 h-3 bg-blue-100/50 rounded-sm -z-0"
+                className="absolute -bottom-1 left-0 right-0 h-2 rounded-sm bg-blue-100/50 -z-0"
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.9, duration: 0.4 }}
@@ -142,7 +148,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
-            className="mt-6 text-lg sm:text-xl text-slate-500 leading-relaxed max-w-xl font-['Manrope']"
+            className="mt-5 max-w-[38rem] text-[clamp(1.02rem,1.2vw,1.25rem)] leading-[1.6] text-slate-500 sm:leading-[1.65]"
           >
             Stop building reports manually. Ask in plain English, get answers in seconds, and share insights your team can act on instantly.
           </motion.p>
@@ -151,7 +157,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="mt-10"
+            className="mt-8"
           >
             <EarlyBirdBanner />
           </motion.div>
@@ -161,7 +167,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9 }}
-          className="mt-16 flex gap-10 sm:gap-16"
+          className="mt-12 flex flex-wrap gap-8 sm:gap-10 lg:gap-14"
         >
           {[
             { value: "500", prefix: "$", suffix: "-2K", label: "Saved per report" },
@@ -169,10 +175,10 @@ export default function HeroSection() {
             { value: "4", suffix: "+", label: "ERPs supported" },
           ].map((stat) => (
             <div key={stat.label} data-testid={`hero-stat-${stat.label.replace(/\s/g, '-').toLowerCase()}`} className="group">
-              <div className="text-3xl font-bold text-slate-900 font-['Outfit'] tracking-tight group-hover:text-[#0055FF] transition-colors duration-300">
+              <div className="text-3xl font-bold tracking-[-0.04em] text-slate-900 transition-colors duration-300 group-hover:text-[#0055FF]">
                 <AnimatedCounter value={stat.value} prefix={stat.prefix} suffix={stat.suffix} />
               </div>
-              <div className="text-xs text-slate-400 mt-1.5 font-medium tracking-wide">{stat.label}</div>
+              <div className="mt-1.5 text-xs font-medium tracking-[0.08em] text-slate-400 uppercase">{stat.label}</div>
             </div>
           ))}
         </motion.div>
@@ -195,7 +201,7 @@ export default function HeroSection() {
                 <div className="w-3 h-3 rounded-full bg-[#FEBC2E] border-[1px] border-black" />
                 <div className="w-3 h-3 rounded-full bg-[#28C840] border-[1px] border-black" />
               </div>
-              <span className="text-[10px] text-black font-bold ml-2 font-mono tracking-wider uppercase">repnex-ai-copilot</span>
+              <span className="ml-2 font-mono text-[10px] font-bold uppercase tracking-wider text-black">repnex-ai-copilot</span>
             </div>
             {/* Chat simulation with typing */}
             <div className="p-5 space-y-4 bg-white" data-testid="hero-demo-preview">
@@ -204,7 +210,7 @@ export default function HeroSection() {
                 <div className="w-7 h-7 rounded-full border-[2px] border-black bg-white flex items-center justify-center flex-shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                   <span className="text-[10px] text-black font-bold">You</span>
                 </div>
-                <div className="bg-white rounded-xl px-4 py-3 text-sm text-black border-[2px] border-black min-h-[44px] flex-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] font-medium">
+                <div className="min-h-[44px] flex-1 rounded-xl border-[2px] border-black bg-white px-4 py-3 text-sm font-medium text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                   <span>{typedText}</span>
                   <span className="typing-cursor" />
                 </div>
@@ -216,7 +222,7 @@ export default function HeroSection() {
                 </div>
                 <div className="space-y-3 flex-1">
                   <div className="bg-white rounded-xl px-4 py-3 text-sm text-black border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                    <p className="text-[10px] text-[#0055FF] font-mono mb-2 font-bold">Generated SQL:</p>
+                    <p className="mb-2 font-mono text-[10px] font-bold text-[#0055FF]">Generated SQL:</p>
                     <code className="text-[11px] text-black font-mono leading-relaxed block font-medium">
                       SELECT category, SUM(amount)<br />
                       FROM sales WHERE quarter = 'Q4'<br />
@@ -241,7 +247,7 @@ export default function HeroSection() {
                         />
                       ))}
                     </div>
-                    <p className="text-[10px] text-black mt-2.5 font-bold uppercase">Revenue by Category - Q4 2024</p>
+                    <p className="mt-2.5 text-[10px] font-bold uppercase text-black">Revenue by Category - Q4 2024</p>
                   </div>
                 </div>
               </div>

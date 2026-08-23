@@ -54,10 +54,10 @@ export default function ArchitectureSection() {
           viewport={{ once: true }}
           className="text-center mb-20 max-w-2xl mx-auto"
         >
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             How It Works
           </span>
-          <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5 leading-[1.1]">
+          <h2 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 leading-[1.1] sm:text-5xl">
             From question to insight<br />
             <span className="bg-gradient-to-r from-[#0055FF] to-[#6366F1] bg-clip-text text-transparent">in four simple steps</span>
           </h2>
@@ -80,7 +80,7 @@ export default function ArchitectureSection() {
             >
               <div className={`relative bg-white rounded-2xl border-[3px] border-black p-7 h-full transition-all duration-300 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:translate-x-1 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]`}>
                 {/* Step number background */}
-                <div className="absolute top-5 right-5 text-6xl font-black text-slate-100/70 font-['Outfit'] leading-none select-none group-hover:text-blue-50 transition-colors duration-500">
+                <div className="absolute top-5 right-5 text-6xl font-black leading-none text-slate-100/70 select-none transition-colors duration-500 group-hover:text-blue-50">
                   {step.num}
                 </div>
 
@@ -89,7 +89,7 @@ export default function ArchitectureSection() {
                     <step.icon size={22} className="text-[#0055FF]" />
                   </div>
 
-                  <h3 className="text-xl font-semibold text-slate-900 font-['Outfit'] mb-2">{step.title}</h3>
+                  <h3 className="mb-2 text-xl font-semibold text-slate-900">{step.title}</h3>
                   <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
 
                   {/* Checkmarks for trust */}

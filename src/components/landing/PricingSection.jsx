@@ -82,10 +82,10 @@ export default function PricingSection() {
           viewport={{ once: true }}
           className="text-center mb-14"
         >
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 font-['Outfit'] bg-blue-50 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             Pricing
           </span>
-          <h2 className="text-4xl sm:text-5xl tracking-tight font-bold text-slate-900 font-['Outfit'] mt-5">
+          <h2 className="mt-5 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
             Simple, transparent pricing
           </h2>
           <p className="text-lg text-slate-500 mt-4 max-w-md mx-auto">
@@ -151,7 +151,7 @@ export default function PricingSection() {
                   </div>
                 )}
 
-                <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">{plan.name}</h3>
+                <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
                 <p className="text-sm text-slate-500 mt-1">{plan.description}</p>
 
                 <div className="mt-6 mb-7">
@@ -159,7 +159,7 @@ export default function PricingSection() {
                     key={yearly ? "yearly" : "monthly"}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-5xl font-bold text-slate-900 font-['Outfit'] tracking-tight"
+                    className="text-5xl font-bold tracking-tight text-slate-900"
                   >
                     {yearly && plan.yearlyPrice ? plan.yearlyPrice : plan.price}
                   </motion.span>

@@ -59,9 +59,9 @@ export default function Header() {
           <div className="flex items-center justify-between h-16">
             <Link to="/" data-testid="header-logo" className="flex items-center gap-2.5 group">
               <div className="flex-shrink-0 w-8 h-8 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center justify-center bg-white p-1 pb-1.5 border border-border">
-                <img src="/270970406.jpeg" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
+                <img src="/repnexlogo.png" alt="Logo" className="w-full h-full object-contain filter hue-rotate-15 contrast-125" />
               </div>
-              <span className="text-lg font-semibold text-slate-900 font-['Outfit'] tracking-tight">
+              <span className="text-lg font-bold tracking-tight text-slate-900">
                 Repnex
               </span>
             </Link>
@@ -75,7 +75,7 @@ export default function Header() {
                     key={link.href}
                     data-testid={`nav-link-${link.label.toLowerCase()}`}
                     onClick={() => scrollTo(link.href)}
-                    className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 rounded-md ${
+                    className={`relative rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 ${
                       isActive ? "text-[#0055FF]" : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
@@ -98,7 +98,7 @@ export default function Header() {
                 onClick={() => scrollTo("#waitlist")}
                 whileHover={{ x: 2, y: 2, boxShadow: "2px 2px 0px 0px rgba(0,0,0,1)" }}
                 whileTap={{ x: 4, y: 4, boxShadow: "1px 1px 0px 0px rgba(0,0,0,1)" }}
-                className="bg-[#0055FF] text-white px-5 py-2 rounded-lg text-sm font-bold transition-all border-[2px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+                className="border-[2px] border-black bg-[#0055FF] px-5 py-2 text-sm font-bold text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer rounded-lg"
               >
                 Subscribe
               </motion.button>
@@ -133,7 +133,7 @@ export default function Header() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => scrollTo(link.href)}
-                    className="block w-full text-left text-sm font-medium text-slate-600 hover:text-[#0055FF] hover:bg-blue-50/50 py-2.5 px-3 rounded-lg transition-all"
+                    className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition-all hover:bg-blue-50/50 hover:text-[#0055FF]"
                   >
                     {link.label}
                   </motion.button>
@@ -143,7 +143,7 @@ export default function Header() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
                   onClick={() => scrollTo("#waitlist")}
-                  className="w-full bg-[#0055FF] text-white px-5 py-2.5 rounded-lg text-sm font-bold mt-3 border-[2px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                  className="mt-3 w-full rounded-lg border-[2px] border-black bg-[#0055FF] px-5 py-2.5 text-sm font-bold text-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                 >
                   Subscribe
                 </motion.button>

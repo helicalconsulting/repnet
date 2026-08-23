@@ -47,9 +47,9 @@ export default function Footer() {
           <div className="col-span-2">
             <div className="flex items-center gap-2.5 mb-5">
               <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-lg shadow-blue-500/10">
-                <img src="/270970406.jpeg" alt="Repnex logo" className="h-full w-full object-contain rounded-md" />
+                <img src="/repnexlogo.png" alt="Repnex logo" className="h-full w-full object-contain rounded-md" />
               </div>
-              <span className="text-lg font-bold text-slate-900 font-['Outfit'] tracking-tight">
+              <span className="text-lg font-bold tracking-tight text-slate-900">
                 Repnex
               </span>
             </div>
@@ -80,7 +80,7 @@ export default function Footer() {
           {/* Link columns */}
           {footerLinks.map((col) => (
             <div key={col.title}>
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-5 font-['Outfit']">
+              <h4 className="mb-5 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
                 {col.title}
               </h4>
               <ul className="space-y-3">

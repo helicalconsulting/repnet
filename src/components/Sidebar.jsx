@@ -187,11 +187,12 @@ export default function Sidebar({ isOpen, setIsOpen, onSignOut, darkMode, setDar
                     setIsOpen(false);
                   }
                 }}
-                className="group relative flex w-full items-center justify-center gap-2.5 rounded-xl py-2.5 px-4 brand-gradient text-white font-semibold text-xs tracking-wide shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer overflow-hidden"
+                className="new-chat-cta group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-[11px] border border-primary/20 px-4 py-3 text-left font-semibold text-white shadow-lg shadow-primary/18 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/25 active:translate-y-0 active:scale-[0.99] cursor-pointer"
               >
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <Plus className="w-4 h-4 text-white shrink-0 group-hover:rotate-90 transition-transform duration-300" />
-                <span>New Chat</span>
+                <div className="relative flex items-center gap-2.5">
+                  <Plus className="h-4 w-4 text-white transition-transform duration-300 group-hover:rotate-90" />
+                  <span className="text-sm font-semibold leading-none tracking-tight">New Chat</span>
+                </div>
               </button>
             </div>
           )}

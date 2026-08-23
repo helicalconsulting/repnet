@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/dm-sans";
 @import "@fontsource-variable/geist";
 /* Custom theme-aware SmartSkeleton styles */
 .skeleton-shimmer {
@@ -87,6 +88,7 @@
   --shadow-color: 220 38% 18%;
   --shadow-soft: 0 1px 2px hsl(var(--shadow-color) / 0.03), 0 10px 30px hsl(var(--shadow-color) / 0.055);
   --shadow-raised: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 18px 45px hsl(var(--shadow-color) / 0.09);
+  --text-muted: var(--muted-foreground);
 }
 
 @theme inline {
@@ -102,7 +104,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'DM Sans Variable', sans-serif;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -174,12 +176,13 @@
   --shadow-color: 230 70% 2%;
   --shadow-soft: 0 1px 2px hsl(var(--shadow-color) / 0.22), 0 14px 38px hsl(var(--shadow-color) / 0.2);
   --shadow-raised: 0 1px 2px hsl(var(--shadow-color) / 0.25), 0 24px 60px hsl(var(--shadow-color) / 0.28);
+  --text-muted: var(--muted-foreground);
 }
 
 html {
   background: var(--background);
   color-scheme: light;
-  font-family: 'Geist Variable', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .dark {
@@ -240,7 +243,7 @@ html.theme-transition-fallback *::after {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Geist Variable', var(--font-sans);
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
   min-height: 100vh;
@@ -273,6 +276,63 @@ select {
   border: 0 !important;
   outline: 0 !important;
   box-shadow: none !important;
+}
+
+.chat-surface {
+  --chat-body-font-size: 0.975rem;
+  --chat-body-line-height: 1.62;
+  --chat-meta-font-size: 0.72rem;
+  --chat-ui-font-size: 0.875rem;
+  --chat-caption-font-size: 0.6875rem;
+  --chat-composer-min-height: 98px;
+}
+
+.chat-surface[data-chat-text-size="s"] {
+  --chat-body-font-size: 0.92rem;
+  --chat-body-line-height: 1.54;
+  --chat-meta-font-size: 0.68rem;
+  --chat-ui-font-size: 0.8125rem;
+  --chat-caption-font-size: 0.65625rem;
+  --chat-composer-min-height: 92px;
+}
+
+.chat-surface[data-chat-text-size="m"] {
+  --chat-body-font-size: 0.975rem;
+  --chat-body-line-height: 1.62;
+  --chat-meta-font-size: 0.72rem;
+  --chat-ui-font-size: 0.875rem;
+  --chat-caption-font-size: 0.6875rem;
+  --chat-composer-min-height: 98px;
+}
+
+.chat-surface[data-chat-text-size="l"] {
+  --chat-body-font-size: 1.1rem;
+  --chat-body-line-height: 1.7;
+  --chat-meta-font-size: 0.8rem;
+  --chat-ui-font-size: 0.9375rem;
+  --chat-caption-font-size: 0.75rem;
+  --chat-composer-min-height: 116px;
+}
+
+.chat-text-body {
+  font-size: var(--chat-body-font-size) !important;
+  line-height: var(--chat-body-line-height) !important;
+}
+
+.chat-text-meta {
+  font-size: var(--chat-meta-font-size) !important;
+}
+
+.chat-text-ui {
+  font-size: var(--chat-ui-font-size) !important;
+}
+
+.chat-text-caption {
+  font-size: var(--chat-caption-font-size) !important;
+}
+
+.chat-composer-shell {
+  min-height: var(--chat-composer-min-height) !important;
 }
 
 .workspace-canvas {
@@ -315,6 +375,36 @@ select {
 
 .brand-gradient {
   background: linear-gradient(135deg, color-mix(in oklab, var(--primary) 88%, white), var(--primary-hover));
+}
+
+.new-chat-cta {
+  background: linear-gradient(135deg, #4f7df9 0%, #3b5fe0 100%);
+  box-shadow: 0 4px 14px rgba(59, 95, 224, 0.35);
+}
+
+.new-chat-cta:hover {
+  background: linear-gradient(135deg, #5b88fb 0%, #4067ea 100%);
+  box-shadow: 0 8px 20px rgba(59, 95, 224, 0.42);
+}
+
+.new-chat-cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: -140%;
+  width: 55%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: skewX(-18deg);
+  transition: transform 380ms ease;
+  pointer-events: none;
+}
+
+.new-chat-cta:hover::after {
+  transform: translateX(300%) skewX(-18deg);
+}
+
+.new-chat-cta:active {
+  box-shadow: 0 2px 10px rgba(59, 95, 224, 0.28);
 }
 
 .brand-text-gradient {
@@ -383,7 +473,7 @@ select {
 }
 
 .page-heading {
-  letter-spacing: -0.035em;
+  letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
@@ -610,7 +700,7 @@ select {
 
 /* Super Admin UI compatibility overrides for light/dark theme matching standard dashboard */
 .super-admin-root {
-  font-family: 'Manrope', var(--font-sans) !important;
+  font-family: var(--font-sans) !important;
 }
 
 .super-admin-root .bg-slate-950 {
@@ -755,4 +845,90 @@ html:not(.dark) .super-admin-root th {
 .dark .super-admin-root .text-slate-100,
 .dark .super-admin-root .text-white {
   color: #f8fafc !important;
+}
+
+/* Custom Interactive Report Button Styles */
+.interactive-report-btn {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3B5FE2 0%, #4C6EF0 100%);
+  color: #ffffff !important;
+  font-family: var(--font-sans), sans-serif;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 8px 20px rgba(59, 95, 226, 0.32), 0 2px 6px rgba(59, 95, 226, 0.18);
+  transition: transform 150ms ease-out, background 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.interactive-report-btn:hover {
+  transform: scale(1.01);
+  background: linear-gradient(135deg, #2A4ECB 0%, #3B5FE2 100%);
+  box-shadow: 0 10px 28px rgba(59, 95, 226, 0.45);
+}
+
+.interactive-report-btn:active {
+  transform: scale(0.98);
+}
+
+/* Focus-visible style */
+.interactive-report-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 95, 226, 0.6);
+}
+
+/* Leading Icon Tile */
+.interactive-report-icon-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff !important;
+  transition: background-color 150ms ease-out;
+  flex-shrink: 0;
+}
+
+.interactive-report-btn:hover .interactive-report-icon-tile {
+  background-color: rgba(255, 255, 255, 0.26);
+}
+
+/* Dark mode adjustments */
+.dark .interactive-report-btn {
+  box-shadow: 0 8px 20px rgba(59, 95, 226, 0.25), 0 2px 6px rgba(59, 95, 226, 0.14);
+}
+
+.dark .interactive-report-btn:hover {
+  box-shadow: 0 10px 28px rgba(59, 95, 226, 0.36);
+}
+
+/* One-time entrance pulse ring animation */
+@keyframes pulse-ring-out {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  border: 2px solid #3B5FE2;
+  pointer-events: none;
+  animation: pulse-ring-out 800ms ease-out forwards;
+  z-index: 10;
 }
